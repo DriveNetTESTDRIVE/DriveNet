@@ -6,6 +6,8 @@
 
 #include "memusage.h"
 #include "random.h"
+#include "sidechain.h"
+#include "utilstrencodings.h"
 
 #include <assert.h>
 
@@ -281,7 +283,7 @@ CAmount CCoinsViewCache::GetValueIn(const CTransaction& tx) const
     return nResult;
 }
 
-bool CCoinsViewCache::HaveInputs(const CTransaction& tx) const
+bool CCoinsViewCache::HaveInputs(const CTransaction& tx, bool* fSidechainInputs) const
 {
     if (!tx.IsCoinBase()) {
         for (unsigned int i = 0; i < tx.vin.size(); i++) {
@@ -289,6 +291,12 @@ bool CCoinsViewCache::HaveInputs(const CTransaction& tx) const
             const CCoins* coins = AccessCoins(prevout.hash);
             if (!coins || !coins->IsAvailable(prevout.n)) {
                 return false;
+            }
+            if (fSidechainInputs) {
+                for (const CTxOut out : coins->vout) {
+                    if (HexStr(out.scriptPubKey) == SIDECHAIN_TEST_SCRIPT_HEX)
+                        *fSidechainInputs = true;
+                }
             }
         }
     }

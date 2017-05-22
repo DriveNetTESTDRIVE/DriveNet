@@ -6,16 +6,23 @@
 #include "base58.h"
 #include "chain.h"
 #include "clientversion.h"
+#include "consensus/validation.h"
+#include "core_io.h"
 #include "init.h"
 #include "validation.h"
+#include "merkleblock.h"
 #include "httpserver.h"
 #include "net.h"
 #include "netbase.h"
 #include "rpc/blockchain.h"
 #include "rpc/server.h"
+#include "sidechain.h"
+#include "sidechaindb.h"
 #include "timedata.h"
 #include "util.h"
+#include "utilmoneystr.h"
 #include "utilstrencodings.h"
+#include "validation.h"
 #ifdef ENABLE_WALLET
 #include "wallet/rpcwallet.h"
 #include "wallet/wallet.h"
@@ -624,6 +631,356 @@ UniValue logging(const JSONRPCRequest& request)
     return result;
 }
 
+UniValue receivesidechainwtjoin(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() != 2)
+        throw std::runtime_error(
+            "receivesidechainwtjoin\n"
+            "Called by sidechain to announce new WT^ for verification\n"
+            "\nArguments:\n"
+            "1. \"nSidechain\"      (int, required) The sidechain number\n"
+            "2. \"rawtx\"           (string, required) The raw transaction hex\n"
+            "\nExamples:\n"
+            + HelpExampleCli("receivesidechainwtjoin", "")
+            + HelpExampleRpc("receivesidechainwtjoin", "")
+     );
+
+    // Is nSidechain valid?
+    uint8_t nSidechain = std::stoi(request.params[0].get_str());
+    if (!SidechainNumberValid(nSidechain))
+        throw std::runtime_error("Invalid sidechain number");
+
+    // Create CTransaction from hex
+    CMutableTransaction mtx;
+    std::string hex = request.params[1].get_str();
+    DecodeHexTx(mtx, hex);
+
+    CTransaction wtJoin(mtx);
+
+    if (wtJoin.IsNull())
+        throw std::runtime_error("Invalid WT^ hex");
+
+    // Add WT^ to sidechain DB and start verification
+    if (!scdb.AddWTJoin(nSidechain, wtJoin))
+        throw std::runtime_error("WT^ rejected");
+
+    // Return WT^ hash to verify it has been received
+    UniValue ret(UniValue::VOBJ);
+    ret.push_back(Pair("wtxid", wtJoin.GetHash().GetHex()));
+    return ret;
+}
+
+UniValue listsidechaindeposits(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() != 1)
+        throw std::runtime_error(
+            "listsidechaindeposits\n"
+            "Called by sidechain, return list of deposits\n"
+            "\nArguments:\n"
+            "1. \"nSidechain\"      (numeric, required) The sidechain number\n"
+            "\nExamples:\n"
+            + HelpExampleCli("listsidechaindeposits", "\"nSidechain\"")
+            + HelpExampleRpc("listsidechaindeposits", "\"nSidechain\"")
+            );
+
+    // Is nSidechain valid?
+    uint8_t nSidechain = std::stoi(request.params[0].getValStr());
+    if (!SidechainNumberValid(nSidechain))
+        throw std::runtime_error("Invalid sidechain number");
+
+    // Get latest deposit from sidechain DB deposit cache
+    std::vector<SidechainDeposit> vDeposit = scdb.GetDeposits(nSidechain);
+    if (!vDeposit.size())
+        throw std::runtime_error("No deposits in cache");
+    const SidechainDeposit& deposit = vDeposit.back();
+
+    // Decode raw deposit hex
+    CMutableTransaction mtx;
+    if (!DecodeHexTx(mtx, deposit.hex))
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Cannot decode deposit");
+
+    // Add deposit txid to set
+    uint256 txid = mtx.GetHash();
+    std::set<uint256> setTxids;
+    setTxids.insert(txid);
+
+    LOCK(cs_main);
+
+    // Get deposit output
+    CBlockIndex* pblockindex = NULL;
+    CCoins coins;
+    if (pcoinsTip->GetCoins(txid, coins) && coins.nHeight > 0 && coins.nHeight <= chainActive.Height())
+        pblockindex = chainActive[coins.nHeight];
+
+    if (pblockindex == NULL)
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't get coins");
+
+    // Read block containing deposit output
+    CBlock block;
+    if(!ReadBlockFromDisk(block, pblockindex, Params().GetConsensus()))
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read block from disk");
+
+    // Look for deposit transaction
+    bool found = false;
+    for (const auto& tx : block.vtx)
+        if (tx->GetHash() == txid)
+            found = true;
+    if (!found)
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "transaction not found in specified block");
+
+    // Serialize and take hex of txout proof
+    CDataStream ssMB(SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS);
+    CMerkleBlock mb(block, setTxids);
+    ssMB << mb;
+    std::string strProofHex = HexStr(ssMB.begin(), ssMB.end());
+
+    // Calculate user payout
+    CAmount amtSidechainUTXO = CAmount(0);
+    CAmount amtUserInput = CAmount(0);
+    CAmount amtReturning = CAmount(0);
+    CAmount amtWithdrawn = CAmount(0);
+    GetSidechainValues(mtx, amtSidechainUTXO, amtUserInput, amtReturning, amtWithdrawn);
+
+    std::vector<COutput> vSidechainCoins;
+    pwalletMain->AvailableSidechainCoins(vSidechainCoins, nSidechain);
+
+    amtSidechainUTXO = 0;
+    for (const COutput& output : vSidechainCoins)
+        amtSidechainUTXO += output.tx->tx->vout[output.i].nValue;
+
+    // TODO use BMM to calculate
+    CAmount amtUserPayout = amtReturning;
+
+    UniValue ret(UniValue::VOBJ);
+    UniValue obj(UniValue::VOBJ);
+    obj.push_back(Pair("nSidechain", deposit.nSidechain));
+    obj.push_back(Pair("keyID", deposit.keyID.ToString()));
+    obj.push_back(Pair("amountUserPayout", ValueFromAmount(amtUserPayout)));
+    obj.push_back(Pair("txHex", deposit.hex));
+    obj.push_back(Pair("proofHex", strProofHex));
+
+    ret.push_back(Pair("deposit", obj));
+
+    return ret;
+}
+
+UniValue getbmmproof(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() != 2)
+        throw std::runtime_error(
+            "getbmmproof\n"
+            "Called by sidechain\n"
+            "\nArguments:\n"
+            "1. \"blockhash\"      (string, required) mainchain blockhash with h*\n"
+            "2. \"criticalhash\"   (string, required) h* to create proof of\n"
+            "\nExamples:\n"
+            + HelpExampleCli("getbmmproof", "\"blockhash\", \"criticalhash\"")
+            + HelpExampleRpc("getbmmproof", "\"blockhash\", \"criticalhash\"")
+            );
+
+    uint256 hashBlock = uint256S(request.params[0].get_str());
+    uint256 hashCritical = uint256S(request.params[1].get_str());
+
+    if (!mapBlockIndex.count(hashBlock))
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Block not found");
+
+    CBlockIndex* pblockindex = mapBlockIndex[hashBlock];
+    if (pblockindex == NULL)
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "pblockindex null");
+
+    CBlock block;
+    if(!ReadBlockFromDisk(block, pblockindex, Params().GetConsensus()))
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Failed to read block from disk");
+
+    if (!block.vtx.size())
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "No txns in block");
+
+    bool fCriticalHashFound = false;
+    const CTransaction &txCoinbase = *(block.vtx[0]);
+    for (const CTxOut& out : txCoinbase.vout) {
+        const CScript& scriptPubKey = out.scriptPubKey;
+
+        if (scriptPubKey.size() < sizeof(uint256) + 2)
+            continue;
+        if (scriptPubKey[0] != OP_RETURN)
+            continue;
+
+        CScript::const_iterator phash = scriptPubKey.begin() + 1;
+        std::vector<unsigned char> vch;
+        opcodetype opcode;
+        if (!scriptPubKey.GetOp2(phash, opcode, &vch))
+            continue;
+        if (vch.size() != sizeof(uint256))
+            continue;
+
+        if (hashCritical == uint256(vch))
+            fCriticalHashFound = true;
+    }
+
+    if (!fCriticalHashFound)
+        return NullUniValue;
+
+    std::string strProof = "";
+    if (!GetTxOutProof(txCoinbase.GetHash(), hashBlock, strProof))
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Could not get txoutproof...");
+
+    std::string strCoinbaseHex = EncodeHexTx(txCoinbase);
+
+    UniValue ret(UniValue::VOBJ);
+    UniValue obj(UniValue::VOBJ);
+    obj.push_back(Pair("proof", strProof));
+    obj.push_back(Pair("coinbaserawhex", strCoinbaseHex));
+    ret.push_back(Pair("proof", obj));
+
+    return ret;
+}
+
+UniValue createbribe(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() != 3)
+        throw std::runtime_error(
+            "createbribe\n"
+            "Bribe miners to include critical hash h* in coinbase output\n"
+            "\nArguments:\n"
+            "1. \"amount\"         (numeric or string, required) The amount in " + CURRENCY_UNIT + " to give miner. eg 0.1\n"
+            "2. \"criticalhash\"   (string, required) h* you want added to a coinbase\n"
+            "3. \"address\"        (string, required) bitcoin address to receive time locked refund\n"
+
+            "\nExamples:\n"
+            + HelpExampleCli("createbribe", "\"amount\", \"criticalhash\", \"address\"")
+            + HelpExampleRpc("createbribe", "\"amount\", \"criticalhash\", \"address\"")
+            );
+
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+
+    // Amount
+    CAmount nAmount = AmountFromValue(request.params[0]);
+    if (nAmount <= 0)
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
+
+    // Critical hash
+    uint256 hashCritical = uint256S(request.params[1].get_str());
+    if (hashCritical.IsNull())
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid h*");
+
+    CKeyID keyID;
+    CBitcoinAddress address(request.params[2].get_str());
+    if (!address.IsValid() || !address.GetKeyID(keyID))
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin address");
+
+    // Create bribe script
+    CScript scriptPubKey;
+    scriptPubKey << ToByteVector(hashCritical) << OP_BRIBE
+                 << OP_NOTIF
+                 << CScriptNum::serialize(300) << OP_CHECKLOCKTIMEVERIFY << OP_DROP
+                 << OP_DUP << OP_HASH160 << ToByteVector(keyID) << OP_EQUALVERIFY << OP_CHECKSIG
+                 << OP_ENDIF;
+
+    // Add bribe script to tx recipients
+    std::vector<CRecipient> vecSend;
+    CRecipient recipient = {scriptPubKey, nAmount, false};
+    vecSend.push_back(recipient);
+
+    // Create and send the transaction
+    CWalletTx wtx;
+    CReserveKey reservekey(pwalletMain);
+    CAmount nFeeRequired;
+    std::string strError;
+    int nChangePosRet = -1;
+    if (!pwalletMain->CreateTransaction(vecSend, wtx, reservekey, nFeeRequired, nChangePosRet, strError)) {
+        if (nAmount + nFeeRequired > pwalletMain->GetBalance())
+            strError = strprintf("Error: This transaction requires a transaction fee of at least %s", FormatMoney(nFeeRequired));
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+    }
+    CValidationState state;
+    if (!pwalletMain->CommitTransaction(wtx, reservekey, g_connman.get(), state)) {
+        strError = strprintf("Error: The transaction was rejected! Reason given: %s", state.GetRejectReason());
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+    }
+
+    UniValue ret(UniValue::VOBJ);
+    ret.push_back(Pair("txid", wtx.GetHash().GetHex()));
+    ret.push_back(Pair("nChangePos", nChangePosRet));
+    return ret;
+}
+
+UniValue refundbribe(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() < 3 || request.params.size() > 4)
+        throw std::runtime_error(
+            "refundbribe\n"
+            "Refund bribe in case either locktime is reached (expired)\n"
+            "without being accepted by a miner, or the bribe is accepted\n"
+            "but the miner forgot to pay themselves.\n"
+            "(Note that anyone could redeem the bribe if the miner makes"
+            "the mistake of including h* without paying themselves).\n"
+            "\nArguments:\n"
+            "1. \"amount\"     (numeric or string, required) The amount in " + CURRENCY_UNIT + " to refund. eg 0.1\n"
+            "2. \"txid\"       (string, required) txid of a bribe transaction\n"
+            "3. \"pos\"        (numeric, required) txout position of bribe\n"
+            "4. \"address\"    (string, optional) bitcoin address to receive refund\n"
+            "Refund address should only be provided if a miner is trying to redeem a bribe\n"
+            "which they forgot to pay themselves, otherwise the address is hardcoded with CLTV.\n"
+            "\nExamples:\n"
+            + HelpExampleCli("refundbribe", "\"amount\", \"txid\", \"pos\", \"address\"")
+            + HelpExampleRpc("refundbribe", "\"amount\", \"txid\", \"pos\", \"address\"")
+            );
+
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+
+    // Amount
+    CAmount nAmount = AmountFromValue(request.params[0]);
+    if (nAmount <= 0)
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
+
+    // txid
+    uint256 txid = uint256S(request.params[1].get_str());
+    if (txid.IsNull())
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid txid");
+
+    int nPos = request.params[2].get_int();
+    CMutableTransaction mtx;
+    mtx.vin.push_back(CTxIn(txid, nPos));
+
+    // Produce scriptSig and output
+    CScript scriptSig;
+    if (request.params.size() == 4) {
+        // Miner redeems bribe that they forgot to pay themselves
+        CKeyID keyID;
+        CBitcoinAddress address(request.params[3].get_str());
+        if (!address.IsValid() || !address.GetKeyID(keyID))
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin address");
+
+        mtx.vout.push_back(CTxOut(nAmount, GetScriptForDestination(address.Get())));
+        scriptSig << OP_TRUE;
+    }
+    else {
+        // User refunds their bribe which has expired
+        // Produce signature
+        // TODO
+    }
+    mtx.vin[0].scriptSig = scriptSig;
+
+    // Send the transaction
+    CWalletTx wtx;
+    wtx.fTimeReceivedIsTxTime = true;
+    wtx.fFromMe = true;
+    wtx.BindWallet(pwalletMain);
+
+    wtx.SetTx(MakeTransactionRef(std::move(mtx)));
+
+    CReserveKey reservekey(pwalletMain);
+    CValidationState state;
+    if (!pwalletMain->CommitTransaction(wtx, reservekey, g_connman.get(), state)) {
+        std::string strError = strprintf("Error: The transaction was rejected! Reason given: %s", state.GetRejectReason());
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+    }
+
+    UniValue ret(UniValue::VOBJ);
+    ret.push_back(Pair("txid", wtx.GetHash().GetHex()));
+    return ret;
+}
+
 UniValue echo(const JSONRPCRequest& request)
 {
     if (request.fHelp)
@@ -638,20 +995,27 @@ UniValue echo(const JSONRPCRequest& request)
 }
 
 static const CRPCCommand commands[] =
-{ //  category              name                      actor (function)         okSafeMode
-  //  --------------------- ------------------------  -----------------------  ----------
-    { "control",            "getinfo",                &getinfo,                true,  {} }, /* uses wallet if enabled */
-    { "control",            "getmemoryinfo",          &getmemoryinfo,          true,  {"mode"} },
-    { "util",               "validateaddress",        &validateaddress,        true,  {"address"} }, /* uses wallet if enabled */
-    { "util",               "createmultisig",         &createmultisig,         true,  {"nrequired","keys"} },
-    { "util",               "verifymessage",          &verifymessage,          true,  {"address","signature","message"} },
-    { "util",               "signmessagewithprivkey", &signmessagewithprivkey, true,  {"privkey","message"} },
+{ //  category              name                        actor (function)            okSafeMode
+  //  --------------------- ------------------------    -----------------------     ----------
+    { "control",            "getinfo",                  &getinfo,                   true,  {} }, /* uses wallet if enabled */
+    { "control",            "getmemoryinfo",            &getmemoryinfo,             true,  {"mode"} },
+    { "util",               "validateaddress",          &validateaddress,           true,  {"address"} }, /* uses wallet if enabled */
+    { "util",               "createmultisig",           &createmultisig,            true,  {"nrequired","keys"} },
+    { "util",               "verifymessage",            &verifymessage,             true,  {"address","signature","message"} },
+    { "util",               "signmessagewithprivkey",   &signmessagewithprivkey,    true,  {"privkey","message"} },
 
     /* Not shown in help */
-    { "hidden",             "setmocktime",            &setmocktime,            true,  {"timestamp"}},
-    { "hidden",             "echo",                   &echo,                   true,  {"arg0","arg1","arg2","arg3","arg4","arg5","arg6","arg7","arg8","arg9"}},
-    { "hidden",             "echojson",               &echo,                   true,  {"arg0","arg1","arg2","arg3","arg4","arg5","arg6","arg7","arg8","arg9"}},
-    { "hidden",             "logging",                &logging,                true,  {"include", "exclude"}},
+    { "hidden",             "setmocktime",              &setmocktime,               true,  {"timestamp"}},
+    { "hidden",             "echo",                     &echo,                      true,  {"arg0","arg1","arg2","arg3","arg4","arg5","arg6","arg7","arg8","arg9"}},
+    { "hidden",             "echojson",                 &echo,                      true,  {"arg0","arg1","arg2","arg3","arg4","arg5","arg6","arg7","arg8","arg9"}},
+    { "hidden",             "logging",                  &logging,                   true,  {"include", "exclude"}},
+
+    /* Used by sidechain (some not shown in help) */
+    { "hidden",             "receivesidechainwtjoin",   &receivesidechainwtjoin,    false, {"nSidechain","rawtx"}},
+    { "hidden",             "listsidechaindeposits",    &listsidechaindeposits,     false, {"nSidechain"}},
+    { "util",               "getbmmproof",              &getbmmproof,               false, {"blockhash", "criticalhash"}},
+    { "wallet",             "createbribe",              &createbribe,               false, {"amount", "crticalhash", "address"}},
+    { "wallet",             "refundbribe",              &refundbribe,               false, {"amount", "txid", "pos", "address"}},
 };
 
 void RegisterMiscRPCCommands(CRPCTable &t)

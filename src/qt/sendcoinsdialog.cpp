@@ -13,6 +13,7 @@
 #include "optionsmodel.h"
 #include "platformstyle.h"
 #include "sendcoinsentry.h"
+#include "sidechaindepositdialog.h"
 #include "walletmodel.h"
 
 #include "base58.h"
@@ -916,4 +917,10 @@ void SendConfirmationDialog::updateYesButton()
         yesButton->setEnabled(true);
         yesButton->setText(tr("Yes"));
     }
+}
+
+void SendCoinsDialog::on_sidechainDepositButton_clicked()
+{
+    SidechainDepositDialog scDialog;
+    scDialog.exec();
 }

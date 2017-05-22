@@ -95,6 +95,23 @@ public:
     bool operator> (const CBase58Data& b58) const { return CompareTo(b58) >  0; }
 };
 
+/** Base58 encoded Sidechain address */
+class CSidechainAddress : public CBase58Data {
+public:
+    bool Set(const CKeyID &id);
+    bool Set(const CScriptID &id);
+    bool IsValid() const;
+    bool IsValid(const CChainParams &params) const;
+
+    CSidechainAddress() {}
+    CSidechainAddress(const std::string& strAddress) { SetString(strAddress); }
+    CSidechainAddress(const char* pszAddress) { SetString(pszAddress); }
+
+    CTxDestination Get() const;
+    bool GetKeyID(CKeyID &keyID) const;
+    bool IsScript() const;
+};
+
 /** base58-encoded Bitcoin addresses.
  * Public-key-hash-addresses have version 0 (or 111 testnet).
  * The data vector contains RIPEMD160(SHA256(pubkey)), where pubkey is the serialized public key.
