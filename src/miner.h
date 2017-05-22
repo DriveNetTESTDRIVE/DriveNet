@@ -199,6 +199,12 @@ private:
       * state updated assuming given transactions are inBlock. Returns number
       * of updated descendants. */
     int UpdatePackagesForAdded(const CTxMemPool::setEntries& alreadyAdded, indexed_modified_transaction_set &mapModifiedTx);
+
+    // SidechainDB
+    /** Returns a WT^ payout transaction for nSidechain if there is one */
+    CTransaction CreateSidechainWTJoinTx(const uint8_t& nSidechain);
+    /** Returns a SCDB state update transaction (update script in output) */
+    CTransaction CreateSidechainStateTx();
 };
 
 /** Modify the extranonce in a block */

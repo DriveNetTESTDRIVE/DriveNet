@@ -3,43 +3,46 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include <validation.h>
+#include "validation.h"
 
-#include <arith_uint256.h>
-#include <chain.h>
-#include <chainparams.h>
-#include <checkpoints.h>
-#include <checkqueue.h>
-#include <consensus/consensus.h>
-#include <consensus/merkle.h>
-#include <consensus/tx_verify.h>
-#include <consensus/validation.h>
-#include <cuckoocache.h>
-#include <hash.h>
-#include <init.h>
-#include <policy/fees.h>
-#include <policy/policy.h>
-#include <policy/rbf.h>
-#include <pow.h>
-#include <primitives/block.h>
-#include <primitives/transaction.h>
-#include <random.h>
-#include <reverse_iterator.h>
-#include <script/script.h>
-#include <script/sigcache.h>
-#include <script/standard.h>
-#include <timedata.h>
-#include <tinyformat.h>
-#include <txdb.h>
-#include <txmempool.h>
-#include <ui_interface.h>
-#include <undo.h>
-#include <util.h>
-#include <utilmoneystr.h>
-#include <utilstrencodings.h>
-#include <validationinterface.h>
-#include <warnings.h>
+#include "arith_uint256.h"
+#include "chain.h"
+#include "chainparams.h"
+#include "checkpoints.h"
+#include "checkqueue.h"
+#include "consensus/consensus.h"
+#include "consensus/merkle.h"
+#include "consensus/tx_verify.h"
+#include "consensus/validation.h"
+#include "fs.h"
+#include "hash.h"
+#include "init.h"
+#include "merkleblock.h"
+#include "policy/fees.h"
+#include "policy/policy.h"
+#include "pow.h"
+#include "primitives/block.h"
+#include "primitives/transaction.h"
+#include "random.h"
+#include "script/script.h"
+#include "script/sigcache.h"
+#include "script/standard.h"
+#include "sidechain.h"
+#include "sidechaindb.h"
+#include "timedata.h"
+#include "tinyformat.h"
+#include "txdb.h"
+#include "txmempool.h"
+#include "ui_interface.h"
+#include "undo.h"
+#include "util.h"
+#include "utilmoneystr.h"
+#include "utilstrencodings.h"
+#include "validationinterface.h"
+#include "versionbits.h"
+#include "warnings.h"
 
+#include <atomic>
 #include <sstream>
 
 #include <boost/algorithm/string/replace.hpp>
@@ -227,6 +230,13 @@ CAmount maxTxFee = DEFAULT_TRANSACTION_MAXFEE;
 CBlockPolicyEstimator feeEstimator;
 CTxMemPool mempool(&feeEstimator);
 
+<<<<<<< 65d3b4bc0503534719fc19347e92c720a006c116
+=======
+SidechainDB scdb;
+
+static void CheckBlockIndex(const Consensus::Params& consensusParams);
+
+>>>>>>> Add core components of Drivechains and BMM
 /** Constant stuff for coinbase transactions we create: */
 CScript COINBASE_FLAGS;
 
@@ -451,6 +461,7 @@ static bool IsCurrentForFeeEstimation()
     return true;
 }
 
+<<<<<<< 65d3b4bc0503534719fc19347e92c720a006c116
 /* Make mempool consistent after a reorg, by re-adding or recursively erasing
  * disconnected block transactions from the mempool, and also removing any
  * other transactions from the mempool that are no longer valid given the new
@@ -540,6 +551,60 @@ static bool CheckInputsFromMempoolAndCache(const CTransaction& tx, CValidationSt
 }
 
 static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool& pool, CValidationState& state, const CTransactionRef& ptx,
+=======
+void GetSidechainValues(const CTransaction &tx, CAmount& amtSidechainUTXO, CAmount& amtUserInput,
+                        CAmount& amtReturning, CAmount& amtWithdrawn)
+{
+    // Collect coins from inputs
+    std::map<const uint256, CCoins> mapCoinsDeposit;
+    for (const CTxIn& in : tx.vin) {
+        CCoins coins;
+        uint256 hash = in.prevout.hash;
+        if (mapCoinsDeposit.find(hash) == mapCoinsDeposit.end()) {
+            pcoinsTip->GetCoins(hash, coins);
+            mapCoinsDeposit[hash] = coins;
+        }
+    }
+
+    // Count inputs
+    for (auto it = mapCoinsDeposit.begin(); it != mapCoinsDeposit.end(); it++) {
+        for (const CTxOut& out : it->second.vout) {
+            CScript scriptPubKey = out.scriptPubKey;
+            if (HexStr(scriptPubKey) == SIDECHAIN_TEST_SCRIPT_HEX) {
+                amtSidechainUTXO += out.nValue;
+            } else {
+                amtUserInput += out.nValue;
+            }
+        }
+    }
+
+    // Count outputs
+    for (const CTxOut& out : tx.vout) {
+        CScript scriptPubKey = out.scriptPubKey;
+        if (HexStr(scriptPubKey) == SIDECHAIN_TEST_SCRIPT_HEX) {
+            amtReturning += out.nValue;
+        } else {
+            amtWithdrawn += out.nValue;
+        }
+    }
+}
+
+bool CheckBWTHash(const uint256& wtjID, const CTransaction &tx)
+{
+    CMutableTransaction mtx = tx;
+
+    // Remove inputs & change output
+    mtx.vin.clear();
+    mtx.vout.pop_back();
+
+    if (mtx.GetHash() == wtjID)
+        return true;
+
+    return false;
+}
+
+bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState& state, const CTransactionRef& ptx, bool fLimitFree,
+>>>>>>> Add core components of Drivechains and BMM
                               bool* pfMissingInputs, int64_t nAcceptTime, std::list<CTransactionRef>* plTxnReplaced,
                               bool bypass_limits, const CAmount& nAbsurdFee, std::vector<COutPoint>& coins_to_uncache)
 {
@@ -576,6 +641,23 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
     // is it already in the memory pool?
     if (pool.exists(hash)) {
         return state.Invalid(false, REJECT_DUPLICATE, "txn-already-in-mempool");
+    }
+
+    // Sidechain checks
+    {
+        CAmount amtSidechainUTXO = CAmount(0);
+        CAmount amtUserInput = CAmount(0);
+        CAmount amtReturning = CAmount(0);
+        CAmount amtWithdrawn = CAmount(0);
+        GetSidechainValues(tx, amtSidechainUTXO, amtUserInput, amtReturning, amtWithdrawn);
+
+        // Withdraw
+        if (amtSidechainUTXO > amtReturning) {
+            // TODO check work score and approve, rejecting all for now
+            // TODO miner created WT^ will not enter the mempool so a
+            // check must also be added to connectblock
+            return state.DoS(100, false, REJECT_INVALID, "bad-sidechain-withdraw");
+        }
     }
 
     // Check for conflicts with in-memory transactions
@@ -1309,7 +1391,16 @@ void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, int nHeight)
 bool CScriptCheck::operator()() {
     const CScript &scriptSig = ptxTo->vin[nIn].scriptSig;
     const CScriptWitness *witness = &ptxTo->vin[nIn].scriptWitness;
+<<<<<<< 65d3b4bc0503534719fc19347e92c720a006c116
     return VerifyScript(scriptSig, m_tx_out.scriptPubKey, witness, nFlags, CachingTransactionSignatureChecker(ptxTo, nIn, m_tx_out.nValue, cacheStore, *txdata), &error);
+=======
+
+    std::multimap<uint256, int> mapBMMLDCopy;
+    if (scriptPubKey.IsBribe())
+        mapBMMLDCopy = scdb.GetLinkingData();
+
+    return VerifyScript(scriptSig, scriptPubKey, witness, nFlags, CachingTransactionSignatureChecker(ptxTo, nIn, amount, cacheStore, *txdata, mapBMMLDCopy), &error);
+>>>>>>> Add core components of Drivechains and BMM
 }
 
 int GetSpendHeight(const CCoinsViewCache& inputs)
@@ -1882,6 +1973,12 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
     // Get the script flags for this block
     unsigned int flags = GetBlockScriptFlags(pindex, chainparams.GetConsensus());
 
+    // TODO
+    // Activate BRIBE right now for testing
+    if (true) {
+        flags |= SCRIPT_VERIFY_BRIBE;
+    }
+
     int64_t nTime2 = GetTimeMicros(); nTimeForks += nTime2 - nTime1;
     LogPrint(BCLog::BENCH, "    - Fork checks: %.2fms [%.2fs (%.2fms/blk)]\n", MILLI * (nTime2 - nTime1), nTimeForks * MICRO, nTimeForks * MILLI / nBlocksTotal);
 
@@ -1896,14 +1993,17 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
     blockundo.vtxundo.reserve(block.vtx.size() - 1);
     std::vector<PrecomputedTransactionData> txdata;
     txdata.reserve(block.vtx.size()); // Required so that pointers to individual PrecomputedTransactionData don't get invalidated
+    std::vector<CTransaction> vDepositTx;
     for (unsigned int i = 0; i < block.vtx.size(); i++)
     {
         const CTransaction &tx = *(block.vtx[i]);
 
         nInputs += tx.vin.size();
 
+        bool fSidechainInputs = false;
         if (!tx.IsCoinBase())
         {
+<<<<<<< 65d3b4bc0503534719fc19347e92c720a006c116
             CAmount txfee = 0;
             if (!Consensus::CheckTxInputs(tx, state, view, pindex->nHeight, txfee)) {
                 return error("%s: Consensus::CheckTxInputs: %s, %s", __func__, tx.GetHash().ToString(), FormatStateMessage(state));
@@ -1913,6 +2013,11 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
                 return state.DoS(100, error("%s: accumulated fee in the block out of range.", __func__),
                                  REJECT_INVALID, "bad-txns-accumulated-fee-outofrange");
             }
+=======
+            if (!view.HaveInputs(tx, &fSidechainInputs))
+                return state.DoS(100, error("ConnectBlock(): inputs missing/spent"),
+                                 REJECT_INVALID, "bad-txns-inputs-missingorspent");
+>>>>>>> Add core components of Drivechains and BMM
 
             // Check that transaction is BIP68 final
             // BIP68 lock checks (as opposed to nLockTime checks) must
@@ -1946,6 +2051,23 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
                 return error("ConnectBlock(): CheckInputs on %s failed with %s",
                     tx.GetHash().ToString(), FormatStateMessage(state));
             control.Add(vChecks);
+        }
+
+        if (fSidechainInputs) {
+            // Check BWT
+            // Check workscore
+        }
+
+        if (!tx.IsCoinBase() && !fJustCheck) {
+            // Check for sidechain deposits
+            bool fSidechainOutput = false;
+            for (const CTxOut out : tx.vout) {
+                const CScript& scriptPubKey = out.scriptPubKey;
+                if (HexStr(scriptPubKey) == SIDECHAIN_TEST_SCRIPT_HEX)
+                    fSidechainOutput = true;
+            }
+            if (fSidechainOutput)
+                vDepositTx.push_back(tx);
         }
 
         CTxUndo undoDummy;
@@ -1986,6 +2108,9 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
     assert(pindex->phashBlock);
     // add this block to the view's block chain
     view.SetBestBlock(pindex->GetBlockHash());
+
+    if (vDepositTx.size())
+        scdb.AddDeposits(vDepositTx);
 
     int64_t nTime5 = GetTimeMicros(); nTimeIndex += nTime5 - nTime4;
     LogPrint(BCLog::BENCH, "    - Index writing: %.2fms [%.2fs (%.2fms/blk)]\n", MILLI * (nTime5 - nTime4), nTimeIndex * MICRO, nTimeIndex * MILLI / nBlocksTotal);
@@ -2806,6 +2931,17 @@ bool CChainState::ReceivedBlockTransactions(const CBlock &block, CValidationStat
     if (IsWitnessEnabled(pindexNew->pprev, consensusParams)) {
         pindexNew->nStatus |= BLOCK_OPT_WITNESS;
     }
+
+    // Update coinbase cache if we should
+    if (chainActive.Height() >= COINBASE_CACHE_HEIGHT) {
+        pindexNew->fCoinbase = true;
+        pindexNew->coinbase = block.vtx[0];
+        nCoinbaseCached++;
+
+        if (nCoinbaseCached >= COINBASE_CACHE_TARGET + COINBASE_CACHE_PRUNE_DELAY)
+            PruneCoinbaseCache();
+    }
+
     pindexNew->RaiseValidity(BLOCK_VALID_TRANSACTIONS);
     setDirtyBlockIndex.insert(pindexNew);
 
@@ -2839,6 +2975,10 @@ bool CChainState::ReceivedBlockTransactions(const CBlock &block, CValidationStat
             mapBlocksUnlinked.insert(std::make_pair(pindexNew->pprev, pindexNew));
         }
     }
+
+    // Update / synchronize SCDB
+    if (!scdb.Update(chainActive.Height(), block.GetHash(), block.vtx[0]))
+        LogPrintf("SCDB failed to update with block: %s\n", block.GetHash().ToString());
 
     return true;
 }
@@ -4640,6 +4780,27 @@ bool DumpMempool(void)
     return true;
 }
 
+void PruneCoinbaseCache()
+{
+    if (nCoinbaseCached <= COINBASE_CACHE_TARGET)
+        return;
+
+    int nHeight = chainActive.Height() + 1;
+    int nPruneBegin = nHeight - nCoinbaseCached;
+    int nPruneEnd = nPruneBegin + (nCoinbaseCached - COINBASE_CACHE_TARGET);
+    if (nPruneBegin < 0)
+        return;
+
+    for (int i = nPruneBegin; i <= nPruneEnd; i++) {
+        // Block index no longer caches coinbase
+        if (chainActive[i]->fCoinbase)
+            chainActive[i]->fCoinbase = false;
+
+        setDirtyBlockIndex.insert(chainActive[i]);
+        nCoinbaseCached--;
+    }
+}
+
 //! Guess how far we are in the verification process at the given block index
 double GuessVerificationProgress(const ChainTxData& data, const CBlockIndex *pindex) {
     if (pindex == nullptr)
@@ -4656,6 +4817,58 @@ double GuessVerificationProgress(const ChainTxData& data, const CBlockIndex *pin
     }
 
     return pindex->nChainTx / fTxTotal;
+}
+
+bool GetTxOutProof(const uint256& txid, const uint256& hashBlock, std::string& strProof)
+{
+    LOCK(cs_main);
+
+    CBlockIndex* pblockindex = NULL;
+
+    if (!mapBlockIndex.count(hashBlock))
+        return false;
+    pblockindex = mapBlockIndex[hashBlock];
+
+    CBlock block;
+    if(!ReadBlockFromDisk(block, pblockindex, Params().GetConsensus()))
+        return false;
+
+    bool fTxFound = false;
+    for (const auto& tx : block.vtx)
+        if (tx->GetHash() == txid)
+            fTxFound = true;
+
+    if (!fTxFound)
+        return false;
+
+    std::set<uint256> setTxids;
+    setTxids.insert(txid);
+
+    CDataStream ssMB(SER_NETWORK, PROTOCOL_VERSION);
+    CMerkleBlock mb(block, setTxids);
+    ssMB << mb;
+    strProof = HexStr(ssMB.begin(), ssMB.end());
+
+    return true;
+}
+
+bool VerifyTxOutProof(const std::string& strProof)
+{
+    CDataStream ssMB(ParseHex(strProof), SER_NETWORK, PROTOCOL_VERSION);
+    CMerkleBlock merkleBlock;
+    ssMB >> merkleBlock;
+
+    std::vector<uint256> vMatch;
+    std::vector<unsigned int> vIndex;
+    if (merkleBlock.txn.ExtractMatches(vMatch, vIndex) != merkleBlock.header.hashMerkleRoot)
+        return false;
+
+    LOCK(cs_main);
+
+    if (!mapBlockIndex.count(merkleBlock.header.GetHash()) || !chainActive.Contains(mapBlockIndex[merkleBlock.header.GetHash()]))
+        return false;
+
+    return true;
 }
 
 class CMainCleanup

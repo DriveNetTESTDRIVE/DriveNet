@@ -6,13 +6,26 @@
 #ifndef BITCOIN_CHAIN_H
 #define BITCOIN_CHAIN_H
 
-#include <arith_uint256.h>
-#include <primitives/block.h>
-#include <pow.h>
-#include <tinyformat.h>
-#include <uint256.h>
+#include "arith_uint256.h"
+#include "primitives/block.h"
+#include "primitives/transaction.h"
+#include "pow.h"
+#include "tinyformat.h"
+#include "uint256.h"
 
 #include <vector>
+
+//! Number of coinbase(s) chainActive has cached
+extern int nCoinbaseCached;
+
+/** Target size limit of coinbase cache */
+static const int COINBASE_CACHE_TARGET = 2600;
+
+/** How many blocks to wait between pruning */
+static const int COINBASE_CACHE_PRUNE_DELAY = 50;
+
+/** Block height to begin caching coinbases (BMM activation height) */
+static const int COINBASE_CACHE_HEIGHT = 0;
 
 /**
  * Maximum amount of time that a block timestamp is allowed to exceed the
@@ -219,6 +232,12 @@ public:
     //! (memory only) Maximum nTime in the chain up to and including this block.
     unsigned int nTimeMax;
 
+    //! Should a coinbase be cached for this block?
+    bool fCoinbase;
+
+    //! Cached coinbase for this block
+    CTransactionRef coinbase;
+
     void SetNull()
     {
         phashBlock = nullptr;
@@ -240,6 +259,9 @@ public:
         nTime          = 0;
         nBits          = 0;
         nNonce         = 0;
+
+        fCoinbase = false;
+        coinbase = NULL;
     }
 
     CBlockIndex()
@@ -405,6 +427,18 @@ public:
         READWRITE(nTime);
         READWRITE(nBits);
         READWRITE(nNonce);
+
+        // Coinbase cache
+        READWRITE(fCoinbase);
+        if (fCoinbase)
+            READWRITE(coinbase);
+        else
+        if (coinbase && !ser_action.ForRead()) {
+            // TODO improve
+            // Reduce size on disk by replacing coinbase with blank tx
+            CTransactionRef tx = MakeTransactionRef(CTransaction());
+            READWRITE(tx);
+        }
     }
 
     uint256 GetBlockHash() const

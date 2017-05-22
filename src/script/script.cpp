@@ -131,7 +131,7 @@ const char* GetOpName(opcodetype opcode)
     case OP_NOP1                   : return "OP_NOP1";
     case OP_CHECKLOCKTIMEVERIFY    : return "OP_CHECKLOCKTIMEVERIFY";
     case OP_CHECKSEQUENCEVERIFY    : return "OP_CHECKSEQUENCEVERIFY";
-    case OP_NOP4                   : return "OP_NOP4";
+    case OP_BRIBE                  : return "OP_BRIBE";
     case OP_NOP5                   : return "OP_NOP5";
     case OP_NOP6                   : return "OP_NOP6";
     case OP_NOP7                   : return "OP_NOP7";
@@ -145,6 +145,23 @@ const char* GetOpName(opcodetype opcode)
     //  The template matching params OP_SMALLINTEGER/etc are defined in opcodetype enum
     //  as kind of implementation hack, they are *NOT* real opcodes.  If found in real
     //  Script, just let the default: case deal with them.
+
+    default:
+        return "OP_UNKNOWN";
+    }
+}
+
+const char* GetSCOPName(scopcodetype sopcode)
+{
+    switch (sopcode)
+    {
+    case SCOP_VERSION           : return "VERSION";
+    case SCOP_REJECT            : return "REJECT";
+    case SCOP_VERIFY            : return "VERIFY";
+    case SCOP_IGNORE            : return "IGNORE";
+    case SCOP_VERSION_DELIM     : return "VERSION_DELIM";
+    case SCOP_WT_DELIM          : return "WT_DELIM";
+    case SCOP_SC_DELIM          : return "SC_DELIM";
 
     default:
         return "OP_UNKNOWN";
@@ -232,6 +249,39 @@ bool CScript::IsWitnessProgram(int& version, std::vector<unsigned char>& program
         return true;
     }
     return false;
+}
+
+bool CScript::IsBribe() const
+{
+    // Size must be at least:
+    // sizeof(uint256) to include h*
+    // +
+    // sizeof(uint160) for keyID
+    // +
+    // opcode count
+    //
+    // As the size of the block number data push is unknown,
+    // it can not be accounted for. // TODO use mod?
+    size_t size = this->size();
+    if (size < 32)
+        return false;
+
+    if ((*this)[size - 1] != OP_ENDIF)
+        return false;
+
+    if ((*this)[size - 2] != OP_CHECKSIG
+            || (*this)[size - 3] != OP_EQUALVERIFY
+            || (*this)[size - 25] != OP_HASH160
+            || (*this)[size - 26] != OP_DUP
+            || (*this)[size - 27] != OP_DROP
+            || (*this)[size - 28] != OP_CHECKLOCKTIMEVERIFY)
+    {
+        return false;
+    }
+
+    // TODO
+
+    return (this->Find(OP_BRIBE));
 }
 
 bool CScript::IsPushOnly(const_iterator pc) const

@@ -6,7 +6,8 @@
 #ifndef BITCOIN_SCRIPT_SIGCACHE_H
 #define BITCOIN_SCRIPT_SIGCACHE_H
 
-#include <script/interpreter.h>
+#include "script/interpreter.h"
+#include "sidechaindb.h"
 
 #include <vector>
 
@@ -44,11 +45,21 @@ class CachingTransactionSignatureChecker : public TransactionSignatureChecker
 {
 private:
     bool store;
+    std::multimap<uint256, int> mapLD;
 
 public:
+<<<<<<< 65d3b4bc0503534719fc19347e92c720a006c116
     CachingTransactionSignatureChecker(const CTransaction* txToIn, unsigned int nInIn, const CAmount& amountIn, bool storeIn, PrecomputedTransactionData& txdataIn) : TransactionSignatureChecker(txToIn, nInIn, amountIn, txdataIn), store(storeIn) {}
 
     bool VerifySignature(const std::vector<unsigned char>& vchSig, const CPubKey& vchPubKey, const uint256& sighash) const override;
+=======
+    CachingTransactionSignatureChecker(const CTransaction* txToIn, unsigned int nInIn, const CAmount& amountIn, bool storeIn, PrecomputedTransactionData& txdataIn, const std::multimap<uint256, int>& mapBMMLDCopy) : TransactionSignatureChecker(txToIn, nInIn, amountIn, txdataIn), store(storeIn)
+    {
+        mapLD = mapBMMLDCopy;
+    }
+    bool VerifySignature(const std::vector<unsigned char>& vchSig, const CPubKey& vchPubKey, const uint256& sighash) const;
+    bool CheckCriticalHash(const std::vector<unsigned char>& vchHash) const;
+>>>>>>> Add core components of Drivechains and BMM
 };
 
 void InitSignatureCache();

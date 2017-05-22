@@ -173,7 +173,8 @@ enum opcodetype
     OP_NOP2 = OP_CHECKLOCKTIMEVERIFY,
     OP_CHECKSEQUENCEVERIFY = 0xb2,
     OP_NOP3 = OP_CHECKSEQUENCEVERIFY,
-    OP_NOP4 = 0xb3,
+    OP_BRIBE = 0xb3,
+    OP_NOP4 = OP_BRIBE,
     OP_NOP5 = 0xb4,
     OP_NOP6 = 0xb5,
     OP_NOP7 = 0xb6,
@@ -195,6 +196,24 @@ enum opcodetype
 static const unsigned int MAX_OPCODE = OP_NOP10;
 
 const char* GetOpName(opcodetype opcode);
+
+/* Sidechain state script opcodes (not really opcodes) */
+enum scopcodetype {
+    // State script version
+    SCOP_VERSION = 0x00,
+
+    // Vote types
+    SCOP_REJECT = 0x51,
+    SCOP_VERIFY = 0x52,
+    SCOP_IGNORE = 0x53,
+
+    // Delimeters
+    SCOP_VERSION_DELIM = 0x54,
+    SCOP_WT_DELIM = 0x55,
+    SCOP_SC_DELIM = 0x56,
+};
+
+const char* GetSCOPName(scopcodetype sopcode);
 
 class scriptnum_error : public std::runtime_error
 {
@@ -492,6 +511,23 @@ public:
         return *this;
     }
 
+    CScript& operator<<(scopcodetype scopcode)
+    {
+        switch (scopcode) {
+        case SCOP_IGNORE:
+        case SCOP_REJECT:
+        case SCOP_SC_DELIM:
+        case SCOP_VERIFY:
+        case SCOP_VERSION:
+        case SCOP_VERSION_DELIM:
+        case SCOP_WT_DELIM:
+            break;
+        default:
+            throw std::runtime_error("CScript::operator<<(): invalid scopcode");
+        }
+        insert(end(), (unsigned char)scopcode);
+        return *this;
+    }
 
     bool GetOp(iterator& pc, opcodetype& opcodeRet, std::vector<unsigned char>& vchRet)
     {
@@ -643,6 +679,7 @@ public:
     bool IsPayToScriptHash() const;
     bool IsPayToWitnessScriptHash() const;
     bool IsWitnessProgram(int& version, std::vector<unsigned char>& program) const;
+    bool IsBribe() const;
 
     /** Called by IsStandardTx and P2SH/BIP62 VerifyScript (which makes it consensus-critical). */
     bool IsPushOnly(const_iterator pc) const;

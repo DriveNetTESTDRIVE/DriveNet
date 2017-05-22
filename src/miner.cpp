@@ -3,6 +3,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+<<<<<<< 65d3b4bc0503534719fc19347e92c720a006c116
 #include <miner.h>
 
 #include <amount.h>
@@ -25,6 +26,33 @@
 #include <util.h>
 #include <utilmoneystr.h>
 #include <validationinterface.h>
+=======
+#include "miner.h"
+
+#include "amount.h"
+#include "chain.h"
+#include "chainparams.h"
+#include "coins.h"
+#include "consensus/consensus.h"
+#include "consensus/tx_verify.h"
+#include "consensus/merkle.h"
+#include "consensus/validation.h"
+#include "hash.h"
+#include "validation.h"
+#include "net.h"
+#include "policy/feerate.h"
+#include "policy/policy.h"
+#include "pow.h"
+#include "primitives/transaction.h"
+#include "script/standard.h"
+#include "sidechain.h"
+#include "sidechaindb.h"
+#include "timedata.h"
+#include "txmempool.h"
+#include "util.h"
+#include "utilmoneystr.h"
+#include "validationinterface.h"
+>>>>>>> Add core components of Drivechains and BMM
 
 #include <algorithm>
 #include <queue>
@@ -163,7 +191,26 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     coinbaseTx.vin[0].prevout.SetNull();
     coinbaseTx.vout.resize(1);
     coinbaseTx.vout[0].scriptPubKey = scriptPubKeyIn;
+
+    // Track sidechain state tx fees
+    CAmount nSideFees = 0;
+
+    // Add WT^(s) which have been validated
+    for (const Sidechain& s : ValidSidechains) {
+        CTransaction wtx = CreateSidechainWTJoinTx(s.nSidechain);
+        if (wtx.vout.size() && wtx.vin.size())
+            pblock->vtx.push_back(MakeTransactionRef(std::move(wtx)));
+    }
+
+    // Add SidechainDB state
+    CTransaction stateTx = CreateSidechainStateTx();
+    for (const CTxOut& out : stateTx.vout) {
+        coinbaseTx.vout.push_back(out);
+        nSideFees += out.nValue;
+    }
+
     coinbaseTx.vout[0].nValue = nFees + GetBlockSubsidy(nHeight, chainparams.GetConsensus());
+    coinbaseTx.vout[0].nValue -= nSideFees;
     coinbaseTx.vin[0].scriptSig = CScript() << nHeight << OP_0;
     pblock->vtx[0] = MakeTransactionRef(std::move(coinbaseTx));
     pblocktemplate->vchCoinbaseCommitment = GenerateCoinbaseCommitment(*pblock, pindexPrev, chainparams.GetConsensus());
@@ -271,6 +318,22 @@ int BlockAssembler::UpdatePackagesForAdded(const CTxMemPool::setEntries& already
         }
     }
     return nDescendantsUpdated;
+}
+
+CTransaction BlockAssembler::CreateSidechainWTJoinTx(const uint8_t& nSidechain)
+{
+    return scdb.GetWTJoinTx(nSidechain, nHeight);
+}
+
+CTransaction BlockAssembler::CreateSidechainStateTx()
+{
+    CMutableTransaction mtx;
+
+    CScript script = scdb.CreateStateScript(nHeight);
+    if (!script.empty())
+        mtx.vout.push_back(CTxOut(CENT, script));
+
+    return mtx;
 }
 
 // Skip entries in mapTx that are already in a block or are present

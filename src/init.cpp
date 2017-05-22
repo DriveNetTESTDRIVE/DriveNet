@@ -7,6 +7,7 @@
 #include <config/bitcoin-config.h>
 #endif
 
+<<<<<<< 65d3b4bc0503534719fc19347e92c720a006c116
 #include <init.h>
 
 #include <addrman.h>
@@ -43,10 +44,54 @@
 #include <util.h>
 #include <utilmoneystr.h>
 #include <validationinterface.h>
+=======
+#include "init.h"
+
+#include "addrman.h"
+#include "amount.h"
+#include "chain.h"
+#include "chainparams.h"
+#include "checkpoints.h"
+#include "compat/sanity.h"
+#include "consensus/validation.h"
+#include "fs.h"
+#include "httpserver.h"
+#include "httprpc.h"
+#include "key.h"
+#include "validation.h"
+#include "miner.h"
+#include "netbase.h"
+#include "net.h"
+#include "net_processing.h"
+#include "policy/feerate.h"
+#include "policy/fees.h"
+#include "policy/policy.h"
+#include "rpc/server.h"
+#include "rpc/register.h"
+#include "rpc/blockchain.h"
+#include "script/standard.h"
+#include "script/sigcache.h"
+#include "scheduler.h"
+#include "sidechain.h"
+#include "sidechaindb.h"
+#include "timedata.h"
+#include "txdb.h"
+#include "txmempool.h"
+#include "torcontrol.h"
+#include "ui_interface.h"
+#include "util.h"
+#include "utilmoneystr.h"
+#include "validationinterface.h"
+>>>>>>> Add core components of Drivechains and BMM
 #ifdef ENABLE_WALLET
 #include <wallet/init.h>
 #endif
+<<<<<<< 65d3b4bc0503534719fc19347e92c720a006c116
 #include <warnings.h>
+=======
+#include "warnings.h"
+#include <algorithm>
+>>>>>>> Add core components of Drivechains and BMM
 #include <stdint.h>
 #include <stdio.h>
 #include <memory>
@@ -1560,6 +1605,41 @@ bool AppInitMain(boost::thread_group& threadGroup, CScheduler& scheduler)
         }
     }
 
+    // Synchronize SCDB
+    if (chainActive.Tip() && chainActive.Tip()->GetBlockHash() != scdb.GetHashBlockLastSeen())
+    {
+        // Find out how many blocks we need to update SCDB
+        const int nHeight = chainActive.Height();
+        int nTail = nHeight;
+        for (const Sidechain& s : ValidSidechains) {
+            int nLastTau = s.GetLastTauHeight(nHeight);
+            if (nLastTau < nTail)
+                nTail = nLastTau;
+        }
+
+        // Update SCDB
+        for (int i = nTail; i <= nHeight; i++) {
+            // Skip genesis block
+            if (i == 0)
+                continue;
+
+            CBlockIndex* pindex = chainActive[i];
+            // Check that block index exists
+            if (!pindex) {
+                LogPrintf("SCDB cannot read null block index. Exiting.\n");
+                return false;
+            }
+
+            // Check that coinbase is cached
+            if (!pindex->fCoinbase || !pindex->coinbase)
+                return InitError("Cannot initalize SCDB. Corrupt coinbase cache.\n");
+
+            // Update SCDB
+            if (!scdb.Update(i, pindex->GetBlockHash(), pindex->coinbase))
+                return InitError("Failed to initialize SCDB. Invalid state update.\n");
+        }
+    }
+
     // As LoadBlockIndex can take several minutes, it's possible the user
     // requested to kill the GUI during the last operation. If so, exit.
     // As the program has not fully started yet, Shutdown() is possibly overkill.
@@ -1726,5 +1806,24 @@ bool AppInitMain(boost::thread_group& threadGroup, CScheduler& scheduler)
     StartWallets(scheduler);
 #endif
 
+<<<<<<< 65d3b4bc0503534719fc19347e92c720a006c116
     return true;
+=======
+    // TODO move this & watch all of the sidechain's scripts
+    // Watch sidechain scripts
+    pwalletMain->MarkDirty();
+
+    std::vector<unsigned char> data(ParseHex(std::string(SIDECHAIN_TEST_SCRIPT_HEX)));
+    CScript script(data.begin(), data.end());
+
+    if (!pwalletMain->HaveWatchOnly(script))
+        pwalletMain->AddWatchOnly(script, 0 /* nCreateTime */);
+
+    CTxDestination destination;
+    if (ExtractDestination(script, destination)) {
+        pwalletMain->SetAddressBook(destination, "SIDECHAIN_TEST", "receive");
+    }
+
+    return !fRequestShutdown;
+>>>>>>> Add core components of Drivechains and BMM
 }

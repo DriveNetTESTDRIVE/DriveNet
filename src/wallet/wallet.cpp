@@ -3,32 +3,33 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include <wallet/wallet.h>
+#include "wallet/wallet.h"
 
-#include <base58.h>
-#include <checkpoints.h>
-#include <chain.h>
-#include <wallet/coincontrol.h>
-#include <consensus/consensus.h>
-#include <consensus/validation.h>
-#include <fs.h>
-#include <wallet/init.h>
-#include <key.h>
-#include <keystore.h>
-#include <validation.h>
-#include <net.h>
-#include <policy/fees.h>
-#include <policy/policy.h>
-#include <policy/rbf.h>
-#include <primitives/block.h>
-#include <primitives/transaction.h>
-#include <script/script.h>
-#include <scheduler.h>
-#include <timedata.h>
-#include <txmempool.h>
-#include <util.h>
-#include <utilmoneystr.h>
-#include <wallet/fees.h>
+#include "base58.h"
+#include "checkpoints.h"
+#include "chain.h"
+#include "wallet/coincontrol.h"
+#include "consensus/consensus.h"
+#include "consensus/validation.h"
+#include "fs.h"
+#include "key.h"
+#include "keystore.h"
+#include "validation.h"
+#include "net.h"
+#include "policy/fees.h"
+#include "policy/policy.h"
+#include "policy/rbf.h"
+#include "primitives/block.h"
+#include "primitives/transaction.h"
+#include "script/script.h"
+#include "script/sign.h"
+#include "scheduler.h"
+#include "sidechain.h"
+#include "timedata.h"
+#include "txmempool.h"
+#include "util.h"
+#include "ui_interface.h"
+#include "utilmoneystr.h"
 
 #include <assert.h>
 #include <future>
@@ -2283,6 +2284,7 @@ void CWallet::AvailableCoins(std::vector<COutput> &vCoins, bool fOnlySafe, const
     }
 }
 
+<<<<<<< 65d3b4bc0503534719fc19347e92c720a006c116
 std::map<CTxDestination, std::vector<COutput>> CWallet::ListCoins() const
 {
     // TODO: Add AssertLockHeld(cs_wallet) here.
@@ -2344,6 +2346,21 @@ const CTxOut& CWallet::FindNonChangeParentOutput(const CTransaction& tx, int out
         n = prevout.n;
     }
     return ptx->vout[n];
+=======
+void CWallet::AvailableSidechainCoins(std::vector<COutput>& vSidechainCoins, const uint8_t& nSidechain) const
+{
+    std::vector<COutput> vCoins;
+    AvailableCoins(vCoins, true);
+
+    // TODO check correct script hex based on nSidechain param
+    for (const COutput& output : vCoins) {
+        CScript scriptPubKey = output.tx->tx->vout[output.i].scriptPubKey;
+
+        if (HexStr(scriptPubKey) == SIDECHAIN_TEST_SCRIPT_HEX) {
+            vSidechainCoins.push_back(output);
+        }
+    }
+>>>>>>> Add core components of Drivechains and BMM
 }
 
 static void ApproximateBestSubset(const std::vector<CInputCoin>& vValue, const CAmount& nTotalLower, const CAmount& nTargetValue,
@@ -3000,6 +3017,145 @@ bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletT
               feeCalc.est.fail.start, feeCalc.est.fail.end,
               100 * feeCalc.est.fail.withinTarget / (feeCalc.est.fail.totalConfirmed + feeCalc.est.fail.inMempool + feeCalc.est.fail.leftMempool),
               feeCalc.est.fail.withinTarget, feeCalc.est.fail.totalConfirmed, feeCalc.est.fail.inMempool, feeCalc.est.fail.leftMempool);
+    return true;
+}
+
+bool CWallet::CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, const uint8_t& nSidechain, const CAmount& nAmount, const CKeyID& keyID)
+{
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+
+    // User deposit data script
+    CScript dataScript = CScript() << OP_RETURN << nSidechain << ToByteVector(keyID);
+
+    // TODO should be based on nSidechain param
+    CKeyID sidechainKey;
+    sidechainKey.SetHex(SIDECHAIN_TEST_KEY);
+    CScript sidechainScript;
+    sidechainScript << OP_DUP << OP_HASH160 << ToByteVector(sidechainKey) << OP_EQUALVERIFY << OP_CHECKSIG;
+
+    // The deposit transaction
+    CMutableTransaction mtx;
+
+    // Select coins to cover sidechain deposit
+    std::vector<COutput> vCoins;
+    AvailableCoins(vCoins);
+//(const std::vector<COutput>& vAvailableCoins, const CAmount& nTargetValue, std::set<CInputCoin>& setCoinsRet, CAmount& nValueRet, const CCoinControl *coinControl = NULL) const;
+//CTxIn(uint256 hashPrevTx, uint32_t nOut, CScript scriptSigIn=CScript(), uint32_t nSequenceIn=SEQUENCE_FINAL);
+
+//    std::set<std::pair<const CWalletTx*,unsigned int> > setCoins;
+    std::set<CInputCoin> setCoins;
+    CAmount nAmountRet = CAmount(0);
+    if (!SelectCoins(vCoins, nAmount, setCoins, nAmountRet)) {
+        strFail = "Could not collect enough coins to cover deposit!\n";
+        return false;
+    }
+
+    // Handle change if there is any
+    const CAmount nChange = nAmountRet - nAmount;
+    CReserveKey reserveKey(pwalletMain);
+    if (nChange > 0) {
+        CScript scriptChange;
+
+        // Reserve a new key pair from key pool
+        CPubKey vchPubKey;
+        if (!reserveKey.GetReservedKey(vchPubKey))
+        {
+            strFail = "Keypool ran out, please call keypoolrefill first!\n";
+            return false;
+        }
+        scriptChange = GetScriptForDestination(vchPubKey.GetID());
+        mtx.vout.push_back(CTxOut(nChange - (1 * CENT), scriptChange));
+    }
+
+    // Add deposit inputs
+    for (const auto& coin : setCoins) {
+        mtx.vin.push_back(CTxIn(coin.outpoint.hash, coin.outpoint.n, CScript()));
+    }
+
+    // Add data output
+    mtx.vout.push_back(CTxOut(CAmount(0), dataScript));
+
+    // Add deposit output
+    mtx.vout.push_back(CTxOut(nAmount, sidechainScript));
+
+    // Handle existing sidechain utxo
+    std::vector<COutput> vSidechainCoins;
+    AvailableSidechainCoins(vSidechainCoins, 0);
+    if (vSidechainCoins.size()) {
+        CAmount returnAmount = CAmount(0);
+
+        for (const COutput& output : vSidechainCoins) {
+            mtx.vin.push_back(CTxIn(output.tx->GetHash(), output.i));
+            returnAmount += output.tx->tx->vout[output.i].nValue;
+            mtx.vout.back().nValue += returnAmount;
+        }
+
+        /*
+         * Sign the sidechain utxo input
+         */
+        CBitcoinSecret vchSecret;
+        bool fGood = vchSecret.SetString(SIDECHAIN_TEST_PRIV);
+        if (!fGood) {
+            strFail = "Invalid sidechain private key encoding!\n";
+            return false;
+        }
+        CKey privKey = vchSecret.GetKey();
+        if (!privKey.IsValid()) {
+            strFail = "Sidechain private key invalid!\n";
+            return false;
+        }
+
+        CBasicKeyStore tempKeystore;
+        tempKeystore.AddKey(privKey);
+
+        const CKeyStore& keystoreConst = tempKeystore;
+        const CTransaction& txToSign = mtx;
+
+        TransactionSignatureCreator creator(&keystoreConst, &txToSign, mtx.vin.size() - 1, returnAmount);
+
+        SignatureData sigdata;
+        bool sigCreated = ProduceSignature(creator, sidechainScript, sigdata);
+        if (!sigCreated) {
+            strFail = "Failed to sign sidechain inputs!\n";
+            return false;
+        }
+
+        mtx.vin.back().scriptSig = sigdata.scriptSig;
+    }
+
+    // Sign the non sidechain inputs
+    const CTransaction txToSign = mtx;
+    int nIn = 0;
+    for (const auto& coin : setCoins) {
+        const CScript& scriptPubKey = coin.txout.scriptPubKey;
+        SignatureData sigdata;
+
+        if (!ProduceSignature(TransactionSignatureCreator(this, &txToSign, nIn, coin.txout.nValue, SIGHASH_ALL), scriptPubKey, sigdata))
+        {
+            strFail = "Signing non-sidechain inputs failed!\n";
+            return false;
+        } else {
+            UpdateTransaction(mtx, nIn, sigdata);
+        }
+
+        nIn++;
+    }
+
+    // Broadcast transaction
+    CWalletTx wtxNew;
+    wtxNew.fTimeReceivedIsTxTime = true;
+    wtxNew.fFromMe = true;
+    wtxNew.BindWallet(this);
+
+    wtxNew.SetTx(MakeTransactionRef(std::move(mtx)));
+
+    CValidationState state;
+    if (!CommitTransaction(wtxNew, reserveKey, g_connman.get(), state)) {
+        strFail = "Failed to commit sidechain deposit: " + state.GetRejectReason() + "\n";
+        return false;
+    }
+    tx = wtxNew.tx;
+
     return true;
 }
 

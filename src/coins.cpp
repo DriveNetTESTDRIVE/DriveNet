@@ -3,9 +3,12 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <coins.h>
-
 #include <consensus/consensus.h>
-#include <random.h>
+
+#include "memusage.h"
+#include "random.h"
+#include "sidechain.h"
+#include "utilstrencodings.h"
 
 bool CCoinsView::GetCoin(const COutPoint &outpoint, Coin &coin) const { return false; }
 uint256 CCoinsView::GetBestBlock() const { return uint256(); }
@@ -232,12 +235,18 @@ CAmount CCoinsViewCache::GetValueIn(const CTransaction& tx) const
     return nResult;
 }
 
-bool CCoinsViewCache::HaveInputs(const CTransaction& tx) const
+bool CCoinsViewCache::HaveInputs(const CTransaction& tx, bool* fSidechainInputs) const
 {
     if (!tx.IsCoinBase()) {
         for (unsigned int i = 0; i < tx.vin.size(); i++) {
             if (!HaveCoin(tx.vin[i].prevout)) {
                 return false;
+            }
+            if (fSidechainInputs) {
+                for (const CTxOut out : coins->vout) {
+                    if (HexStr(out.scriptPubKey) == SIDECHAIN_TEST_SCRIPT_HEX)
+                        *fSidechainInputs = true;
+                }
             }
         }
     }
