@@ -5,6 +5,8 @@
 
 #include "chain.h"
 
+int nCoinbaseCached = 0;
+
 /**
  * CChain implementation
  */

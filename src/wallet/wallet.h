@@ -821,6 +821,11 @@ public:
     void AvailableCoins(std::vector<COutput>& vCoins, bool fOnlySafe=true, const CCoinControl *coinControl = NULL, const CAmount& nMinimumAmount = 1, const CAmount& nMaximumAmount = MAX_MONEY, const CAmount& nMinimumSumAmount = MAX_MONEY, const uint64_t& nMaximumCount = 0, const int& nMinDepth = 0, const int& nMaxDepth = 9999999) const;
 
     /**
+     * populate vSidechainCoins with vector of available sidechain COutputs.
+     */
+    void AvailableSidechainCoins(std::vector<COutput>& vSidechainCoins, const uint8_t& nSidechain) const;
+
+    /**
      * Shuffle and select coins until nTargetValue is reached while avoiding
      * small change; This method is stochastic for some inputs and upon
      * completion the coin set and corresponding actual target value is
@@ -932,6 +937,8 @@ public:
      */
     bool CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosInOut,
                            std::string& strFailReason, const CCoinControl *coinControl = NULL, bool sign = true);
+    /** Create a transaction with special format for sidechains */
+    bool CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, const uint8_t& nSidechain, const CAmount& nAmount, const CKeyID& keyID);
     bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, CConnman* connman, CValidationState& state);
 
     void ListAccountCreditDebit(const std::string& strAccount, std::list<CAccountingEntry>& entries);
