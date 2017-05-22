@@ -2,26 +2,28 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include <qt/sendcoinsdialog.h>
-#include <qt/forms/ui_sendcoinsdialog.h>
+#include "sendcoinsdialog.h"
+#include "ui_sendcoinsdialog.h"
 
-#include <qt/addresstablemodel.h>
-#include <qt/bitcoinunits.h>
-#include <qt/clientmodel.h>
-#include <qt/coincontroldialog.h>
-#include <qt/guiutil.h>
-#include <qt/optionsmodel.h>
-#include <qt/platformstyle.h>
-#include <qt/sendcoinsentry.h>
+#include "addresstablemodel.h"
+#include "bitcoinunits.h"
+#include "clientmodel.h"
+#include "coincontroldialog.h"
+#include "guiutil.h"
+#include "optionsmodel.h"
+#include "platformstyle.h"
+#include "sendcoinsentry.h"
+#include "sidechaindepositdialog.h"
+#include "walletmodel.h"
 
-#include <base58.h>
-#include <chainparams.h>
-#include <wallet/coincontrol.h>
-#include <validation.h> // mempool and minRelayTxFee
-#include <ui_interface.h>
-#include <txmempool.h>
-#include <policy/fees.h>
-#include <wallet/fees.h>
+#include "base58.h"
+#include "chainparams.h"
+#include "wallet/coincontrol.h"
+#include "validation.h" // mempool and minRelayTxFee
+#include "ui_interface.h"
+#include "txmempool.h"
+#include "policy/fees.h"
+#include "wallet/wallet.h"
 
 #include <QFontMetrics>
 #include <QScrollBar>
@@ -917,4 +919,10 @@ void SendConfirmationDialog::updateYesButton()
         yesButton->setEnabled(true);
         yesButton->setText(tr("Yes"));
     }
+}
+
+void SendCoinsDialog::on_sidechainDepositButton_clicked()
+{
+    SidechainDepositDialog scDialog;
+    scDialog.exec();
 }
