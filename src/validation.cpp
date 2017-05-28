@@ -437,20 +437,38 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState& state, const C
     if (pool.exists(hash))
         return state.Invalid(false, REJECT_ALREADY_KNOWN, "txn-already-in-mempool");
 
-    // Sidechain checks
+    // Sidechain deposit / withdraw checks
     {
+        // TODO be more selective about which transactions have
+        // GetSidechainValues() called on them for efficiency.
+
+        // Get values to and from sidechain
         CAmount amtSidechainUTXO = CAmount(0);
         CAmount amtUserInput = CAmount(0);
         CAmount amtReturning = CAmount(0);
         CAmount amtWithdrawn = CAmount(0);
         GetSidechainValues(tx, amtSidechainUTXO, amtUserInput, amtReturning, amtWithdrawn);
 
-        // Withdraw
         if (amtSidechainUTXO > amtReturning) {
-            // TODO check work score and approve, rejecting all for now
-            // TODO miner created WT^ will not enter the mempool so a
-            // check must also be added to connectblock
-            return state.DoS(100, false, REJECT_INVALID, "bad-sidechain-withdraw");
+            // Withdrawal
+
+            // Block sidechain withdrawals from the memory pool.
+            // WT^(s) can only valid when added to a block by miners
+            // not as a loose transaction. When added by miners, WT^
+            // work score will be verified before the block is connected.
+            return state.DoS(100, false, REJECT_INVALID, "sidechain-withdraw-loose");
+        } else {
+            // Deposit
+            // TODO we need some additional logic to determine whether a
+            // sidechain deposit should be accepted into the mempool.
+            //
+            // If there are no other deposits in the mempool for a
+            // particular sidechain the new deposit should be accepted.
+            //
+            // If there are other deposits for a particular sidechain in
+            // the memory pool then each new deposit needs to spend the
+            // previous without creating a situation where the funds will
+            // be locked up (insufficient priority etc).
         }
     }
 
@@ -1718,8 +1736,15 @@ static bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockInd
         }
 
         if (fSidechainInputs) {
-            // Check BWT
-            // Check workscore
+            // We must get the B-WT^ hash as work is applied to
+            // WT^ before inputs and the change output are known.
+            uint256 hashBWT;
+            if (!tx.GetBWTHash(hashBWT))
+                return error("ConnectBlock(): WT^ (full id): %s has invalid format", tx.GetHash().ToString());
+
+            // Check workscore TODO nSidechain
+            if (!scdb.CheckWorkScore(SIDECHAIN_TEST, hashBWT))
+                return error("ConnectBlock(): CheckWorkScore failed for %s", hashBWT.ToString());
         }
 
         if (!tx.IsCoinBase() && !fJustCheck) {
