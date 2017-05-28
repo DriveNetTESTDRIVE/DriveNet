@@ -62,10 +62,18 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MultipleTauPeriods)
     scdb.Update(SIDECHAIN_TEST, 0, test.nMinWorkScore, hashWTTest1);
     BOOST_CHECK(scdb.CheckWorkScore(SIDECHAIN_TEST, hashWTTest1));
 
-    // Update SCDB (will clear out old state state from first period)
-    CMutableTransaction mtx; // dummy transaction
+    // Create dummy coinbase tx
+    CMutableTransaction mtx;
+    mtx.nVersion = 1;
+    mtx.vin.resize(1);
+    mtx.vout.resize(1);
+    mtx.vin[0].scriptSig = CScript() << 486604799;
     mtx.vout.push_back(CTxOut(50 * CENT, CScript() << OP_RETURN));
-    scdb.Update(test.GetTau(), uint256(), MakeTransactionRef(mtx));
+
+    uint256 hashBlock = Params().GetConsensus().hashGenesisBlock;
+
+    // Update SCDB (will clear out old data from first period)
+    scdb.Update(test.GetTau(), hashBlock, MakeTransactionRef(mtx));
 
     // WT^ hash for second period
     uint256 hashWTTest2 = GetRandHash();
@@ -235,6 +243,155 @@ BOOST_AUTO_TEST_CASE(sidechaindb_PositionStateScript)
     scdbPosition.Update(SIDECHAIN_WIMBLE, 0, 1, hashWTWimble3);
 
     BOOST_CHECK(scriptWTPositionExpected == scdbPosition.CreateStateScript(sidechainTest.GetTau() - 1));
+}
+
+// TODO move BMM tests into seperate file
+BOOST_AUTO_TEST_CASE(bmm_checkCriticalHashValid)
+{
+    // Check that valid critical hash is added to ratchet
+    SidechainDB scdb;
+
+    // Create h* bribe script
+    uint256 hashCritical = GetRandHash();
+    CScript scriptPubKey;
+    scriptPubKey << OP_RETURN << CScriptNum::serialize(1) << ToByteVector(hashCritical);
+
+    // Create dummy coinbase with h*
+    CMutableTransaction mtx;
+    mtx.nVersion = 1;
+    mtx.vin.resize(1);
+    mtx.vout.resize(1);
+    mtx.vin[0].scriptSig = CScript() << 486604799;
+    mtx.vout.push_back(CTxOut(50 * CENT, scriptPubKey));
+
+    // Update SCDB so that h* is processed
+    uint256 hashBlock = GetRandHash();
+    scdb.Update(0, hashBlock, MakeTransactionRef(mtx));
+
+    // Get linking data
+    std::multimap<uint256, int> mapLD = scdb.GetLinkingData();
+
+    // Verify that h* was added
+    std::multimap<uint256, int>::const_iterator it = mapLD.find(hashCritical);
+    BOOST_CHECK(it != mapLD.end());
+
+}
+
+BOOST_AUTO_TEST_CASE(bmm_checkCriticalHashInvalid)
+{
+    // Make sure that a invalid h* with a valid block number will
+    // be rejected.
+    SidechainDB scdb;
+
+    // Create h* bribe script
+    CScript scriptPubKey;
+    scriptPubKey << OP_RETURN << CScriptNum::serialize(21000) << 0x426974636F696E;
+
+    // Create dummy coinbase with h*
+    CMutableTransaction mtx;
+    mtx.nVersion = 1;
+    mtx.vin.resize(1);
+    mtx.vout.resize(1);
+    mtx.vin[0].scriptSig = CScript() << 486604799;
+    mtx.vout.push_back(CTxOut(50 * CENT, scriptPubKey));
+
+    // Update SCDB so that h* is processed
+    uint256 hashBlock = GetRandHash();
+    scdb.Update(0, hashBlock, MakeTransactionRef(mtx));
+
+    // Verify that h* was rejected, linking data should be empty
+    std::multimap<uint256, int> mapLD = scdb.GetLinkingData();
+    BOOST_CHECK(mapLD.empty());
+}
+
+BOOST_AUTO_TEST_CASE(bmm_checkBlockNumberValid)
+{
+    // Make sure that a valid h* with a valid block number
+    // will be accepted.
+    SidechainDB scdb;
+
+    // We have to add the first h* to the ratchet so that
+    // there is something to compare with.
+
+    // Create h* bribe script
+    uint256 hashCritical = GetRandHash();
+    CScript scriptPubKey;
+    scriptPubKey << OP_RETURN << CScriptNum::serialize(1) << ToByteVector(hashCritical);
+
+    // Create dummy coinbase with h* in output
+    CMutableTransaction mtx;
+    mtx.nVersion = 1;
+    mtx.vin.resize(1);
+    mtx.vout.resize(1);
+    mtx.vin[0].scriptSig = CScript() << 486604799;
+    mtx.vout.push_back(CTxOut(50 * CENT, scriptPubKey));
+
+    // Update SCDB so that first h* is processed
+    uint256 hashBlock = GetRandHash();
+    scdb.Update(0, hashBlock, MakeTransactionRef(mtx));
+
+    // Now we add a second h* with a valid block number
+
+    // Create second h* bribe script
+    uint256 hashCritical2 = GetRandHash();
+    CScript scriptPubKey2;
+    scriptPubKey2 << OP_RETURN << CScriptNum::serialize(2) << ToByteVector(hashCritical2);
+
+    // Update SCDB so that second h* is processed
+    mtx.vout[0] = CTxOut(50 * CENT, scriptPubKey2);
+    scdb.Update(0, hashBlock, MakeTransactionRef(mtx));
+
+    // Get linking data
+    std::multimap<uint256, int> mapLD = scdb.GetLinkingData();
+
+    // Verify that h* was added
+    std::multimap<uint256, int>::const_iterator it = mapLD.find(hashCritical2);
+    BOOST_CHECK(it != mapLD.end());
+}
+
+BOOST_AUTO_TEST_CASE(bmm_checkBlockNumberInvalid)
+{
+    // Try to add a valid h* with an invalid block number
+    // and make sure it is skipped.
+    SidechainDB scdb;
+
+    // We have to add the first h* to the ratchet so that
+    // there is something to compare with.
+
+    // Create first h* bribe script
+    uint256 hashCritical = GetRandHash();
+    CScript scriptPubKey;
+    scriptPubKey << OP_RETURN << CScriptNum::serialize(555666777) << ToByteVector(hashCritical);
+
+    // Create dummy coinbase with h* in output
+    CMutableTransaction mtx;
+    mtx.nVersion = 1;
+    mtx.vin.resize(1);
+    mtx.vout.resize(1);
+    mtx.vin[0].scriptSig = CScript() << 486604799;
+    mtx.vout.push_back(CTxOut(50 * CENT, scriptPubKey));
+
+    // Update SCDB so that first h* is processed
+    uint256 hashBlock = GetRandHash();
+    scdb.Update(0, hashBlock, MakeTransactionRef(mtx));
+
+    // Now we add a second h* with an invalid block number
+
+    // Create second h* bribe script
+    uint256 hashCritical2 = GetRandHash();
+    CScript scriptPubKey2;
+    scriptPubKey2 << OP_RETURN << CScriptNum::serialize(555666779) << ToByteVector(hashCritical2);
+
+    // Update SCDB so that second h* is processed
+    mtx.vout[0] = CTxOut(50 * CENT, scriptPubKey2);
+    scdb.Update(0, hashBlock, MakeTransactionRef(mtx));
+
+    // Get linking data
+    std::multimap<uint256, int> mapLD = scdb.GetLinkingData();
+
+    // Verify that h* was rejected
+    std::multimap<uint256, int>::const_iterator it = mapLD.find(hashCritical2);
+    BOOST_CHECK(it == mapLD.end());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

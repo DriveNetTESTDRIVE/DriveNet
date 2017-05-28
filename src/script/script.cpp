@@ -253,6 +253,7 @@ bool CScript::IsWitnessProgram(int& version, std::vector<unsigned char>& program
 
 bool CScript::IsBribe() const
 {
+    // TODO
     // Size must be at least:
     // sizeof(uint256) to include h*
     // +
@@ -260,26 +261,14 @@ bool CScript::IsBribe() const
     // +
     // opcode count
     //
-    // As the size of the block number data push is unknown,
-    // it can not be accounted for. // TODO use mod?
     size_t size = this->size();
-    if (size < 32)
+    if (size < 32 )
         return false;
-
-    if ((*this)[size - 1] != OP_ENDIF)
-        return false;
-
-    if ((*this)[size - 2] != OP_CHECKSIG
-            || (*this)[size - 3] != OP_EQUALVERIFY
-            || (*this)[size - 25] != OP_HASH160
-            || (*this)[size - 26] != OP_DUP
-            || (*this)[size - 27] != OP_DROP
-            || (*this)[size - 28] != OP_CHECKLOCKTIMEVERIFY)
-    {
-        return false;
-    }
 
     // TODO
+    // The format of a bribe script is currently being discussed on the
+    // bitcoin-dev mailing list. For now we are just checking if the script
+    // is large enough to contain an h* and contains an OP_BRIBE op.
 
     return (this->Find(OP_BRIBE));
 }

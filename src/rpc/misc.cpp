@@ -629,7 +629,7 @@ UniValue receivesidechainwtjoin(const JSONRPCRequest& request)
             "receivesidechainwtjoin\n"
             "Called by sidechain to announce new WT^ for verification\n"
             "\nArguments:\n"
-            "1. \"nSidechain\"      (int, required) The sidechain number\n"
+            "1. \"nsidechain\"      (int, required) The sidechain number\n"
             "2. \"rawtx\"           (string, required) The raw transaction hex\n"
             "\nExamples:\n"
             + HelpExampleCli("receivesidechainwtjoin", "")
@@ -637,7 +637,7 @@ UniValue receivesidechainwtjoin(const JSONRPCRequest& request)
      );
 
     // Is nSidechain valid?
-    uint8_t nSidechain = std::stoi(request.params[0].get_str());
+    uint8_t nSidechain = request.params[0].get_int();
     if (!SidechainNumberValid(nSidechain))
         throw std::runtime_error("Invalid sidechain number");
 
@@ -653,7 +653,7 @@ UniValue receivesidechainwtjoin(const JSONRPCRequest& request)
 
     // Add WT^ to sidechain DB and start verification
     if (!scdb.AddWTJoin(nSidechain, wtJoin))
-        throw std::runtime_error("WT^ rejected");
+        throw std::runtime_error("WT^ rejected (duplicate?)");
 
     // Return WT^ hash to verify it has been received
     UniValue ret(UniValue::VOBJ);
@@ -668,10 +668,10 @@ UniValue listsidechaindeposits(const JSONRPCRequest& request)
             "listsidechaindeposits\n"
             "Called by sidechain, return list of deposits\n"
             "\nArguments:\n"
-            "1. \"nSidechain\"      (numeric, required) The sidechain number\n"
+            "1. \"nsidechain\"      (numeric, required) The sidechain number\n"
             "\nExamples:\n"
-            + HelpExampleCli("listsidechaindeposits", "\"nSidechain\"")
-            + HelpExampleRpc("listsidechaindeposits", "\"nSidechain\"")
+            + HelpExampleCli("listsidechaindeposits", "\"nsidechain\"")
+            + HelpExampleRpc("listsidechaindeposits", "\"nsidechain\"")
             );
 
     // Is nSidechain valid?
@@ -744,7 +744,7 @@ UniValue listsidechaindeposits(const JSONRPCRequest& request)
 
     UniValue ret(UniValue::VOBJ);
     UniValue obj(UniValue::VOBJ);
-    obj.push_back(Pair("nSidechain", deposit.nSidechain));
+    obj.push_back(Pair("nsidechain", deposit.nSidechain));
     obj.push_back(Pair("keyID", deposit.keyID.ToString()));
     obj.push_back(Pair("amountUserPayout", ValueFromAmount(amtUserPayout)));
     obj.push_back(Pair("txHex", deposit.hex));
@@ -799,7 +799,7 @@ UniValue getbmmproof(const JSONRPCRequest& request)
         CScript::const_iterator phash = scriptPubKey.begin() + 1;
         std::vector<unsigned char> vch;
         opcodetype opcode;
-        if (!scriptPubKey.GetOp2(phash, opcode, &vch))
+        if (!scriptPubKey.GetOp(phash, opcode, vch))
             continue;
         if (vch.size() != sizeof(uint256))
             continue;
@@ -828,18 +828,19 @@ UniValue getbmmproof(const JSONRPCRequest& request)
 
 UniValue createbribe(const JSONRPCRequest& request)
 {
-    if (request.fHelp || request.params.size() != 3)
+    if (request.fHelp || request.params.size() != 4)
         throw std::runtime_error(
             "createbribe\n"
             "Bribe miners to include critical hash h* in coinbase output\n"
             "\nArguments:\n"
             "1. \"amount\"         (numeric or string, required) The amount in " + CURRENCY_UNIT + " to give miner. eg 0.1\n"
-            "2. \"criticalhash\"   (string, required) h* you want added to a coinbase\n"
-            "3. \"address\"        (string, required) bitcoin address to receive time locked refund\n"
+            "2. \"height\"         (numeric, required) The sidechain block height the h* is a candidate for.\n"
+            "3. \"criticalhash\"   (string, required) h* you want added to a coinbase\n"
+            "4. \"address\"        (string, required) bitcoin address to receive time locked refund\n"
 
             "\nExamples:\n"
-            + HelpExampleCli("createbribe", "\"amount\", \"criticalhash\", \"address\"")
-            + HelpExampleRpc("createbribe", "\"amount\", \"criticalhash\", \"address\"")
+            + HelpExampleCli("createbribe", "\"amount\", \"height\", \"criticalhash\", \"address\"")
+            + HelpExampleRpc("createbribe", "\"amount\", \"height\", \"criticalhash\", \"address\"")
             );
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
@@ -849,19 +850,21 @@ UniValue createbribe(const JSONRPCRequest& request)
     if (nAmount <= 0)
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
 
+    int nHeight = request.params[1].get_int();
+
     // Critical hash
-    uint256 hashCritical = uint256S(request.params[1].get_str());
+    uint256 hashCritical = uint256S(request.params[2].get_str());
     if (hashCritical.IsNull())
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid h*");
 
     CKeyID keyID;
-    CBitcoinAddress address(request.params[2].get_str());
+    CBitcoinAddress address(request.params[3].get_str());
     if (!address.IsValid() || !address.GetKeyID(keyID))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Bitcoin address");
 
     // Create bribe script
     CScript scriptPubKey;
-    scriptPubKey << ToByteVector(hashCritical) << OP_BRIBE
+    scriptPubKey << CScriptNum::serialize(nHeight) << ToByteVector(hashCritical) << OP_BRIBE
                  << OP_NOTIF
                  << CScriptNum::serialize(300) << OP_CHECKLOCKTIMEVERIFY << OP_DROP
                  << OP_DUP << OP_HASH160 << ToByteVector(keyID) << OP_EQUALVERIFY << OP_CHECKSIG
@@ -1017,8 +1020,8 @@ static const CRPCCommand commands[] =
     { "hidden",             "logging",                  &logging,                   true,  {"include", "exclude"}},
 
     /* Used by sidechain (some not shown in help) */
-    { "hidden",             "receivesidechainwtjoin",   &receivesidechainwtjoin,    false, {"nSidechain","rawtx"}},
-    { "hidden",             "listsidechaindeposits",    &listsidechaindeposits,     false, {"nSidechain"}},
+    { "hidden",             "receivesidechainwtjoin",   &receivesidechainwtjoin,    false, {"nsidechain","rawtx"}},
+    { "hidden",             "listsidechaindeposits",    &listsidechaindeposits,     false, {"nsidechain"}},
     { "util",               "getbmmproof",              &getbmmproof,               false, {"blockhash", "criticalhash"}},
     { "wallet",             "createbribe",              &createbribe,               false, {"amount", "crticalhash", "address"}},
     { "wallet",             "refundbribe",              &refundbribe,               false, {"amount", "txid", "pos", "address"}},
