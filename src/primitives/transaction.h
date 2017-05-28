@@ -318,6 +318,9 @@ public:
     // Compute a hash that includes both transaction and witness data
     uint256 GetWitnessHash() const;
 
+    // Compute B-WT^ hash of tx (remove inputs and sidechain change)
+    bool GetBWTHash(uint256& hashRet) const;
+
     // Return sum of txouts.
     CAmount GetValueOut() const;
     // GetValueIn() is a method on CCoinsViewCache, because
