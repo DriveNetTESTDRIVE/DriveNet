@@ -122,6 +122,11 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "logging", 0, "include" },
     { "logging", 1, "exclude" },
     { "disconnectnode", 1, "nodeid" },
+    { "createbribe", 0, "amount" },
+    { "createbribe", 1, "height" },
+    { "listsidechaindeposits", 0, "nsidechain" },
+    { "receivesidechainwtjoin", 0, "nsidechain" },
+    { "refundbribe", 0, "amount" },
     { "refundbribe", 2, "pos" },
     // Echo with conversion (For testing only)
     { "echojson", 0, "arg0" },

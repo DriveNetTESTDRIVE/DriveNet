@@ -37,10 +37,10 @@ void SidechainDB::AddDeposits(const std::vector<CTransaction>& vtx)
             if (!SidechainNumberValid(nSidechain))
                 continue;
 
-            std::vector<unsigned char> vch;
-            opcodetype opcode;
             CScript::const_iterator pkey = scriptPubKey.begin() + 2;
-            if (!scriptPubKey.GetOp2(pkey, opcode, &vch))
+            opcodetype opcode;
+            std::vector<unsigned char> vch;
+            if (!scriptPubKey.GetOp(pkey, opcode, vch))
                 continue;
             if (vch.size() != sizeof(uint160))
                 continue;
@@ -334,7 +334,7 @@ bool SidechainDB::ReadStateScript(const CTransactionRef& coinbase)
     if (ApplyStateScript(state, vStateAll, true))
         return ApplyStateScript(state, vStateAll);
 
-    // Invalid or no update script, apply default
+    // Invalid or no update script try to apply default
     if (!ApplyDefaultUpdate())
         LogPrintf("SidechainDB::ReadStateScript: Invalid update & failed to apply default update!\n");
 
@@ -364,8 +364,11 @@ bool SidechainDB::Update(uint8_t nSidechain, uint16_t nBlocks, uint16_t nScore, 
 
 bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const CTransactionRef& coinbase)
 {
-    if (!coinbase || coinbase->IsNull())
+    if (!coinbase || !coinbase->IsCoinBase())
         return false;
+    if (hashBlock.IsNull())
+        return false;
+
     // If a sidechain's tau period ended, reset WT^ verification status
     for (const Sidechain& s : ValidSidechains)
         if (nHeight > 0 && (nHeight % s.GetTau()) == 0)
@@ -382,22 +385,54 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const CTransacti
         // Must at least contain the h*
         if (scriptPubKey.size() < sizeof(uint256))
             continue;
-        if (scriptPubKey[0] != OP_RETURN)
+        if (!scriptPubKey.IsUnspendable())
             continue;
 
-        CScript::const_iterator phash = scriptPubKey.begin() + 1;
-        std::vector<unsigned char> vch;
+        CScript::const_iterator pbn = scriptPubKey.begin() + 1;
         opcodetype opcode;
-        if (!scriptPubKey.GetOp2(phash, opcode, &vch))
+        std::vector<unsigned char> vchBN;
+        if (!scriptPubKey.GetOp(pbn, opcode, vchBN))
+            continue;
+        if (vchBN.size() < 1 || vchBN.size() > 4)
+            continue;
+
+        CScriptNum nBlock(vchBN, true);
+
+        CScript::const_iterator phash = scriptPubKey.begin() + vchBN.size() + 2;
+        std::vector<unsigned char> vch;
+        if (!scriptPubKey.GetOp(phash, opcode, vch))
             continue;
         if (vch.size() != sizeof(uint256))
             continue;
 
         uint256 hashCritical = uint256(vch);
 
+        // Check block number
+        bool fValid = false;
+        if (queueBMMLD.size()) {
+            // Compare block number with most recent h* block number
+            uint256 hashMostRecent = queueBMMLD.back();
+            std::multimap<uint256, int>::const_iterator it = mapBMMLD.find(hashMostRecent);
+            if (it == mapBMMLD.end())
+                return false;
+
+            int nHeightMostRecent = it->second;
+
+            if (std::abs(nHeightMostRecent - nBlock.getint()) == 1)
+                fValid = true;
+        } else {
+            // No previous h* to compare with
+            fValid = true;
+        }
+
+        if (!fValid) {
+            LogPrintf("SidechainDB::Update: h* with invalid block height ignored: %s\n", hashCritical.ToString());
+            continue;
+        }
+
         // Update BMM linking data
         // Add new linking data
-        mapBMMLD.emplace(hashCritical, nHeight);
+        mapBMMLD.emplace(hashCritical, nBlock.getint());
         queueBMMLD.push(hashCritical);
 
         // Remove old linking data if we need to
