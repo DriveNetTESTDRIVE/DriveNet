@@ -40,7 +40,7 @@ class CScriptCheck;
 class CBlockPolicyEstimator;
 class CTxMemPool;
 class CValidationState;
-class SidechainDB;
+class CSidechainDB;
 struct ChainTxData;
 
 struct PrecomputedTransactionData;
@@ -493,7 +493,7 @@ bool DumpMempool();
 bool LoadMempool();
 
 /** Tracks validation status of sidechain WT^(s) */
-extern SidechainDB scdb;
+extern CSidechainDB scdb;
 
 /** Remove extra coinbase(s) from chainActive */
 void PruneCoinbaseCache();

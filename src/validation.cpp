@@ -230,13 +230,11 @@ CAmount maxTxFee = DEFAULT_TRANSACTION_MAXFEE;
 CBlockPolicyEstimator feeEstimator;
 CTxMemPool mempool(&feeEstimator);
 
-<<<<<<< 65d3b4bc0503534719fc19347e92c720a006c116
-=======
-SidechainDB scdb;
+
+CSidechainDB scdb;
 
 static void CheckBlockIndex(const Consensus::Params& consensusParams);
 
->>>>>>> Add core components of Drivechains and BMM
 /** Constant stuff for coinbase transactions we create: */
 CScript COINBASE_FLAGS;
 
@@ -461,7 +459,6 @@ static bool IsCurrentForFeeEstimation()
     return true;
 }
 
-<<<<<<< 65d3b4bc0503534719fc19347e92c720a006c116
 /* Make mempool consistent after a reorg, by re-adding or recursively erasing
  * disconnected block transactions from the mempool, and also removing any
  * other transactions from the mempool that are no longer valid given the new
@@ -550,8 +547,6 @@ static bool CheckInputsFromMempoolAndCache(const CTransaction& tx, CValidationSt
     return CheckInputs(tx, state, view, true, flags, cacheSigStore, true, txdata);
 }
 
-static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool& pool, CValidationState& state, const CTransactionRef& ptx,
-=======
 void GetSidechainValues(const CTransaction &tx, CAmount& amtSidechainUTXO, CAmount& amtUserInput,
                         CAmount& amtReturning, CAmount& amtWithdrawn)
 {
@@ -603,8 +598,8 @@ bool CheckBWTHash(const uint256& wtjID, const CTransaction &tx)
     return false;
 }
 
-bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState& state, const CTransactionRef& ptx, bool fLimitFree,
->>>>>>> Add core components of Drivechains and BMM
+
+static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool& pool, CValidationState& state, const CTransactionRef& ptx,
                               bool* pfMissingInputs, int64_t nAcceptTime, std::list<CTransactionRef>* plTxnReplaced,
                               bool bypass_limits, const CAmount& nAbsurdFee, std::vector<COutPoint>& coins_to_uncache)
 {
@@ -1409,16 +1404,16 @@ void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, int nHeight)
 bool CScriptCheck::operator()() {
     const CScript &scriptSig = ptxTo->vin[nIn].scriptSig;
     const CScriptWitness *witness = &ptxTo->vin[nIn].scriptWitness;
-<<<<<<< 65d3b4bc0503534719fc19347e92c720a006c116
-    return VerifyScript(scriptSig, m_tx_out.scriptPubKey, witness, nFlags, CachingTransactionSignatureChecker(ptxTo, nIn, m_tx_out.nValue, cacheStore, *txdata), &error);
-=======
+    std::multimap<uint256, int> mapBMMLDCopy;
+    if (scriptPubKey.IsBribe())
+        mapBMMLDCopy = scdb.GetLinkingData();
+
 
     std::multimap<uint256, int> mapBMMLDCopy;
     if (scriptPubKey.IsBribe())
         mapBMMLDCopy = scdb.GetLinkingData();
 
     return VerifyScript(scriptSig, scriptPubKey, witness, nFlags, CachingTransactionSignatureChecker(ptxTo, nIn, amount, cacheStore, *txdata, mapBMMLDCopy), &error);
->>>>>>> Add core components of Drivechains and BMM
 }
 
 int GetSpendHeight(const CCoinsViewCache& inputs)
@@ -2021,7 +2016,6 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
         bool fSidechainInputs = false;
         if (!tx.IsCoinBase())
         {
-<<<<<<< 65d3b4bc0503534719fc19347e92c720a006c116
             CAmount txfee = 0;
             if (!Consensus::CheckTxInputs(tx, state, view, pindex->nHeight, txfee)) {
                 return error("%s: Consensus::CheckTxInputs: %s, %s", __func__, tx.GetHash().ToString(), FormatStateMessage(state));
@@ -2031,11 +2025,9 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
                 return state.DoS(100, error("%s: accumulated fee in the block out of range.", __func__),
                                  REJECT_INVALID, "bad-txns-accumulated-fee-outofrange");
             }
-=======
             if (!view.HaveInputs(tx, &fSidechainInputs))
                 return state.DoS(100, error("ConnectBlock(): inputs missing/spent"),
                                  REJECT_INVALID, "bad-txns-inputs-missingorspent");
->>>>>>> Add core components of Drivechains and BMM
 
             // Check that transaction is BIP68 final
             // BIP68 lock checks (as opposed to nLockTime checks) must
