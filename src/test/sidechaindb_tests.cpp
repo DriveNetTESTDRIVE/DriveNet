@@ -29,8 +29,8 @@ BOOST_FIXTURE_TEST_SUITE(sidechaindb_tests, TestChain100Setup)
 
 BOOST_AUTO_TEST_CASE(sidechaindb_isolated)
 {
-    // Test CSidechainDB without blocks
-    CSidechainDB scdb;
+    // Test SidechainDB without blocks
+    SidechainDB scdb;
 
     uint256 hashWTTest = GetRandHash();
     uint256 hashWTHivemind = GetRandHash();
@@ -52,7 +52,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MultipleTauPeriods)
 {
     // Test SCDB with multiple tau periods,
     // approve multiple WT^s on the same sidechain.
-    CSidechainDB scdb;
+    SidechainDB scdb;
     const Sidechain& test = ValidSidechains[SIDECHAIN_TEST];
 
     // WT^ hash for first period
@@ -97,7 +97,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_EmptyStateScript)
     // Test empty SCDB
     const Sidechain& sidechainTest = ValidSidechains[SIDECHAIN_TEST];
     CScript scriptEmptyExpected = CScript();
-    CSidechainDB scdbEmpty;
+    SidechainDB scdbEmpty;
     BOOST_CHECK(scriptEmptyExpected == scdbEmpty.CreateStateScript(sidechainTest.GetTau() - 1));
 }
 
@@ -112,7 +112,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_PopulatedStateScript)
                     << SCOP_VERIFY << SCOP_SC_DELIM
                     << SCOP_VERIFY;
 
-    CSidechainDB scdbPopulated;
+    SidechainDB scdbPopulated;
 
     uint256 hashWTTest = GetRandHash();
     uint256 hashWTHivemind = GetRandHash();
@@ -138,7 +138,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_FullStateScript)
                << SCOP_SC_DELIM
                << SCOP_VERIFY << SCOP_WT_DELIM << SCOP_REJECT << SCOP_WT_DELIM << SCOP_REJECT;
 
-    CSidechainDB scdbFull;
+    SidechainDB scdbFull;
 
     uint256 hashWTTest1 = GetRandHash();
     uint256 hashWTTest2 = GetRandHash();
@@ -178,7 +178,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_CountStateScript)
                           << SCOP_REJECT << SCOP_WT_DELIM << SCOP_VERIFY
                           << SCOP_SC_DELIM
                           << SCOP_REJECT << SCOP_WT_DELIM << SCOP_VERIFY << SCOP_WT_DELIM << SCOP_REJECT;
-    CSidechainDB scdbCount;
+    SidechainDB scdbCount;
 
     uint256 hashWTTest = GetRandHash();
 
@@ -203,7 +203,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_CountStateScript)
 
 BOOST_AUTO_TEST_CASE(sidechaindb_PositionStateScript)
 {
-    // Verify that state scripts created based on known CSidechainDB
+    // Verify that state scripts created based on known SidechainDB
     // state examples are formatted as expected
     const Sidechain& sidechainTest = ValidSidechains[SIDECHAIN_TEST];
 
@@ -216,7 +216,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_PositionStateScript)
                              << SCOP_SC_DELIM
                              << SCOP_REJECT << SCOP_WT_DELIM << SCOP_REJECT << SCOP_WT_DELIM << SCOP_VERIFY;
 
-    CSidechainDB scdbPosition;
+    SidechainDB scdbPosition;
 
     uint256 hashWTTest1 = GetRandHash();
     uint256 hashWTTest2 = GetRandHash();
@@ -249,7 +249,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_PositionStateScript)
 BOOST_AUTO_TEST_CASE(bmm_checkCriticalHashValid)
 {
     // Check that valid critical hash is added to ratchet
-    CSidechainDB scdb;
+    SidechainDB scdb;
 
     // Create h* bribe script
     uint256 hashCritical = GetRandHash();
@@ -281,7 +281,7 @@ BOOST_AUTO_TEST_CASE(bmm_checkCriticalHashInvalid)
 {
     // Make sure that a invalid h* with a valid block number will
     // be rejected.
-    CSidechainDB scdb;
+    SidechainDB scdb;
 
     // Create h* bribe script
     CScript scriptPubKey;
@@ -308,7 +308,7 @@ BOOST_AUTO_TEST_CASE(bmm_checkBlockNumberValid)
 {
     // Make sure that a valid h* with a valid block number
     // will be accepted.
-    CSidechainDB scdb;
+    SidechainDB scdb;
 
     // We have to add the first h* to the ratchet so that
     // there is something to compare with.
@@ -353,7 +353,7 @@ BOOST_AUTO_TEST_CASE(bmm_checkBlockNumberInvalid)
 {
     // Try to add a valid h* with an invalid block number
     // and make sure it is skipped.
-    CSidechainDB scdb;
+    SidechainDB scdb;
 
     // We have to add the first h* to the ratchet so that
     // there is something to compare with.

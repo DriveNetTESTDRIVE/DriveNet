@@ -14,12 +14,12 @@
 #include "utilstrencodings.h"
 #include "wallet/wallet.h"
 
-CSidechainDB::CSidechainDB()
+SidechainDB::SidechainDB()
 {
     SCDB.resize(ARRAYLEN(ValidSidechains));
 }
 
-void CSidechainDB::AddDeposits(const std::vector<CTransaction>& vtx)
+void SidechainDB::AddDeposits(const std::vector<CTransaction>& vtx)
 {
     std::vector<SidechainDeposit> vDeposit;
     for (const CTransaction& tx : vtx) {
@@ -65,7 +65,7 @@ void CSidechainDB::AddDeposits(const std::vector<CTransaction>& vtx)
     }
 }
 
-bool CSidechainDB::AddWTJoin(uint8_t nSidechain, const CTransaction& tx)
+bool SidechainDB::AddWTJoin(uint8_t nSidechain, const CTransaction& tx)
 {
     if (vWTJoinCache.size() >= SIDECHAIN_MAX_WT)
         return false;
@@ -82,7 +82,7 @@ bool CSidechainDB::AddWTJoin(uint8_t nSidechain, const CTransaction& tx)
     return false;
 }
 
-bool CSidechainDB::HaveDepositCached(const SidechainDeposit &deposit) const
+bool SidechainDB::HaveDepositCached(const SidechainDeposit &deposit) const
 {
     for (const SidechainDeposit& d : vDepositCache) {
         if (d == deposit)
@@ -91,7 +91,7 @@ bool CSidechainDB::HaveDepositCached(const SidechainDeposit &deposit) const
     return false;
 }
 
-bool CSidechainDB::HaveWTJoinCached(const uint256& wtxid) const
+bool SidechainDB::HaveWTJoinCached(const uint256& wtxid) const
 {
     for (const CTransaction& tx : vWTJoinCache) {
         if (tx.GetHash() == wtxid)
@@ -100,7 +100,7 @@ bool CSidechainDB::HaveWTJoinCached(const uint256& wtxid) const
     return false;
 }
 
-std::vector<SidechainDeposit> CSidechainDB::GetDeposits(uint8_t nSidechain) const
+std::vector<SidechainDeposit> SidechainDB::GetDeposits(uint8_t nSidechain) const
 {
     std::vector<SidechainDeposit> vSidechainDeposit;
     for (size_t i = 0; i < vDepositCache.size(); i++) {
@@ -110,7 +110,7 @@ std::vector<SidechainDeposit> CSidechainDB::GetDeposits(uint8_t nSidechain) cons
     return vSidechainDeposit;
 }
 
-CTransaction CSidechainDB::GetWTJoinTx(uint8_t nSidechain, int nHeight) const
+CTransaction SidechainDB::GetWTJoinTx(uint8_t nSidechain, int nHeight) const
 {
     if (!HasState())
         return CTransaction();
@@ -217,7 +217,7 @@ CTransaction CSidechainDB::GetWTJoinTx(uint8_t nSidechain, int nHeight) const
     return mtx;
 }
 
-CScript CSidechainDB::CreateStateScript(int nHeight) const
+CScript SidechainDB::CreateStateScript(int nHeight) const
 {
     if (!HasState())
         return CScript();
@@ -273,7 +273,7 @@ CScript CSidechainDB::CreateStateScript(int nHeight) const
     return script;
 }
 
-uint256 CSidechainDB::GetSCDBHash() const
+uint256 SidechainDB::GetSCDBHash() const
 {
     CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
     for (const SCDBIndex& index : SCDB) {
@@ -287,7 +287,7 @@ uint256 CSidechainDB::GetSCDBHash() const
     return ss.GetHash();
 }
 
-bool CSidechainDB::ReadStateScript(const CTransactionRef& coinbase)
+bool SidechainDB::ReadStateScript(const CTransactionRef& coinbase)
 {
     /*
      * Only one state script of the current version is valid.
@@ -336,12 +336,12 @@ bool CSidechainDB::ReadStateScript(const CTransactionRef& coinbase)
 
     // Invalid or no update script try to apply default
     if (!ApplyDefaultUpdate())
-        LogPrintf("CSidechainDB::ReadStateScript: Invalid update & failed to apply default update!\n");
+        LogPrintf("SidechainDB::ReadStateScript: Invalid update & failed to apply default update!\n");
 
     return false;
 }
 
-bool CSidechainDB::Update(uint8_t nSidechain, uint16_t nBlocks, uint16_t nScore, uint256 wtxid, bool fJustCheck)
+bool SidechainDB::Update(uint8_t nSidechain, uint16_t nBlocks, uint16_t nScore, uint256 wtxid, bool fJustCheck)
 {
     if (!SidechainNumberValid(nSidechain))
         return false;
@@ -362,7 +362,7 @@ bool CSidechainDB::Update(uint8_t nSidechain, uint16_t nBlocks, uint16_t nScore,
     return (index.InsertMember(member));
 }
 
-bool CSidechainDB::Update(int nHeight, const uint256& hashBlock, const CTransactionRef& coinbase)
+bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const CTransactionRef& coinbase)
 {
     if (!coinbase || !coinbase->IsCoinBase())
         return false;
@@ -376,7 +376,7 @@ bool CSidechainDB::Update(int nHeight, const uint256& hashBlock, const CTransact
 
     // Apply state script
     if (!ReadStateScript(coinbase))
-        LogPrintf("CSidechainDB::Update: failed to read state script\n");
+        LogPrintf("SidechainDB::Update: failed to read state script\n");
 
     // Scan for h*(s) in coinbase outputs
     for (const CTxOut& out : coinbase->vout) {
@@ -426,7 +426,7 @@ bool CSidechainDB::Update(int nHeight, const uint256& hashBlock, const CTransact
         }
 
         if (!fValid) {
-            LogPrintf("CSidechainDB::Update: h* with invalid block height ignored: %s\n", hashCritical.ToString());
+            LogPrintf("SidechainDB::Update: h* with invalid block height ignored: %s\n", hashCritical.ToString());
             continue;
         }
 
@@ -449,17 +449,17 @@ bool CSidechainDB::Update(int nHeight, const uint256& hashBlock, const CTransact
     return true;
 }
 
-uint256 CSidechainDB::GetHashBlockLastSeen()
+uint256 SidechainDB::GetHashBlockLastSeen()
 {
     return hashBlockLastSeen;
 }
 
-std::multimap<uint256, int> CSidechainDB::GetLinkingData() const
+std::multimap<uint256, int> SidechainDB::GetLinkingData() const
 {
     return mapBMMLD;
 }
 
-bool CSidechainDB::HasState() const
+bool SidechainDB::HasState() const
 {
     // Make sure that SCDB is actually initialized
     if (SCDB.size() != ARRAYLEN(ValidSidechains))
@@ -478,7 +478,7 @@ bool CSidechainDB::HasState() const
     return false;
 }
 
-std::vector<SidechainWTJoinState> CSidechainDB::GetState(uint8_t nSidechain) const
+std::vector<SidechainWTJoinState> SidechainDB::GetState(uint8_t nSidechain) const
 {
     if (!HasState() || !SidechainNumberValid(nSidechain))
         return std::vector<SidechainWTJoinState>();
@@ -491,7 +491,7 @@ std::vector<SidechainWTJoinState> CSidechainDB::GetState(uint8_t nSidechain) con
     return vState;
 }
 
-bool CSidechainDB::ApplyStateScript(const CScript& script, const std::vector<std::vector<SidechainWTJoinState>>& vState, bool fJustCheck)
+bool SidechainDB::ApplyStateScript(const CScript& script, const std::vector<std::vector<SidechainWTJoinState>>& vState, bool fJustCheck)
 {
     if (script.size() < 4)
         return false;
@@ -547,7 +547,7 @@ bool CSidechainDB::ApplyStateScript(const CScript& script, const std::vector<std
     return true;
 }
 
-bool CSidechainDB::ApplyDefaultUpdate()
+bool SidechainDB::ApplyDefaultUpdate()
 {
     if (!HasState())
         return true;
@@ -572,7 +572,7 @@ bool CSidechainDB::ApplyDefaultUpdate()
     return true;
 }
 
-bool CSidechainDB::CheckWorkScore(const uint8_t& nSidechain, const uint256& wtxid) const
+bool SidechainDB::CheckWorkScore(const uint8_t& nSidechain, const uint256& wtxid) const
 {
     if (!SidechainNumberValid(nSidechain))
         return false;
@@ -589,10 +589,10 @@ bool CSidechainDB::CheckWorkScore(const uint8_t& nSidechain, const uint256& wtxi
     return false;
 }
 
-std::string CSidechainDB::ToString() const
+std::string SidechainDB::ToString() const
 {
     std::string str;
-    str += "CSidechainDB:\n";
+    str += "SidechainDB:\n";
     for (const Sidechain& s : ValidSidechains) {
         // Print sidechain name
         str += "Sidechain: " + s.GetSidechainName() + "\n";
