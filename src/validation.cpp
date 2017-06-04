@@ -88,7 +88,7 @@ CAmount maxTxFee = DEFAULT_TRANSACTION_MAXFEE;
 CBlockPolicyEstimator feeEstimator;
 CTxMemPool mempool(&feeEstimator);
 
-CSidechainDB scdb;
+SidechainDB scdb;
 
 static void CheckBlockIndex(const Consensus::Params& consensusParams);
 

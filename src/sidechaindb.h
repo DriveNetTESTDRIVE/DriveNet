@@ -19,10 +19,10 @@ struct SidechainDeposit;
 struct SidechainWTJoinState;
 struct SCDBIndex;
 
-class CSidechainDB
+class SidechainDB
 {
 public:
-    CSidechainDB();
+    SidechainDB();
 
     /** Add deposit to cache */
     void AddDeposits(const std::vector<CTransaction>& vtx);
