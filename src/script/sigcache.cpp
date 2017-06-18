@@ -103,7 +103,6 @@ bool CachingTransactionSignatureChecker::CheckCriticalHash(const std::vector<uns
         return false;
 
     // Lookup critical hash (h*)
-    // TODO also check block number
     std::multimap<uint256, int>::const_iterator it = mapLD.find(hashCritical);
     if (it == mapLD.end())
         return false;
