@@ -1,9 +1,9 @@
-Bitcoin Core integration/staging tree
+Drivechain project mainchain branch
 =====================================
 
-[![Build Status](https://travis-ci.org/bitcoin/bitcoin.svg?branch=master)](https://travis-ci.org/bitcoin/bitcoin)
+[![Build Status](https://travis-ci.org/drivechain-project/bitcoin.svg?branch=mainchainBMM)](https://travis-ci.org/drivechain-project/bitcoin)
 
-https://bitcoincore.org
+http://drivechain.info
 
 What is Bitcoin?
 ----------------
