@@ -10,7 +10,7 @@ Sidechain:
 [![Sidechain Build Status](https://travis-ci.org/drivechain-project/bitcoin.svg?branch=sidechainBMM)](https://travis-ci.org/drivechain-project/bitcoin)
 
 Learn more about Drivechains here:
-https://drivechain.info
+http://drivechain.info
 
 Start helping here:
 https://github.com/drivechain-project/bitcoin/issues
