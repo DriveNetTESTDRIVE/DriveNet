@@ -1,14 +1,19 @@
-Mainchain:
+Drivechain Project
+------------------
 
+Build status:
+
+Mainchain:
 [![Mainchain Build Status](https://travis-ci.org/drivechain-project/bitcoin.svg?branch=mainchainBMM)](https://travis-ci.org/drivechain-project/bitcoin)
 
 Sidechain:
-
 [![Sidechain Build Status](https://travis-ci.org/drivechain-project/bitcoin.svg?branch=sidechainBMM)](https://travis-ci.org/drivechain-project/bitcoin)
 
+Learn more about Drivechains here:
 https://drivechain.info
 
-
+Start helping here:
+https://github.com/drivechain-project/bitcoin/issues
 
 What is Bitcoin?
 ----------------
