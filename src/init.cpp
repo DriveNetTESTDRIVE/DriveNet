@@ -1579,8 +1579,12 @@ bool AppInitMain(boost::thread_group& threadGroup, CScheduler& scheduler)
                 return InitError("Cannot initalize SCDB. Corrupt coinbase cache.\n");
 
             // Update SCDB
-            if (!scdb.Update(i, pindex->GetBlockHash(), pindex->coinbase))
-                return InitError("Failed to initialize SCDB. Invalid state update.\n");
+            std::string strError = "";
+            if (!scdb.Update(i, pindex->GetBlockHash(), pindex->coinbase->vout, strError)) {
+                if (strError != "")
+                    LogPrintf("SCDB update error: %s\n", strError);
+                return InitError("Failed to initialize SCDB.\n");
+            }
         }
     }
 
@@ -1710,20 +1714,30 @@ bool AppInitMain(boost::thread_group& threadGroup, CScheduler& scheduler)
         pwalletMain->postInitProcess(scheduler);
 #endif
 
-    // TODO move this & watch all of the sidechain's scripts
-    // Watch sidechain scripts
-    pwalletMain->MarkDirty();
+#ifdef ENABLE_WALLET
+    {
+        // TODO move this
+        // TODO loop through and watch all ValidSidechain addresses.
+        // Only watching test sidechain until others exist.
+        if (pwalletMain) {
+            LOCK(pwalletMain->cs_wallet);
 
-    std::vector<unsigned char> data(ParseHex(std::string(SIDECHAIN_TEST_SCRIPT_HEX)));
-    CScript script(data.begin(), data.end());
+            // Watch sidechain scripts
+            pwalletMain->MarkDirty();
 
-    if (!pwalletMain->HaveWatchOnly(script))
-        pwalletMain->AddWatchOnly(script, 0 /* nCreateTime */);
+            std::vector<unsigned char> data(ParseHex(std::string(SIDECHAIN_TEST_SCRIPT_HEX)));
+            CScript script(data.begin(), data.end());
 
-    CTxDestination destination;
-    if (ExtractDestination(script, destination)) {
-        pwalletMain->SetAddressBook(destination, "SIDECHAIN_TEST", "receive");
+            if (!pwalletMain->HaveWatchOnly(script))
+                pwalletMain->AddWatchOnly(script, 0 /* nCreateTime */);
+
+            CTxDestination destination;
+            if (ExtractDestination(script, destination)) {
+                pwalletMain->SetAddressBook(destination, "SIDECHAIN_TEST", "receive");
+            }
+        }
     }
+#endif
 
     return !fRequestShutdown;
 }

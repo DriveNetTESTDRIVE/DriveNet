@@ -4,15 +4,11 @@
 
 #include "sidechaindb.h"
 
-#include "base58.h"
-#include "chain.h"
-#include "core_io.h"
+#include "primitives/transaction.h"
 #include "script/script.h"
 #include "sidechain.h"
 #include "uint256.h"
-#include "util.h"
 #include "utilstrencodings.h"
-#include "wallet/wallet.h"
 
 SidechainDB::SidechainDB()
 {
@@ -50,7 +46,7 @@ void SidechainDB::AddDeposits(const std::vector<CTransaction>& vtx)
                 continue;
 
             SidechainDeposit deposit;
-            deposit.hex = EncodeHexTx(tx);
+            deposit.tx = tx;
             deposit.keyID = keyID;
             deposit.nSidechain = nSidechain;
 
@@ -108,113 +104,6 @@ std::vector<SidechainDeposit> SidechainDB::GetDeposits(uint8_t nSidechain) const
             vSidechainDeposit.push_back(vDepositCache[i]);
     }
     return vSidechainDeposit;
-}
-
-CTransaction SidechainDB::GetWTJoinTx(uint8_t nSidechain, int nHeight) const
-{
-    if (!HasState())
-        return CTransaction();
-    if (!SidechainNumberValid(nSidechain))
-        return CTransaction();
-
-    const Sidechain& sidechain = ValidSidechains[nSidechain];
-
-    if (nHeight % sidechain.GetTau() != 0)
-        return CTransaction();
-
-    // Select the highest scoring B-WT^ for sidechain this tau
-    uint256 hashBest = uint256();
-    uint16_t scoreBest = 0;
-    std::vector<SidechainWTJoinState> vState = GetState(nSidechain);
-    for (const SidechainWTJoinState& state : vState) {
-        if (state.nWorkScore > scoreBest || scoreBest == 0) {
-            hashBest = state.wtxid;
-            scoreBest = state.nWorkScore;
-        }
-    }
-    if (hashBest == uint256())
-        return CTransaction();
-
-    // Is the selected B-WT^ verified?
-    if (scoreBest < sidechain.nMinWorkScore)
-        return CTransaction();
-
-    // Copy outputs from B-WT^
-    CMutableTransaction mtx; // WT^
-    for (const CTransaction& tx : vWTJoinCache) {
-        if (tx.GetHash() == hashBest)
-            for (const CTxOut& out : tx.vout)
-                mtx.vout.push_back(out);
-    }
-    if (!mtx.vout.size())
-        return CTransaction();
-
-    // Calculate the amount to be withdrawn by WT^
-    CAmount amtBWT = CAmount(0);
-    for (const CTxOut& out : mtx.vout) {
-        const CScript scriptPubKey = out.scriptPubKey;
-        if (HexStr(scriptPubKey) != SIDECHAIN_TEST_SCRIPT_HEX) {
-            amtBWT += out.nValue;
-        }
-    }
-
-    // Format sidechain change return script
-    CKeyID sidechainKey;
-    sidechainKey.SetHex(SIDECHAIN_TEST_KEY);
-    CScript sidechainScript;
-    sidechainScript << OP_DUP << OP_HASH160 << ToByteVector(sidechainKey) << OP_EQUALVERIFY << OP_CHECKSIG;
-
-    // Add placeholder change return as last output
-    mtx.vout.push_back(CTxOut(0, sidechainScript));
-
-    // Get SCUTXO(s)
-    std::vector<COutput> vSidechainCoins;
-    pwalletMain->AvailableSidechainCoins(vSidechainCoins, 0);
-    if (!vSidechainCoins.size())
-        return CTransaction();
-
-    // Calculate amount returning to sidechain script
-    CAmount returnAmount = CAmount(0);
-    for (const COutput& output : vSidechainCoins) {
-        mtx.vin.push_back(CTxIn(output.tx->GetHash(), output.i));
-        returnAmount += output.tx->tx->vout[output.i].nValue;
-        mtx.vout.back().nValue += returnAmount;
-    }
-
-    // Subtract payout amount from sidechain change return
-    mtx.vout.back().nValue -= amtBWT;
-
-    if (mtx.vout.back().nValue < 0)
-        return CTransaction();
-    if (!mtx.vin.size())
-        return CTransaction();
-
-    CBitcoinSecret vchSecret;
-    bool fGood = vchSecret.SetString(SIDECHAIN_TEST_PRIV);
-    if (!fGood)
-        return CTransaction();
-
-    CKey privKey = vchSecret.GetKey();
-    if (!privKey.IsValid())
-        return CTransaction();
-
-    // Set up keystore with sidechain's private key
-    CBasicKeyStore tempKeystore;
-    tempKeystore.AddKey(privKey);
-    const CKeyStore& keystoreConst = tempKeystore;
-
-    // Sign WT^ SCUTXO input
-    const CTransaction& txToSign = mtx;
-    TransactionSignatureCreator creator(&keystoreConst, &txToSign, 0, returnAmount - amtBWT);
-    SignatureData sigdata;
-    bool sigCreated = ProduceSignature(creator, sidechainScript, sigdata);
-    if (!sigCreated)
-        return CTransaction();
-
-    mtx.vin[0].scriptSig = sigdata.scriptSig;
-
-    // Return completed WT^
-    return mtx;
 }
 
 CScript SidechainDB::CreateStateScript(int nHeight) const
@@ -287,60 +176,6 @@ uint256 SidechainDB::GetSCDBHash() const
     return ss.GetHash();
 }
 
-bool SidechainDB::ReadStateScript(const CTransactionRef& coinbase)
-{
-    /*
-     * Only one state script of the current version is valid.
-     * State scripts with invalid version numbers will be ignored.
-     * If there are multiple state scripts with valid version numbers
-     * the entire coinbase will be ignored by SCDB and a default
-     * ignore vote will be cast. If there isn't a state update in
-     * the transaction outputs, a default ignore vote will be cast.
-     */
-    if (!coinbase || coinbase->IsNull())
-        return false;
-
-    if (!HasState())
-        return false;
-
-    // Collect potentially valid state scripts
-    std::vector<CScript> vStateScript;
-    for (size_t i = 0; i < coinbase->vout.size(); i++) {
-        const CScript& scriptPubKey = coinbase->vout[i].scriptPubKey;
-        if (scriptPubKey.size() < 3)
-            continue;
-        // State script begins with OP_RETURN
-        if (scriptPubKey[0] != OP_RETURN)
-            continue;
-        // Check state script version
-        if (scriptPubKey[1] != SCOP_VERSION || scriptPubKey[2] != SCOP_VERSION_DELIM)
-            continue;
-        vStateScript.push_back(scriptPubKey);
-    }
-
-    // First case: Invalid update. Ignore state script, cast all ignore votes
-    if (vStateScript.size() != 1)
-        return ApplyDefaultUpdate();
-
-    // Second case: potentially valid update script, attempt to update SCDB
-    // Collect and combine the status of all sidechain WT^(s)
-    std::vector<std::vector<SidechainWTJoinState>> vStateAll;
-    for (const Sidechain& s : ValidSidechains) {
-        const std::vector<SidechainWTJoinState> vState = GetState(s.nSidechain);
-        vStateAll.push_back(vState);
-    }
-
-    const CScript& state = vStateScript.front();
-    if (ApplyStateScript(state, vStateAll, true))
-        return ApplyStateScript(state, vStateAll);
-
-    // Invalid or no update script try to apply default
-    if (!ApplyDefaultUpdate())
-        LogPrintf("SidechainDB::ReadStateScript: Invalid update & failed to apply default update!\n");
-
-    return false;
-}
-
 bool SidechainDB::Update(uint8_t nSidechain, uint16_t nBlocks, uint16_t nScore, uint256 wtxid, bool fJustCheck)
 {
     if (!SidechainNumberValid(nSidechain))
@@ -362,24 +197,53 @@ bool SidechainDB::Update(uint8_t nSidechain, uint16_t nBlocks, uint16_t nScore, 
     return (index.InsertMember(member));
 }
 
-bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const CTransactionRef& coinbase)
+bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const std::vector<CTxOut>& vout, std::string& strError)
 {
-    if (!coinbase || !coinbase->IsCoinBase())
-        return false;
     if (hashBlock.IsNull())
         return false;
 
     // If a sidechain's tau period ended, reset WT^ verification status
-    for (const Sidechain& s : ValidSidechains)
+    for (const Sidechain& s : ValidSidechains) {
         if (nHeight > 0 && (nHeight % s.GetTau()) == 0)
             SCDB[s.nSidechain].ClearMembers();
+    }
 
-    // Apply state script
-    if (!ReadStateScript(coinbase))
-        LogPrintf("SidechainDB::Update: failed to read state script\n");
+    /*
+     * Only one state script of the current version is valid.
+     * State scripts with invalid version numbers will be ignored.
+     * If there are multiple state scripts with valid version numbers
+     * the entire coinbase will be ignored by SCDB and a default
+     * ignore vote will be cast. If there isn't a state update in
+     * the transaction outputs, a default ignore vote will be cast.
+     */
+
+    // Scan for state script
+    std::vector<CScript> vStateScript;
+    for (const CTxOut& out : vout) {
+        const CScript& scriptPubKey = out.scriptPubKey;
+
+        // Minimum size
+        if (scriptPubKey.size() < 3)
+            continue;
+        // State script begins with OP_RETURN
+        if (!scriptPubKey.IsUnspendable())
+            continue;
+        // Check state script version
+        if (scriptPubKey[1] != SCOP_VERSION || scriptPubKey[2] != SCOP_VERSION_DELIM)
+            continue;
+
+        vStateScript.push_back(scriptPubKey);
+    }
+
+    if (vStateScript.size() == 1 && ApplyStateScript(vStateScript[0], true)) {
+        ApplyStateScript(vStateScript[0]);
+    } else {
+        strError = "SidechainDB::Update: failed to apply state script\n";
+        ApplyDefaultUpdate();
+    }
 
     // Scan for h*(s) in coinbase outputs
-    for (const CTxOut& out : coinbase->vout) {
+    for (const CTxOut& out : vout) {
         const CScript& scriptPubKey = out.scriptPubKey;
 
         // Must at least contain the h*
@@ -418,15 +282,14 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const CTransacti
 
             int nHeightMostRecent = it->second;
 
-            if (std::abs(nHeightMostRecent - nBlock.getint()) == 1)
+            if ((nBlock.getint() - nHeightMostRecent) <= 1)
                 fValid = true;
         } else {
             // No previous h* to compare with
             fValid = true;
         }
-
         if (!fValid) {
-            LogPrintf("SidechainDB::Update: h* with invalid block height ignored: %s\n", hashCritical.ToString());
+            strError = "SidechainDB::Update: h* invalid";
             continue;
         }
 
@@ -491,8 +354,18 @@ std::vector<SidechainWTJoinState> SidechainDB::GetState(uint8_t nSidechain) cons
     return vState;
 }
 
-bool SidechainDB::ApplyStateScript(const CScript& script, const std::vector<std::vector<SidechainWTJoinState>>& vState, bool fJustCheck)
+bool SidechainDB::ApplyStateScript(const CScript& script, bool fJustCheck)
 {
+    if (!HasState())
+        return false;
+
+    // Collect the current SCDB status
+    std::vector<std::vector<SidechainWTJoinState>> vState;
+    for (const Sidechain& s : ValidSidechains) {
+        const std::vector<SidechainWTJoinState> vSidechainState = GetState(s.nSidechain);
+        vState.push_back(vSidechainState);
+    }
+
     if (script.size() < 4)
         return false;
 
@@ -605,4 +478,9 @@ std::string SidechainDB::ToString() const
         str += "\n";
     }
     return str;
+}
+
+std::vector<CTransaction> SidechainDB::GetWTJoinCache() const
+{
+    return vWTJoinCache;
 }
