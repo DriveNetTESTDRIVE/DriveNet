@@ -679,19 +679,15 @@ UniValue listsidechaindeposits(const JSONRPCRequest& request)
     if (!SidechainNumberValid(nSidechain))
         throw std::runtime_error("Invalid sidechain number");
 
+#ifdef ENABLE_WALLET
     // Get latest deposit from sidechain DB deposit cache
     std::vector<SidechainDeposit> vDeposit = scdb.GetDeposits(nSidechain);
     if (!vDeposit.size())
         throw std::runtime_error("No deposits in cache");
     const SidechainDeposit& deposit = vDeposit.back();
 
-    // Decode raw deposit hex
-    CMutableTransaction mtx;
-    if (!DecodeHexTx(mtx, deposit.hex))
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "Cannot decode deposit");
-
     // Add deposit txid to set
-    uint256 txid = mtx.GetHash();
+    uint256 txid = deposit.tx.GetHash();
     std::set<uint256> setTxids;
     setTxids.insert(txid);
 
@@ -730,7 +726,7 @@ UniValue listsidechaindeposits(const JSONRPCRequest& request)
     CAmount amtUserInput = CAmount(0);
     CAmount amtReturning = CAmount(0);
     CAmount amtWithdrawn = CAmount(0);
-    GetSidechainValues(mtx, amtSidechainUTXO, amtUserInput, amtReturning, amtWithdrawn);
+    GetSidechainValues(deposit.tx, amtSidechainUTXO, amtUserInput, amtReturning, amtWithdrawn);
 
     std::vector<COutput> vSidechainCoins;
     pwalletMain->AvailableSidechainCoins(vSidechainCoins, nSidechain);
@@ -742,15 +738,20 @@ UniValue listsidechaindeposits(const JSONRPCRequest& request)
     // TODO use BMM to calculate
     CAmount amtUserPayout = amtReturning;
 
+#endif
+
     UniValue ret(UniValue::VOBJ);
+
+#ifdef ENABLE_WALLET
     UniValue obj(UniValue::VOBJ);
     obj.push_back(Pair("nsidechain", deposit.nSidechain));
     obj.push_back(Pair("keyID", deposit.keyID.ToString()));
     obj.push_back(Pair("amountUserPayout", ValueFromAmount(amtUserPayout)));
-    obj.push_back(Pair("txHex", deposit.hex));
+    obj.push_back(Pair("txHex", EncodeHexTx(deposit.tx)));
     obj.push_back(Pair("proofHex", strProofHex));
 
     ret.push_back(Pair("deposit", obj));
+#endif
 
     return ret;
 }
@@ -837,13 +838,10 @@ UniValue createbribe(const JSONRPCRequest& request)
             "2. \"height\"         (numeric, required) The sidechain block height the h* is a candidate for.\n"
             "3. \"criticalhash\"   (string, required) h* you want added to a coinbase\n"
             "4. \"address\"        (string, required) bitcoin address to receive time locked refund\n"
-
             "\nExamples:\n"
             + HelpExampleCli("createbribe", "\"amount\", \"height\", \"criticalhash\", \"address\"")
             + HelpExampleRpc("createbribe", "\"amount\", \"height\", \"criticalhash\", \"address\"")
             );
-
-    LOCK2(cs_main, pwalletMain->cs_wallet);
 
     // Amount
     CAmount nAmount = AmountFromValue(request.params[0]);
@@ -870,12 +868,14 @@ UniValue createbribe(const JSONRPCRequest& request)
                  << OP_DUP << OP_HASH160 << ToByteVector(keyID) << OP_EQUALVERIFY << OP_CHECKSIG
                  << OP_ENDIF;
 
-    // Add bribe script to tx recipients
+#ifdef ENABLE_WALLET
+    // Create and send the transaction
     std::vector<CRecipient> vecSend;
     CRecipient recipient = {scriptPubKey, nAmount, false};
     vecSend.push_back(recipient);
 
-    // Create and send the transaction
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+
     CWalletTx wtx;
     CReserveKey reservekey(pwalletMain);
     CAmount nFeeRequired;
@@ -891,10 +891,14 @@ UniValue createbribe(const JSONRPCRequest& request)
         strError = strprintf("Error: The transaction was rejected! Reason given: %s", state.GetRejectReason());
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
+#endif
 
     UniValue ret(UniValue::VOBJ);
+#ifdef ENABLE_WALLET
     ret.push_back(Pair("txid", wtx.GetHash().GetHex()));
     ret.push_back(Pair("nChangePos", nChangePosRet));
+#endif
+
     return ret;
 }
 
@@ -920,8 +924,6 @@ UniValue refundbribe(const JSONRPCRequest& request)
             + HelpExampleRpc("refundbribe", "\"amount\", \"txid\", \"pos\", \"address\"")
             );
 
-    LOCK2(cs_main, pwalletMain->cs_wallet);
-
     // Amount
     CAmount nAmount = AmountFromValue(request.params[0]);
     if (nAmount <= 0)
@@ -936,7 +938,7 @@ UniValue refundbribe(const JSONRPCRequest& request)
     CMutableTransaction mtx;
     mtx.vin.push_back(CTxIn(txid, nPos));
 
-    // Produce scriptSig and output
+    // Create scriptSig and bribe redeem output
     CScript scriptSig;
     if (request.params.size() == 4) {
         // Miner redeems bribe that they forgot to pay themselves
@@ -955,6 +957,9 @@ UniValue refundbribe(const JSONRPCRequest& request)
     }
     mtx.vin[0].scriptSig = scriptSig;
 
+#ifdef ENABLE_WALLET
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+
     // Send the transaction
     CWalletTx wtx;
     wtx.fTimeReceivedIsTxTime = true;
@@ -969,9 +974,10 @@ UniValue refundbribe(const JSONRPCRequest& request)
         std::string strError = strprintf("Error: The transaction was rejected! Reason given: %s", state.GetRejectReason());
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
+#endif
 
     UniValue ret(UniValue::VOBJ);
-    ret.push_back(Pair("txid", wtx.GetHash().GetHex()));
+    ret.push_back(Pair("txid", mtx.GetHash().GetHex()));
     return ret;
 }
 
@@ -989,21 +995,6 @@ UniValue echo(const JSONRPCRequest& request)
 }
 
 static const CRPCCommand commands[] =
-<<<<<<< e80cc80a5c81bf0b65d57cccf22c7ca3d6361e46
-{ //  category              name                      actor (function)         argNames
-  //  --------------------- ------------------------  -----------------------  ----------
-    { "control",            "getmemoryinfo",          &getmemoryinfo,          {"mode"} },
-    { "control",            "logging",                &logging,                {"include", "exclude"}},
-    { "util",               "validateaddress",        &validateaddress,        {"address"} }, /* uses wallet if enabled */
-    { "util",               "createmultisig",         &createmultisig,         {"nrequired","keys"} },
-    { "util",               "verifymessage",          &verifymessage,          {"address","signature","message"} },
-    { "util",               "signmessagewithprivkey", &signmessagewithprivkey, {"privkey","message"} },
-
-    /* Not shown in help */
-    { "hidden",             "setmocktime",            &setmocktime,            {"timestamp"}},
-    { "hidden",             "echo",                   &echo,                   {"arg0","arg1","arg2","arg3","arg4","arg5","arg6","arg7","arg8","arg9"}},
-    { "hidden",             "echojson",               &echo,                   {"arg0","arg1","arg2","arg3","arg4","arg5","arg6","arg7","arg8","arg9"}},
-=======
 { //  category              name                        actor (function)            okSafeMode
   //  --------------------- ------------------------    -----------------------     ----------
     { "control",            "getinfo",                  &getinfo,                   true,  {} }, /* uses wallet if enabled */
@@ -1025,7 +1016,6 @@ static const CRPCCommand commands[] =
     { "util",               "getbmmproof",              &getbmmproof,               false, {"blockhash", "criticalhash"}},
     { "wallet",             "createbribe",              &createbribe,               false, {"amount", "crticalhash", "address"}},
     { "wallet",             "refundbribe",              &refundbribe,               false, {"amount", "txid", "pos", "address"}},
->>>>>>> Add SCDB and BMM RPC calls
 };
 
 void RegisterMiscRPCCommands(CRPCTable &t)

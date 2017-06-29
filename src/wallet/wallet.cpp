@@ -2284,7 +2284,6 @@ void CWallet::AvailableCoins(std::vector<COutput> &vCoins, bool fOnlySafe, const
     }
 }
 
-<<<<<<< 65d3b4bc0503534719fc19347e92c720a006c116
 std::map<CTxDestination, std::vector<COutput>> CWallet::ListCoins() const
 {
     // TODO: Add AssertLockHeld(cs_wallet) here.
@@ -2346,7 +2345,6 @@ const CTxOut& CWallet::FindNonChangeParentOutput(const CTransaction& tx, int out
         n = prevout.n;
     }
     return ptx->vout[n];
-=======
 void CWallet::AvailableSidechainCoins(std::vector<COutput>& vSidechainCoins, const uint8_t& nSidechain) const
 {
     std::vector<COutput> vCoins;
@@ -2360,7 +2358,6 @@ void CWallet::AvailableSidechainCoins(std::vector<COutput>& vSidechainCoins, con
             vSidechainCoins.push_back(output);
         }
     }
->>>>>>> Add core components of Drivechains and BMM
 }
 
 static void ApproximateBestSubset(const std::vector<CInputCoin>& vValue, const CAmount& nTotalLower, const CAmount& nTargetValue,

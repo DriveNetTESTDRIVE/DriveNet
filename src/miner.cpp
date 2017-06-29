@@ -3,33 +3,10 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-<<<<<<< 65d3b4bc0503534719fc19347e92c720a006c116
-#include <miner.h>
-
-#include <amount.h>
-#include <chain.h>
-#include <chainparams.h>
-#include <coins.h>
-#include <consensus/consensus.h>
-#include <consensus/tx_verify.h>
-#include <consensus/merkle.h>
-#include <consensus/validation.h>
-#include <hash.h>
-#include <validation.h>
-#include <net.h>
-#include <policy/feerate.h>
-#include <policy/policy.h>
-#include <pow.h>
-#include <primitives/transaction.h>
-#include <script/standard.h>
-#include <timedata.h>
-#include <util.h>
-#include <utilmoneystr.h>
-#include <validationinterface.h>
-=======
 #include "miner.h"
 
 #include "amount.h"
+#include "base58.h"
 #include "chain.h"
 #include "chainparams.h"
 #include "coins.h"
@@ -51,8 +28,12 @@
 #include "txmempool.h"
 #include "util.h"
 #include "utilmoneystr.h"
+#include "utilstrencodings.h"
 #include "validationinterface.h"
->>>>>>> Add core components of Drivechains and BMM
+
+#ifdef ENABLE_WALLET
+#include "wallet/wallet.h"
+#endif
 
 #include <algorithm>
 #include <queue>
@@ -320,9 +301,115 @@ int BlockAssembler::UpdatePackagesForAdded(const CTxMemPool::setEntries& already
     return nDescendantsUpdated;
 }
 
-CTransaction BlockAssembler::CreateSidechainWTJoinTx(const uint8_t& nSidechain)
+CTransaction BlockAssembler::CreateSidechainWTJoinTx(uint8_t nSidechain)
 {
-    return scdb.GetWTJoinTx(nSidechain, nHeight);
+    // The WT^ that will be created
+    CMutableTransaction mtx;
+
+#ifdef ENABLE_WALLET
+    if (!scdb.HasState())
+        return mtx;
+    if (!SidechainNumberValid(nSidechain))
+        return mtx;
+
+    const Sidechain& sidechain = ValidSidechains[nSidechain];
+
+    if (nHeight % sidechain.GetTau() != 0)
+        return mtx;
+
+    // Select the highest scoring B-WT^ for sidechain this tau
+    uint256 hashBest = uint256();
+    uint16_t scoreBest = 0;
+    std::vector<SidechainWTJoinState> vState = scdb.GetState(nSidechain);
+    for (const SidechainWTJoinState& state : vState) {
+        if (state.nWorkScore > scoreBest || scoreBest == 0) {
+            hashBest = state.wtxid;
+            scoreBest = state.nWorkScore;
+        }
+    }
+    if (hashBest == uint256())
+        return mtx;
+
+    // Is the selected B-WT^ verified?
+    if (scoreBest < sidechain.nMinWorkScore)
+        return mtx;
+
+    // Copy outputs from B-WT^
+    std::vector<CTransaction> vWTJoin = scdb.GetWTJoinCache();
+    for (const CTransaction& tx : vWTJoin) {
+        if (tx.GetHash() == hashBest)
+            for (const CTxOut& out : tx.vout)
+                mtx.vout.push_back(out);
+    }
+    if (!mtx.vout.size())
+        return mtx;
+
+    // Calculate the amount to be withdrawn by WT^
+    CAmount amtBWT = CAmount(0);
+    for (const CTxOut& out : mtx.vout) {
+        const CScript scriptPubKey = out.scriptPubKey;
+        if (HexStr(scriptPubKey) != SIDECHAIN_TEST_SCRIPT_HEX) {
+            amtBWT += out.nValue;
+        }
+    }
+
+    // Format sidechain change return script
+    CKeyID sidechainKey;
+    sidechainKey.SetHex(SIDECHAIN_TEST_KEY);
+    CScript sidechainScript;
+    sidechainScript << OP_DUP << OP_HASH160 << ToByteVector(sidechainKey) << OP_EQUALVERIFY << OP_CHECKSIG;
+
+    // Add placeholder change return as last output
+    mtx.vout.push_back(CTxOut(0, sidechainScript));
+
+    // Get SCUTXO(s)
+    std::vector<COutput> vSidechainCoins;
+    pwalletMain->AvailableSidechainCoins(vSidechainCoins, 0);
+    if (!vSidechainCoins.size())
+        return mtx;
+
+    // Calculate amount returning to sidechain script
+    CAmount returnAmount = CAmount(0);
+    for (const COutput& output : vSidechainCoins) {
+        mtx.vin.push_back(CTxIn(output.tx->GetHash(), output.i));
+        returnAmount += output.tx->tx->vout[output.i].nValue;
+        mtx.vout.back().nValue += returnAmount;
+    }
+
+    // Subtract payout amount from sidechain change return
+    mtx.vout.back().nValue -= amtBWT;
+
+    if (mtx.vout.back().nValue < 0)
+        return mtx;
+    if (!mtx.vin.size())
+        return mtx;
+
+    CBitcoinSecret vchSecret;
+    bool fGood = vchSecret.SetString(SIDECHAIN_TEST_PRIV);
+    if (!fGood)
+        return mtx;
+
+    CKey privKey = vchSecret.GetKey();
+    if (!privKey.IsValid())
+        return mtx;
+
+    // Set up keystore with sidechain's private key
+    CBasicKeyStore tempKeystore;
+    tempKeystore.AddKey(privKey);
+    const CKeyStore& keystoreConst = tempKeystore;
+
+    // Sign WT^ SCUTXO input
+    const CTransaction& txToSign = mtx;
+    TransactionSignatureCreator creator(&keystoreConst, &txToSign, 0, returnAmount - amtBWT);
+    SignatureData sigdata;
+    bool sigCreated = ProduceSignature(creator, sidechainScript, sigdata);
+    if (!sigCreated)
+        return mtx;
+
+    mtx.vin[0].scriptSig = sigdata.scriptSig;
+#endif
+
+    return mtx;
 }
 
 CTransaction BlockAssembler::CreateSidechainStateTx()

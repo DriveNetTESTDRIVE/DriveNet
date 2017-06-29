@@ -5,13 +5,15 @@
 #ifndef BITCOIN_SIDECHAINDB_H
 #define BITCOIN_SIDECHAINDB_H
 
-#include "primitives/transaction.h"
-
 #include <map>
 #include <queue>
 #include <vector>
 
+#include "uint256.h"
+
 class CScript;
+class CTransaction;
+class CTxOut;
 class uint256;
 
 struct Sidechain;
@@ -24,7 +26,7 @@ class SidechainDB
 public:
     SidechainDB();
 
-    /** Add deposit to cache */
+    /** Add deposit(s) to cache */
     void AddDeposits(const std::vector<CTransaction>& vtx);
 
     /** Add a new WT^ to the database */
@@ -42,9 +44,6 @@ public:
     /** Return vector of deposits this tau for nSidechain. */
     std::vector<SidechainDeposit> GetDeposits(uint8_t nSidechain) const;
 
-    /** Return B-WT^ for sidechain if one has been verified */
-    CTransaction GetWTJoinTx(uint8_t nSidechain, int nHeight) const;
-
     /** Create a script with OP_RETURN data representing the DB state */
     CScript CreateStateScript(int nHeight) const;
 
@@ -59,7 +58,7 @@ public:
      * updates the SCDB state during normal operation. The update
      * overload exists to facilitate testing.
      */
-    bool Update(int nHeight, const uint256& hashBlock, const CTransactionRef& coinbase);
+    bool Update(int nHeight, const uint256& hashBlock, const std::vector<CTxOut>& vout, std::string& strError);
 
     /** Update the DB state (public for unit tests) */
     bool Update(uint8_t nSidechain, uint16_t nBlocks, uint16_t nScore, uint256 wtxid, bool fJustCheck = false);
@@ -75,6 +74,12 @@ public:
 
     /** Print SCDB WT^ verification status */
     std::string ToString() const;
+
+    /** Is there anything being tracked by the SCDB? */
+    bool HasState() const;
+
+    /** Return the cached WT^ transaction */
+    std::vector<CTransaction> GetWTJoinCache() const;
 
 private:
     /** Sidechain "database" tracks verification status of WT^(s) */
@@ -93,14 +98,8 @@ private:
     /** The most recent block that SCDB has processed */
     uint256 hashBlockLastSeen;
 
-    /** Is there anything being tracked by the SCDB? */
-    bool HasState() const;
-
-    /** Try to read state from a coinbase and apply it if valid */
-    bool ReadStateScript(const CTransactionRef &coinbase);
-
-    /** Apply the results of ReadStateScript() to SCDB */
-    bool ApplyStateScript(const CScript& state, const std::vector<std::vector<SidechainWTJoinState>>& vState, bool fJustCheck = false);
+    /** Apply update to SCDB */
+    bool ApplyStateScript(const CScript& state, bool fJustCheck = false);
 
     /**
      * Submit default vote for all sidechain WT^(s).
