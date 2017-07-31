@@ -5,6 +5,8 @@ Drivechain project mainchain branch
 
 http://drivechain.info
 
+For an example sidechain implementation, see: https://github.com/drivechain-project/bitcoin/tree/sidechainBMM
+
 What is Bitcoin?
 ----------------
 
