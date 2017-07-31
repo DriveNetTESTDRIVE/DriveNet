@@ -14,6 +14,7 @@ http://drivechain.info
 
 Start helping here:
 https://github.com/drivechain-project/bitcoin/issues
+For an example sidechain implementation, see: https://github.com/drivechain-project/bitcoin/tree/sidechainBMM
 
 What is Bitcoin?
 ----------------
