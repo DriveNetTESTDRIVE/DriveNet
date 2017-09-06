@@ -286,9 +286,9 @@ bool CScript::IsSCDBHashMerkleRootCommit() const
             (*this)[2] == 0x50 ||
             (*this)[3] == 0x50 ||
             (*this)[4] == 0x53)
-        return false;
+        return true;
 
-    return true;
+    return false;
 }
 
 bool CScript::IsWTPrimeHashCommit() const
@@ -304,9 +304,9 @@ bool CScript::IsWTPrimeHashCommit() const
             (*this)[2] == 0x50 ||
             (*this)[3] == 0x50 ||
             (*this)[4] == 0x43)
-        return false;
+        return true;
 
-    return true;
+    return false;
 }
 
 bool CScript::IsPushOnly(const_iterator pc) const
