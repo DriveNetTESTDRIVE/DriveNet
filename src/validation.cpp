@@ -2897,7 +2897,7 @@ CScript GenerateSCDBCoinbaseCommitment()
     return script;
 }
 
-CScript GeneratBMMCriticalHashCommitment()
+CScript GenerateBMMCriticalHashCommitment()
 {
     // TODO
     // check consensusParams.vDeployments[Consensus::DEPLOYMENT_DRIVECHAINS]
