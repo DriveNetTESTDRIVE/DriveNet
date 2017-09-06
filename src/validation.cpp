@@ -1409,7 +1409,7 @@ bool CScriptCheck::operator()() {
 
 
     std::multimap<uint256, int> mapBMMLDCopy;
-    if (scriptPubKey.IsBribe())
+    if (scriptPubKey.IsBribeHashCommit())
         mapBMMLDCopy = scdb.GetLinkingData();
 
     return VerifyScript(scriptSig, scriptPubKey, witness, nFlags, CachingTransactionSignatureChecker(ptxTo, nIn, amount, cacheStore, *txdata, mapBMMLDCopy), &error);
@@ -3233,6 +3233,50 @@ std::vector<unsigned char> GenerateCoinbaseCommitment(CBlock& block, const CBloc
  *  Note that -reindex-chainstate skips the validation that happens here!
  */
 static bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& state, const CChainParams& params, const CBlockIndex* pindexPrev, int64_t nAdjustedTime)
+CScript GenerateSCDBCoinbaseCommitment()
+{
+    // TODO
+    // check consensusParams.vDeployments[Consensus::DEPLOYMENT_DRIVECHAINS]
+    CScript script;
+
+    // Add script header
+    script << OP_RETURN;
+    script.push_back(0x43);
+    script.push_back(0x50);
+    script.push_back(0x50);
+    script.push_back(0x53);
+
+    // Add SCDB hashMerkleRoot
+    uint256 hashMerkleRoot; // TODO = GetSCDBHashMerkleRoot
+    script << ToByteVector(hashMerkleRoot);
+
+    return script;
+}
+
+CScript GeneratBMMCriticalHashCommitment()
+{
+    // TODO
+    // check consensusParams.vDeployments[Consensus::DEPLOYMENT_DRIVECHAINS]
+    CScript script;
+
+    // Add script header
+    script << OP_RETURN;
+    script.push_back(0x53);
+    script.push_back(0x50);
+    script.push_back(0x50);
+    script.push_back(0x43);
+
+    CScriptNum bn(0); // TODO
+    script << bn;
+
+    // Add h*
+    uint256 hashCritical; // TODO = h* the miner wants to commit
+    script << ToByteVector(hashCritical);
+
+    return script;
+}
+
+bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& state, const Consensus::Params& consensusParams, const CBlockIndex* pindexPrev, int64_t nAdjustedTime)
 {
     assert(pindexPrev != nullptr);
     const int nHeight = pindexPrev->nHeight + 1;
