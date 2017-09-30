@@ -447,7 +447,11 @@ CTransaction BlockAssembler::CreateSidechainWTJoinTx(uint8_t nSidechain)
 
 CTxOut BlockAssembler::CreateSCDBHashMerkleRootCommit()
 {
-    CScript script = GenerateSCDBCoinbaseCommitment();
+    // TODO this call will be replaced when the MT based update PR Is merged.
+    // For now just getting the old style SCDB hash and putting it into the
+    // commitment.
+    const uint256& hashMerkleRoot = scdb.GetSCDBHash();
+    CScript script = GenerateSCDBCoinbaseCommitment(hashMerkleRoot);
     return CTxOut(CENT, script);
 }
 

@@ -282,13 +282,13 @@ bool CScript::IsSCDBHashMerkleRootCommit() const
 
     // Check script header
     if ((*this)[0] != OP_RETURN ||
-            (*this)[1] == 0x43 ||
-            (*this)[2] == 0x50 ||
-            (*this)[3] == 0x50 ||
-            (*this)[4] == 0x53)
-        return true;
+            (*this)[1] != 0x43 ||
+            (*this)[2] != 0x50 ||
+            (*this)[3] != 0x50 ||
+            (*this)[4] != 0x53)
+        return false;
 
-    return false;
+    return true;
 }
 
 bool CScript::IsWTPrimeHashCommit() const
@@ -300,13 +300,13 @@ bool CScript::IsWTPrimeHashCommit() const
 
     // Check script header
     if ((*this)[0] != OP_RETURN ||
-            (*this)[1] == 0x53 ||
-            (*this)[2] == 0x50 ||
-            (*this)[3] == 0x50 ||
-            (*this)[4] == 0x43)
-        return true;
+            (*this)[1] != 0x53 ||
+            (*this)[2] != 0x50 ||
+            (*this)[3] != 0x50 ||
+            (*this)[4] != 0x43)
+        return false;
 
-    return false;
+    return true;
 }
 
 bool CScript::IsPushOnly(const_iterator pc) const

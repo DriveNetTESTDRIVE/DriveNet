@@ -2877,7 +2877,7 @@ std::vector<unsigned char> GenerateCoinbaseCommitment(CBlock& block, const CBloc
     return commitment;
 }
 
-CScript GenerateSCDBCoinbaseCommitment()
+CScript GenerateSCDBCoinbaseCommitment(const uint256& hashMerkleRoot)
 {
     // TODO
     // check consensusParams.vDeployments[Consensus::DEPLOYMENT_DRIVECHAINS]
@@ -2891,13 +2891,12 @@ CScript GenerateSCDBCoinbaseCommitment()
     script.push_back(0x53);
 
     // Add SCDB hashMerkleRoot
-    uint256 hashMerkleRoot; // TODO = GetSCDBHashMerkleRoot
     script << ToByteVector(hashMerkleRoot);
 
     return script;
 }
 
-CScript GenerateBMMCriticalHashCommitment()
+CScript GenerateBMMCriticalHashCommitment(int nHeight, const uint256& hashCritical)
 {
     // TODO
     // check consensusParams.vDeployments[Consensus::DEPLOYMENT_DRIVECHAINS]
@@ -2910,11 +2909,10 @@ CScript GenerateBMMCriticalHashCommitment()
     script.push_back(0x50);
     script.push_back(0x43);
 
-    CScriptNum bn(0); // TODO
-    script << bn;
+    // Add block number
+    script << CScriptNum(nHeight);
 
     // Add h*
-    uint256 hashCritical; // TODO = h* the miner wants to commit
     script << ToByteVector(hashCritical);
 
     return script;
