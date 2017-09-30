@@ -427,10 +427,10 @@ void UpdateUncommittedBlockStructures(CBlock& block, const CBlockIndex* pindexPr
 std::vector<unsigned char> GenerateCoinbaseCommitment(CBlock& block, const CBlockIndex* pindexPrev, const Consensus::Params& consensusParams);
 
 /** Produce the SCDB hashMerkleRoot coinbase commitment for a block */
-CScript GenerateSCDBCoinbaseCommitment();
+CScript GenerateSCDBCoinbaseCommitment(const uint256& hashMerkleRoot);
 
 /** Produce a BMM h* coinbase commitment for a block */
-CScript GeneratBMMCriticalHashCommitment();
+CScript GeneratBMMCriticalHashCommitment(int nHeight, const uint256& hashCritical);
 
 /** RAII wrapper for VerifyDB: Verify consistency of the block and coin databases */
 class CVerifyDB {
