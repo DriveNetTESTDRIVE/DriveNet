@@ -251,7 +251,7 @@ bool CScript::IsWitnessProgram(int& version, std::vector<unsigned char>& program
     return false;
 }
 
-bool CScript::IsBribe() const
+bool CScript::IsBribeHashCommit() const
 {
     // TODO
     // Size must be at least:
@@ -271,6 +271,42 @@ bool CScript::IsBribe() const
     // is large enough to contain an h* and contains an OP_BRIBE op.
 
     return (this->Find(OP_BRIBE));
+}
+
+bool CScript::IsSCDBHashMerkleRootCommit() const
+{
+    // Check script size
+    size_t size = this->size();
+    if (size != 38) // sha256 hash + opcodes
+        return false;
+
+    // Check script header
+    if ((*this)[0] != OP_RETURN ||
+            (*this)[1] != 0x43 ||
+            (*this)[2] != 0x50 ||
+            (*this)[3] != 0x50 ||
+            (*this)[4] != 0x53)
+        return false;
+
+    return true;
+}
+
+bool CScript::IsWTPrimeHashCommit() const
+{
+    // Check script size
+    size_t size = this->size();
+    if (size < 39 || size > 41) // sha256 hash + nSidechain + opcodes
+        return false;
+
+    // Check script header
+    if ((*this)[0] != OP_RETURN ||
+            (*this)[1] != 0x53 ||
+            (*this)[2] != 0x50 ||
+            (*this)[3] != 0x50 ||
+            (*this)[4] != 0x43)
+        return false;
+
+    return true;
 }
 
 bool CScript::IsPushOnly(const_iterator pc) const

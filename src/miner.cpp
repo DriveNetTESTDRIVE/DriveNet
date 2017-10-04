@@ -203,11 +203,11 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
             pblock->vtx.push_back(MakeTransactionRef(std::move(wtx)));
     }
 
-    // Add SidechainDB state
-    CTransaction stateTx = CreateSidechainStateTx();
-    for (const CTxOut& out : stateTx.vout) {
-        coinbaseTx.vout.push_back(out);
-        nSideFees += out.nValue;
+    if (scdb.HasState()) {
+        // Add SidechainDB hashMerkleRoot coinbase commitment
+        CTxOut scdbCommit = CreateSCDBHashMerkleRootCommit();
+        nSideFees += scdbCommit.nValue;
+        coinbaseTx.vout.push_back(scdbCommit);
     }
 
     coinbaseTx.vout[0].nValue = nFees + GetBlockSubsidy(nHeight, chainparams.GetConsensus());
@@ -445,15 +445,14 @@ CTransaction BlockAssembler::CreateSidechainWTJoinTx(uint8_t nSidechain)
     return mtx;
 }
 
-CTransaction BlockAssembler::CreateSidechainStateTx()
+CTxOut BlockAssembler::CreateSCDBHashMerkleRootCommit()
 {
-    CMutableTransaction mtx;
-
-    CScript script = scdb.CreateStateScript(nHeight);
-    if (!script.empty())
-        mtx.vout.push_back(CTxOut(CENT, script));
-
-    return mtx;
+    // TODO this call will be replaced when the MT based update PR Is merged.
+    // For now just getting the old style SCDB hash and putting it into the
+    // commitment.
+    const uint256& hashMerkleRoot = scdb.GetSCDBHash();
+    CScript script = GenerateSCDBCoinbaseCommitment(hashMerkleRoot);
+    return CTxOut(CENT, script);
 }
 
 // Skip entries in mapTx that are already in a block or are present
