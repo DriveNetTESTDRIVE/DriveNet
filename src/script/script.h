@@ -660,7 +660,7 @@ public:
     bool IsWitnessProgram(int& version, std::vector<unsigned char>& program) const;
 
     /** Script formats for Drivechains */
-    bool IsBribeHashCommit() const;
+    bool IsCriticalHashCommit() const;
     bool IsSCDBHashMerkleRootCommit() const;
     bool IsWTPrimeHashCommit() const;
 

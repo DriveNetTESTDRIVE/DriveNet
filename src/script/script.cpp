@@ -251,26 +251,27 @@ bool CScript::IsWitnessProgram(int& version, std::vector<unsigned char>& program
     return false;
 }
 
-bool CScript::IsBribeHashCommit() const
+bool CScript::IsCriticalHashCommit() const
 {
     // TODO
+    // Check script size
     // Size must be at least:
     // sizeof(uint256) to include h*
     // +
-    // sizeof(uint160) for keyID
-    // +
     // opcode count
-    //
     size_t size = this->size();
-    if (size < 32 )
+    if (size < 32)
         return false;
 
-    // TODO
-    // The format of a bribe script is currently being discussed on the
-    // bitcoin-dev mailing list. For now we are just checking if the script
-    // is large enough to contain an h* and contains an OP_BRIBE op.
+    // Check script header
+    if ((*this)[0] != OP_RETURN ||
+            (*this)[1] != 0x23 ||
+            (*this)[2] != 0x50 ||
+            (*this)[3] != 0x50 ||
+            (*this)[4] != 0x33)
+        return false;
 
-    return (this->Find(OP_BRIBE));
+    return true;
 }
 
 bool CScript::IsSCDBHashMerkleRootCommit() const
