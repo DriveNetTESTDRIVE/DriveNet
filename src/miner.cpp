@@ -418,7 +418,7 @@ CTxOut BlockAssembler::CreateSCDBHashMerkleRootCommit()
     // For now just getting the old style SCDB hash and putting it into the
     // commitment.
     const uint256& hashMerkleRoot = scdb.GetSCDBHash();
-    CScript script = GenerateSCDBCoinbaseCommitment(hashMerkleRoot);
+    CScript script = GenerateSCDBHashMerkleRootCommitment(hashMerkleRoot);
     return CTxOut(CENT, script);
 }
 

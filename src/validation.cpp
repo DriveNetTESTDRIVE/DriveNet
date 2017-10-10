@@ -1409,7 +1409,7 @@ bool CScriptCheck::operator()() {
 
 
     std::multimap<uint256, int> mapBMMLDCopy;
-    if (scriptPubKey.IsBribeHashCommit())
+    if (scriptPubKey.IsCriticalHashCommit())
         mapBMMLDCopy = scdb.GetLinkingData();
 
     return VerifyScript(scriptSig, scriptPubKey, witness, nFlags, CachingTransactionSignatureChecker(ptxTo, nIn, amount, cacheStore, *txdata, mapBMMLDCopy), &error);
@@ -3223,17 +3223,29 @@ std::vector<unsigned char> GenerateCoinbaseCommitment(CBlock& block, const CBloc
     return commitment;
 }
 
-/** Context-dependent validity checks.
- *  By "context", we mean only the previous block headers, but not the UTXO
- *  set; UTXO-related validity checks are done in ConnectBlock().
- *  NOTE: This function is not currently invoked by ConnectBlock(), so we
- *  should consider upgrade issues if we change which consensus rules are
- *  enforced in this function (eg by adding a new consensus rule). See comment
- *  in ConnectBlock().
- *  Note that -reindex-chainstate skips the validation that happens here!
- */
-static bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& state, const CChainParams& params, const CBlockIndex* pindexPrev, int64_t nAdjustedTime)
-CScript GenerateSCDBCoinbaseCommitment(const uint256& hashMerkleRoot)
+CScript GenerateCriticalHashCommitment(int nHeight, const uint256& hashCritical)
+{
+    // TODO
+    // check consensusParams.vDeployments[Consensus::DEPLOYMENT_DRIVECHAINS]
+    CScript script;
+
+    // Add script header
+    script << OP_RETURN;
+    script.push_back(0x23);
+    script.push_back(0x50);
+    script.push_back(0x50);
+    script.push_back(0x33);
+
+    // Add block number
+    //script << CScriptNum(nHeight);
+
+    // Add h*
+    script << ToByteVector(hashCritical);
+
+    return script;
+}
+
+CScript GenerateSCDBHashMerkleRootCommitment(const uint256& hashMerkleRoot)
 {
     // TODO
     // check consensusParams.vDeployments[Consensus::DEPLOYMENT_DRIVECHAINS]
@@ -3252,7 +3264,7 @@ CScript GenerateSCDBCoinbaseCommitment(const uint256& hashMerkleRoot)
     return script;
 }
 
-CScript GenerateBMMCriticalHashCommitment(int nHeight, const uint256& hashCritical)
+CScript GenerateWTPrimeHashCommitment(const uint256& hashWTPrime)
 {
     // TODO
     // check consensusParams.vDeployments[Consensus::DEPLOYMENT_DRIVECHAINS]
@@ -3265,16 +3277,23 @@ CScript GenerateBMMCriticalHashCommitment(int nHeight, const uint256& hashCritic
     script.push_back(0x50);
     script.push_back(0x43);
 
-    // Add block number
-    script << CScriptNum(nHeight);
-
-    // Add h*
-    script << ToByteVector(hashCritical);
+    // Add SCDB hashMerkleRoot
+    script << ToByteVector(hashWTPrime);
 
     return script;
+
 }
 
-bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& state, const Consensus::Params& consensusParams, const CBlockIndex* pindexPrev, int64_t nAdjustedTime)
+/** Context-dependent validity checks.
+ *  By "context", we mean only the previous block headers, but not the UTXO
+ *  set; UTXO-related validity checks are done in ConnectBlock().
+ *  NOTE: This function is not currently invoked by ConnectBlock(), so we
+ *  should consider upgrade issues if we change which consensus rules are
+ *  enforced in this function (eg by adding a new consensus rule). See comment
+ *  in ConnectBlock().
+ *  Note that -reindex-chainstate skips the validation that happens here!
+ */
+static bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& state, const CChainParams& params, const CBlockIndex* pindexPrev, int64_t nAdjustedTime)
 {
     assert(pindexPrev != nullptr);
     const int nHeight = pindexPrev->nHeight + 1;
@@ -3397,6 +3416,51 @@ static bool ContextualCheckBlock(const CBlock& block, CValidationState& state, c
         return state.DoS(100, false, REJECT_INVALID, "bad-blk-weight", false, strprintf("%s : weight limit failed", __func__));
     }
 
+    // Check critical data transactions
+    if (true /* TODO versionbits */) {
+        for (const auto& tx: block.vtx) {
+            // Look for transactions with non-null CCriticalData
+            if (!tx->criticalData.IsNull()) {
+                // Check block height
+                // TODO use checker.CheckLockTime()
+                if (nHeight != tx->nLockTime)
+                    return false;
+
+                // TODO move?
+                // Check size of critical data extra bytes
+                if (tx->criticalData.bytes.size() > MAX_CRITICAL_DATA_BYTES)
+                    return false;
+
+                // Check for hashCritical commitment in coinbase
+                bool fFound = false;
+                for (const CTxOut& out : block.vtx[0]->vout) {
+                    const CScript &scriptPubKey = out.scriptPubKey;
+                    if (scriptPubKey.IsCriticalHashCommit()) {
+                        CScript::const_iterator phash = scriptPubKey.begin() + 5;
+                        opcodetype opcode;
+                        std::vector<unsigned char> vchHash;
+                        if (!scriptPubKey.GetOp(phash, opcode, vchHash))
+                            continue;
+                        if (vchHash.size() != sizeof(uint256))
+                            continue;
+
+                        uint256 hashCritical = uint256(uint256(vchHash));
+                        if (hashCritical.IsNull())
+                            continue;
+
+                        if (hashCritical == tx->criticalData.hashCritical) {
+                            fFound = true;
+                            break;
+                        }
+                    }
+                }
+                // Did we find hashCritical?
+                if (!fFound) {
+                    return false;
+                }
+            }
+        }
+    }
     return true;
 }
 
