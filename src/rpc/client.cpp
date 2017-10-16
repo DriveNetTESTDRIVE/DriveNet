@@ -133,7 +133,9 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "createbribe", 0, "amount" },
     { "createbribe", 1, "height" },
     { "listsidechaindeposits", 0, "nsidechain" },
-    { "receivesidechainwtjoin", 0, "nsidechain" },
+    { "receivesidechainwtprime", 0, "nsidechain" },
+    { "receivesidechainwtprimeupdate", 0, "height" },
+    { "receivesidechainwtprimeupdate", 1, "update" },
     { "refundbribe", 0, "amount" },
     { "refundbribe", 2, "pos" },
     // Echo with conversion (For testing only)

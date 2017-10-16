@@ -197,24 +197,6 @@ static const unsigned int MAX_OPCODE = OP_NOP10;
 
 const char* GetOpName(opcodetype opcode);
 
-/* Sidechain state script opcodes (not really opcodes) */
-enum scopcodetype {
-    // State script version
-    SCOP_VERSION = 0x00,
-
-    // Vote types
-    SCOP_REJECT = 0x51,
-    SCOP_VERIFY = 0x52,
-    SCOP_IGNORE = 0x53,
-
-    // Delimeters
-    SCOP_VERSION_DELIM = 0x54,
-    SCOP_WT_DELIM = 0x55,
-    SCOP_SC_DELIM = 0x56,
-};
-
-const char* GetSCOPName(scopcodetype sopcode);
-
 class scriptnum_error : public std::runtime_error
 {
 public:
@@ -508,24 +490,6 @@ public:
         // I'm not sure if this should push the script or concatenate scripts.
         // If there's ever a use for pushing a script onto a script, delete this member fn
         assert(!"Warning: Pushing a CScript onto a CScript with << is probably not intended, use + to concatenate!");
-        return *this;
-    }
-
-    CScript& operator<<(scopcodetype scopcode)
-    {
-        switch (scopcode) {
-        case SCOP_IGNORE:
-        case SCOP_REJECT:
-        case SCOP_SC_DELIM:
-        case SCOP_VERIFY:
-        case SCOP_VERSION:
-        case SCOP_VERSION_DELIM:
-        case SCOP_WT_DELIM:
-            break;
-        default:
-            throw std::runtime_error("CScript::operator<<(): invalid scopcode");
-        }
-        insert(end(), (unsigned char)scopcode);
         return *this;
     }
 

@@ -173,12 +173,12 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     coinbaseTx.vout.resize(1);
     coinbaseTx.vout[0].scriptPubKey = scriptPubKeyIn;
 
-    // Track sidechain state tx fees
+    // Track sidechain tx fees
     CAmount nSideFees = 0;
 
     // Add WT^(s) which have been validated
     for (const Sidechain& s : ValidSidechains) {
-        CTransaction wtx = CreateSidechainWTJoinTx(s.nSidechain);
+        CTransaction wtx = CreateWTPrimePayout(s.nSidechain);
         if (wtx.vout.size() && wtx.vin.size())
             pblock->vtx.push_back(MakeTransactionRef(std::move(wtx)));
     }
@@ -301,7 +301,7 @@ int BlockAssembler::UpdatePackagesForAdded(const CTxMemPool::setEntries& already
     return nDescendantsUpdated;
 }
 
-CTransaction BlockAssembler::CreateSidechainWTJoinTx(uint8_t nSidechain)
+CTransaction BlockAssembler::CreateWTPrimePayout(uint8_t nSidechain)
 {
     // The WT^ that will be created
     CMutableTransaction mtx;
@@ -320,10 +320,10 @@ CTransaction BlockAssembler::CreateSidechainWTJoinTx(uint8_t nSidechain)
     // Select the highest scoring B-WT^ for sidechain this tau
     uint256 hashBest = uint256();
     uint16_t scoreBest = 0;
-    std::vector<SidechainWTJoinState> vState = scdb.GetState(nSidechain);
-    for (const SidechainWTJoinState& state : vState) {
+    std::vector<SidechainWTPrimeState> vState = scdb.GetState(nSidechain);
+    for (const SidechainWTPrimeState& state : vState) {
         if (state.nWorkScore > scoreBest || scoreBest == 0) {
-            hashBest = state.wtxid;
+            hashBest = state.hashWTPrime;
             scoreBest = state.nWorkScore;
         }
     }
@@ -335,11 +335,13 @@ CTransaction BlockAssembler::CreateSidechainWTJoinTx(uint8_t nSidechain)
         return mtx;
 
     // Copy outputs from B-WT^
-    std::vector<CTransaction> vWTJoin = scdb.GetWTJoinCache();
-    for (const CTransaction& tx : vWTJoin) {
-        if (tx.GetHash() == hashBest)
+    std::vector<CTransaction> vWTPrime = scdb.GetWTPrimeCache();
+    for (const CTransaction& tx : vWTPrime) {
+        if (tx.GetHash() == hashBest) {
             for (const CTxOut& out : tx.vout)
                 mtx.vout.push_back(out);
+            break;
+        }
     }
     if (!mtx.vout.size())
         return mtx;
@@ -414,10 +416,7 @@ CTransaction BlockAssembler::CreateSidechainWTJoinTx(uint8_t nSidechain)
 
 CTxOut BlockAssembler::CreateSCDBHashMerkleRootCommit()
 {
-    // TODO this call will be replaced when the MT based update PR Is merged.
-    // For now just getting the old style SCDB hash and putting it into the
-    // commitment.
-    const uint256& hashMerkleRoot = scdb.GetSCDBHash();
+    const uint256& hashMerkleRoot = scdb.GetHash();
     CScript script = GenerateSCDBHashMerkleRootCommitment(hashMerkleRoot);
     return CTxOut(CENT, script);
 }
