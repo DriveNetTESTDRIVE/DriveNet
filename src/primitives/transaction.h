@@ -222,7 +222,9 @@ public:
  * - std::vector<CTxIn> vin
  * - std::vector<CTxOut> vout
  * - if (flags & 1):
- *   - CTxWitness wit;
+ *   - CScriptWitness scriptWitness;
+ * - if (flags & 2):
+ *   - CCriticalData criticalData;
  * - uint32_t nLockTime
  */
 template<typename Stream, typename TxType>
