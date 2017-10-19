@@ -631,18 +631,18 @@ UniValue logging(const JSONRPCRequest& request)
     return result;
 }
 
-UniValue receivesidechainwtjoin(const JSONRPCRequest& request)
+UniValue receivesidechainwtprime(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() != 2)
         throw std::runtime_error(
-            "receivesidechainwtjoin\n"
+            "receivesidechainwtprime\n"
             "Called by sidechain to announce new WT^ for verification\n"
             "\nArguments:\n"
             "1. \"nsidechain\"      (int, required) The sidechain number\n"
             "2. \"rawtx\"           (string, required) The raw transaction hex\n"
             "\nExamples:\n"
-            + HelpExampleCli("receivesidechainwtjoin", "")
-            + HelpExampleRpc("receivesidechainwtjoin", "")
+            + HelpExampleCli("receivesidechainwtprime", "")
+            + HelpExampleRpc("receivesidechainwtprime", "")
      );
 
     // Is nSidechain valid?
@@ -655,18 +655,18 @@ UniValue receivesidechainwtjoin(const JSONRPCRequest& request)
     std::string hex = request.params[1].get_str();
     DecodeHexTx(mtx, hex);
 
-    CTransaction wtJoin(mtx);
+    CTransaction wtPrime(mtx);
 
-    if (wtJoin.IsNull())
+    if (wtPrime.IsNull())
         throw std::runtime_error("Invalid WT^ hex");
 
     // Add WT^ to sidechain DB and start verification
-    if (!scdb.AddWTJoin(nSidechain, wtJoin))
+    if (!scdb.AddWTPrime(nSidechain, wtPrime))
         throw std::runtime_error("WT^ rejected (duplicate?)");
 
     // Return WT^ hash to verify it has been received
     UniValue ret(UniValue::VOBJ);
-    ret.push_back(Pair("wtxid", wtJoin.GetHash().GetHex()));
+    ret.push_back(Pair("wtxid", wtPrime.GetHash().GetHex()));
     return ret;
 }
 
@@ -764,6 +764,76 @@ UniValue listsidechaindeposits(const JSONRPCRequest& request)
 #endif
 
     return ret;
+}
+
+UniValue receivesidechainwtprimeupdate(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() != 2)
+        throw std::runtime_error(
+            "\nArguments:\n"
+            "1. \"height\"                      (numeric, required) the block height\n"
+            "2. \"updates\"                     (array, required) A json array of json objects\n"
+            "     [\n"
+            "       {\n"
+            "         \"sidechainmumber\":n,    (numeric, required) The sidechain number\n"
+            "         \"txid\":id,              (string,  required) The WT^ hash\n"
+            "         \"workscore\":n           (numeric, required) The updated workscore\n"
+            "       } \n"
+            "       ,...\n"
+            "     ]\n"
+            "\nExamples:\n"
+            + HelpExampleCli("receivesidechainwtprimeupdate", "")
+            + HelpExampleRpc("receivesidechainwtprimeupdate", "")
+     );
+
+    RPCTypeCheck(request.params, {UniValue::VNUM, UniValue::VARR}, true);
+    if (request.params[0].isNull() || request.params[1].isNull())
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, arguments 1 and 2 must be non-null");
+
+    int nHeight = request.params[0].get_int();
+    SidechainUpdatePackage updatePackage;
+    updatePackage.nHeight = nHeight;
+
+    UniValue inputs = request.params[1].get_array();
+    for (unsigned int idx = 0; idx < inputs.size(); idx++) {
+        const UniValue& input = inputs[idx];
+        const UniValue& o = input.get_obj();
+
+        // Get sidechain number
+        const UniValue& sidechainnumber_v = find_value(o, "sidechainnumber");
+        if (!sidechainnumber_v.isNum())
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, missing sidechain number");
+        uint8_t nSidechain = sidechainnumber_v.get_int();
+
+        // Is nSidechain valid?
+        if (!SidechainNumberValid(nSidechain))
+            throw std::runtime_error("Invalid sidechain number");
+
+        // Get WT^ hash
+        uint256 hashWTPrime = ParseHashO(o, "txid");
+        if (hashWTPrime.IsNull())
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, missing WT^ hash");
+
+        // Get updated work score
+        const UniValue& workscore_v = find_value(o, "workscore");
+        if (!workscore_v.isNum())
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, missing updated workscore");
+        uint16_t nWorkScore = workscore_v.get_int();
+
+        // create MSG
+        SidechainUpdateMSG update;
+        update.nSidechain = nSidechain;
+        update.hashWTPrime = hashWTPrime;
+        update.nWorkScore = nWorkScore;
+
+        // add to package
+        updatePackage.vUpdate.push_back(update);
+    }
+
+    // Add created package to SCDB WT^ update cache
+    scdb.AddSidechainNetworkUpdatePackage(updatePackage);
+
+    return true;
 }
 
 UniValue getbmmproof(const JSONRPCRequest& request)
@@ -1021,7 +1091,7 @@ static const CRPCCommand commands[] =
     { "hidden",             "logging",                  &logging,                   true,  {"include", "exclude"}},
 
     /* Used by sidechain (some not shown in help) */
-    { "hidden",             "receivesidechainwtjoin",   &receivesidechainwtjoin,    false, {"nsidechain","rawtx"}},
+    { "hidden",             "receivesidechainwtprime",  &receivesidechainwtprime,   false, {"nsidechain","rawtx"}},
     { "hidden",             "listsidechaindeposits",    &listsidechaindeposits,     false, {"nsidechain"}},
     { "util",               "getbmmproof",              &getbmmproof,               false, {"blockhash", "criticalhash"}},
     { "wallet",             "createbribe",              &createbribe,               false, {"amount", "crticalhash", "address"}},

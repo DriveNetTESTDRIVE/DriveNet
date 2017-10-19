@@ -4,6 +4,7 @@
 
 #include "sidechaindb.h"
 
+#include "consensus/merkle.h"
 #include "primitives/transaction.h"
 #include "script/script.h"
 #include "sidechain.h"
@@ -61,37 +62,52 @@ void SidechainDB::AddDeposits(const std::vector<CTransaction>& vtx)
     }
 }
 
-bool SidechainDB::AddWTJoin(uint8_t nSidechain, const CTransaction& tx)
+void SidechainDB::AddSidechainNetworkUpdatePackage(const SidechainUpdatePackage& update)
 {
-    if (vWTJoinCache.size() >= SIDECHAIN_MAX_WT)
+    vSidechainUpdateCache.push_back(update);
+}
+
+bool SidechainDB::AddWTPrime(uint8_t nSidechain, const CTransaction& tx)
+{
+    if (vWTPrimeCache.size() >= SIDECHAIN_MAX_WT)
         return false;
     if (!SidechainNumberValid(nSidechain))
         return false;
-    if (HaveWTJoinCached(tx.GetHash()))
+    if (HaveWTPrimeCached(tx.GetHash()))
         return false;
 
     const Sidechain& s = ValidSidechains[nSidechain];
-    if (Update(nSidechain, s.GetTau(), 0, tx.GetHash())) {
-        vWTJoinCache.push_back(tx);
+
+    std::vector<SidechainWTPrimeState> vWT;
+
+    SidechainWTPrimeState wt;
+    wt.nSidechain = nSidechain;
+    wt.nBlocksLeft = s.GetTau();
+    wt.nWorkScore = 0;
+    wt.hashWTPrime = tx.GetHash();
+
+    vWT.push_back(wt);
+
+    if (UpdateSCDBIndex(vWT)) {
+        vWTPrimeCache.push_back(tx);
         return true;
     }
     return false;
 }
 
-bool SidechainDB::HaveDepositCached(const SidechainDeposit &deposit) const
+bool SidechainDB::CheckWorkScore(const uint8_t& nSidechain, const uint256& hashWTPrime) const
 {
-    for (const SidechainDeposit& d : vDepositCache) {
-        if (d == deposit)
-            return true;
-    }
-    return false;
-}
+    if (!SidechainNumberValid(nSidechain))
+        return false;
 
-bool SidechainDB::HaveWTJoinCached(const uint256& wtxid) const
-{
-    for (const CTransaction& tx : vWTJoinCache) {
-        if (tx.GetHash() == wtxid)
-            return true;
+    std::vector<SidechainWTPrimeState> vState = GetState(nSidechain);
+    for (const SidechainWTPrimeState& state : vState) {
+        if (state.hashWTPrime == hashWTPrime) {
+            if (state.nWorkScore >= ValidSidechains[nSidechain].nMinWorkScore)
+                return true;
+            else
+                return false;
+        }
     }
     return false;
 }
@@ -106,152 +122,171 @@ std::vector<SidechainDeposit> SidechainDB::GetDeposits(uint8_t nSidechain) const
     return vSidechainDeposit;
 }
 
-CScript SidechainDB::CreateStateScript(int nHeight) const
+uint256 SidechainDB::GetHash() const
 {
-    if (!HasState())
-        return CScript();
-
-    CScript script;
-    script << OP_RETURN << SCOP_VERSION << SCOP_VERSION_DELIM;
-
-    // TODO use GetState() instead of looping through SCDB?
-    // x = sidechain number
-    // y = sidechain's WT^(s)
-    for (size_t x = 0; x < SCDB.size(); x++) {
-        const SCDBIndex& index = SCDB[x];
-
-        // Find WT^ with the most work for sidechain x
-        SidechainWTJoinState wtMostWork;
-        wtMostWork.nWorkScore = 0;
-        if (index.IsPopulated()) {
-            for (const SidechainWTJoinState& member : index.members) {
-                if (member.IsNull())
-                    continue;
-                if (member.nWorkScore > wtMostWork.nWorkScore || wtMostWork.nWorkScore == 0)
-                    wtMostWork = member;
-            }
-        }
-
-        // Write update
-        const Sidechain& s = ValidSidechains[x];
-        int nTauLast = s.GetLastTauHeight(nHeight);
-        for (size_t y = 0; y < index.members.size(); y++) {
-            const SidechainWTJoinState& member = index.members[y];
-            if (member.IsNull())
-                continue;
-
-            if (nHeight - nTauLast > s.nWaitPeriod) {
-                // Update during verification period
-                if (member.wtxid == wtMostWork.wtxid)
-                    script << SCOP_VERIFY;
-                else
-                    script << SCOP_REJECT;
-            } else {
-                // Ignore state during waiting period
-                script << SCOP_IGNORE;
-            }
-
-            // Delimit WT^(s)
-            if (y != index.CountPopulatedMembers() - 1)
-                script << SCOP_WT_DELIM;
-        }
-        // Delimit sidechain
-        if (x != SCDB.size() - 1)
-            script << SCOP_SC_DELIM;
-    }
-    return script;
-}
-
-uint256 SidechainDB::GetSCDBHash() const
-{
-    CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
-    for (const SCDBIndex& index : SCDB) {
-        if (index.IsPopulated()) {
-            for (const SidechainWTJoinState& member : index.members) {
-                if (!member.IsNull())
-                    ss << member;
-            }
+    // TODO add LD data to the tree
+    std::vector<uint256> vLeaf;
+    for (const Sidechain& s : ValidSidechains) {
+        std::vector<SidechainWTPrimeState> vState = GetState(s.nSidechain);
+        for (const SidechainWTPrimeState& state : vState) {
+            vLeaf.push_back(state.GetHash());
         }
     }
-    return ss.GetHash();
+    return ComputeMerkleRoot(vLeaf);
 }
 
-bool SidechainDB::Update(uint8_t nSidechain, uint16_t nBlocks, uint16_t nScore, uint256 wtxid, bool fJustCheck)
+uint256 SidechainDB::GetHashBlockLastSeen()
 {
-    if (!SidechainNumberValid(nSidechain))
+    return hashBlockLastSeen;
+}
+
+uint256 SidechainDB::GetHashIfUpdate(const std::vector<SidechainWTPrimeState>& vNewScores) const
+{
+    SidechainDB scdbCopy = (*this);
+    scdbCopy.UpdateSCDBIndex(vNewScores);
+
+    return (scdbCopy.GetHash());
+}
+
+std::multimap<uint256, int> SidechainDB::GetLinkingData() const
+{
+    return mapBMMLD;
+}
+
+std::vector<SidechainWTPrimeState> SidechainDB::GetState(uint8_t nSidechain) const
+{
+    if (!HasState() || !SidechainNumberValid(nSidechain))
+        return std::vector<SidechainWTPrimeState>();
+
+    std::vector<SidechainWTPrimeState> vState;
+    for (const SidechainWTPrimeState& member : SCDB[nSidechain].members) {
+        if (!member.IsNull())
+            vState.push_back(member);
+    }
+    return vState;
+}
+
+std::vector<CTransaction> SidechainDB::GetWTPrimeCache() const
+{
+    return vWTPrimeCache;
+}
+
+bool SidechainDB::HasState() const
+{
+    // Make sure that SCDB is actually initialized
+    if (SCDB.size() != ARRAYLEN(ValidSidechains))
         return false;
 
-    SidechainWTJoinState member;
-    member.nBlocksLeft = nBlocks;
-    member.nSidechain = nSidechain;
-    member.nWorkScore = nScore;
-    member.wtxid = wtxid;
-
-    SCDBIndex& index = SCDB[nSidechain];
-
-    // Just checking if member can be inserted
-    if (fJustCheck && !index.IsFull())
+    // Check if any SCDBIndex(s) are populated
+    if (SCDB[SIDECHAIN_TEST].IsPopulated())
+        return true;
+    else
+    if (SCDB[SIDECHAIN_HIVEMIND].IsPopulated())
+        return true;
+    else
+    if (SCDB[SIDECHAIN_WIMBLE].IsPopulated())
         return true;
 
-    // Insert member
-    return (index.InsertMember(member));
+    return false;
+}
+
+bool SidechainDB::HaveDepositCached(const SidechainDeposit &deposit) const
+{
+    for (const SidechainDeposit& d : vDepositCache) {
+        if (d == deposit)
+            return true;
+    }
+    return false;
+}
+
+bool SidechainDB::HaveWTPrimeCached(const uint256& hashWTPrime) const
+{
+    for (const CTransaction& tx : vWTPrimeCache) {
+        if (tx.GetHash() == hashWTPrime)
+            return true;
+    }
+    return false;
+}
+
+void SidechainDB::Reset()
+{
+    // Clear out SCDB
+    for (const Sidechain& s : ValidSidechains)
+        SCDB[s.nSidechain].ClearMembers();
+
+    // Clear out LD
+    mapBMMLD.clear();
+    std::queue<uint256> queueEmpty;
+    std::swap(queueBMMLD, queueEmpty);
+
+    // Clear out Deposit data
+    vDepositCache.clear();
+
+    // Clear out cached WT^(s)
+    vWTPrimeCache.clear();
+
+    // Reset hashBlockLastSeen
+    hashBlockLastSeen.SetNull();
+}
+
+std::string SidechainDB::ToString() const
+{
+    std::string str;
+    str += "SidechainDB:\n";
+    for (const Sidechain& s : ValidSidechains) {
+        // Print sidechain name
+        str += "Sidechain: " + s.GetSidechainName() + "\n";
+        // Print sidechain WT^ workscore(s)
+        std::vector<SidechainWTPrimeState> vState = GetState(s.nSidechain);
+        for (const SidechainWTPrimeState& state : vState) {
+            str += state.ToString();
+        }
+        str += "\n";
+    }
+    return str;
 }
 
 bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const std::vector<CTxOut>& vout, std::string& strError)
 {
     if (hashBlock.IsNull())
         return false;
+    if (!vout.size())
+        return false;
+
+    // TODO skip if nHeight < drivechains activation block height
 
     // If a sidechain's tau period ended, reset WT^ verification status
     for (const Sidechain& s : ValidSidechains) {
         if (nHeight > 0 && (nHeight % s.GetTau()) == 0)
             SCDB[s.nSidechain].ClearMembers();
     }
+    // TODO clear out cached WT^(s) that belong to the Sidechain
+    // that was just reset.
 
     /*
-     * Only one state script of the current version is valid.
-     * State scripts with invalid version numbers will be ignored.
-     * If there are multiple state scripts with valid version numbers
-     * the entire coinbase will be ignored by SCDB and a default
-     * ignore vote will be cast. If there isn't a state update in
-     * the transaction outputs, a default ignore vote will be cast.
+     * Now we will look for data that is relevant to SCDB
+     * in this block's coinbase.
+     *
+     * Scan for h* linking data and add it to the BMMLD
+     * ratchet system.
+     *
+     * Scan for new WT^(s) and start tracking them.
+     *
+     * Scan for updated SCDB MT hash, and perform MT hash
+     * based SCDB update.
+     *
+     * Update hashBlockLastSeen to reflect that we have
+     * scanned this latest block.
      */
 
-    // Scan for state script
-    std::vector<CScript> vStateScript;
+    // Scan for h*(s)
     for (const CTxOut& out : vout) {
         const CScript& scriptPubKey = out.scriptPubKey;
 
-        // Minimum size
-        if (scriptPubKey.size() < 3)
-            continue;
-        // State script begins with OP_RETURN
-        if (!scriptPubKey.IsUnspendable())
-            continue;
-        // Check state script version
-        if (scriptPubKey[1] != SCOP_VERSION || scriptPubKey[2] != SCOP_VERSION_DELIM)
+        if (!scriptPubKey.IsCriticalHashCommit())
             continue;
 
-        vStateScript.push_back(scriptPubKey);
-    }
-
-    if (vStateScript.size() == 1 && ApplyStateScript(vStateScript[0], true)) {
-        ApplyStateScript(vStateScript[0]);
-    } else {
-        strError = "SidechainDB::Update: failed to apply state script\n";
-        ApplyDefaultUpdate();
-    }
-
-    // Scan for h*(s) in coinbase outputs
-    for (const CTxOut& out : vout) {
-        const CScript& scriptPubKey = out.scriptPubKey;
-
-        // Must at least contain the h*
-        if (scriptPubKey.size() < sizeof(uint256))
-            continue;
-        if (!scriptPubKey.IsUnspendable())
-            continue;
-
+        /* TODO refactor along with DAG PR
         CScript::const_iterator pbn = scriptPubKey.begin() + 1;
         opcodetype opcode;
         std::vector<unsigned char> vchBN;
@@ -307,180 +342,200 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const std::vecto
                 queueBMMLD.pop();
             }
         }
+        */
     }
+
+    // Scan for new WT^(s) and start tracking them
+    // TODO
+    // SidechainDB::AddWTPrime
+    for (const CTxOut& out : vout) {
+        const CScript& scriptPubKey = out.scriptPubKey;
+        if (scriptPubKey.IsWTPrimeHashCommit()) {
+            // Get WT^ hash from script
+            CScript::const_iterator phash = scriptPubKey.begin() + 7;
+            opcodetype opcode;
+            std::vector<unsigned char> vchHash;
+            if (!scriptPubKey.GetOp(phash, opcode, vchHash))
+                continue;
+            if (vchHash.size() != 32)
+                continue;
+
+            uint256 hashWT = uint256(vchHash);
+
+            // Check sidechain number
+            CScript::const_iterator pnsidechain = scriptPubKey.begin() + 39;
+            std::vector<unsigned char> vchNS;
+            if (!scriptPubKey.GetOp(pnsidechain, opcode, vchNS))
+            if (vchNS.size() < 1 || vchNS.size() > 4)
+                continue;
+
+            CScriptNum nSidechain(vchNS, true);
+            if (!SidechainNumberValid(nSidechain.getint()))
+                continue;
+
+            // Create WT object
+            std::vector<SidechainWTPrimeState> vWT;
+
+            SidechainWTPrimeState wt;
+            wt.nSidechain = nSidechain.getint();
+            wt.nBlocksLeft = ValidSidechains[nSidechain.getint()].GetTau();
+            wt.nWorkScore = 0;
+            wt.hashWTPrime = hashWT;
+
+            vWT.push_back(wt);
+
+            // Add to SCDB
+            bool fUpdated = UpdateSCDBIndex(vWT);
+            // TODO handle !fUpdated
+        }
+    }
+
+    // Scan for updated SCDB MT hash and try to update
+    // workscore of WT^(s)
+    // Note: h*(s) and new WT^(s) must be added to SCDB
+    // before this can be done.
+    // Note: Only one MT hash commit is allowed per coinbase
+    std::vector<CScript> vMTHashScript;
+    for (const CTxOut& out : vout) {
+        const CScript& scriptPubKey = out.scriptPubKey;
+        if (scriptPubKey.IsSCDBHashMerkleRootCommit())
+            vMTHashScript.push_back(scriptPubKey);
+    }
+
+    if (vMTHashScript.size() == 1) {
+        const CScript& scriptPubKey = vMTHashScript.front();
+
+        // Get MT hash from script
+        CScript::const_iterator phash = scriptPubKey.begin() + 6;
+        opcodetype opcode;
+        std::vector<unsigned char> vch;
+        if (scriptPubKey.GetOp(phash, opcode, vch) && vch.size() == 32) {
+            // Try and sync
+            uint256 hashMerkleRoot = uint256(vch);
+            bool fUpdated = UpdateSCDBMatchMT(nHeight, hashMerkleRoot);
+            // TODO handle !fUpdated
+        }
+    }
+
+    // Update hashBLockLastSeen
     hashBlockLastSeen = hashBlock;
+
     return true;
 }
 
-uint256 SidechainDB::GetHashBlockLastSeen()
+bool SidechainDB::UpdateSCDBIndex(const std::vector<SidechainWTPrimeState>& vNewScores)
 {
-    return hashBlockLastSeen;
-}
-
-std::multimap<uint256, int> SidechainDB::GetLinkingData() const
-{
-    return mapBMMLD;
-}
-
-bool SidechainDB::HasState() const
-{
-    // Make sure that SCDB is actually initialized
-    if (SCDB.size() != ARRAYLEN(ValidSidechains))
-        return false;
-
-    // Check if any SCDBIndex(s) are populated
-    if (SCDB[SIDECHAIN_TEST].IsPopulated())
-        return true;
-    else
-    if (SCDB[SIDECHAIN_HIVEMIND].IsPopulated())
-        return true;
-    else
-    if (SCDB[SIDECHAIN_WIMBLE].IsPopulated())
-        return true;
-
-    return false;
-}
-
-std::vector<SidechainWTJoinState> SidechainDB::GetState(uint8_t nSidechain) const
-{
-    if (!HasState() || !SidechainNumberValid(nSidechain))
-        return std::vector<SidechainWTJoinState>();
-
-    std::vector<SidechainWTJoinState> vState;
-    for (const SidechainWTJoinState& member : SCDB[nSidechain].members) {
-        if (!member.IsNull())
-            vState.push_back(member);
+    // First check that sidechain numbers are valid
+    for (const SidechainWTPrimeState& s : vNewScores) {
+        if (!SidechainNumberValid(s.nSidechain))
+            return false;
     }
-    return vState;
-}
 
-bool SidechainDB::ApplyStateScript(const CScript& script, bool fJustCheck)
-{
-    if (!HasState())
-        return false;
-
-    // Collect the current SCDB status
-    std::vector<std::vector<SidechainWTJoinState>> vState;
+    // Decrement nBlocksLeft of existing WT^(s)
     for (const Sidechain& s : ValidSidechains) {
-        const std::vector<SidechainWTJoinState> vSidechainState = GetState(s.nSidechain);
-        vState.push_back(vSidechainState);
+        SCDBIndex& index = SCDB[s.nSidechain];
+        for (SidechainWTPrimeState wt : index.members) {
+            // wt is a copy
+            wt.nBlocksLeft--;
+            index.InsertMember(wt);
+        }
     }
 
-    if (script.size() < 4)
-        return false;
+    // TODO
+    // keep a list of the work scores that get updated, their
+    // blocks remaining should have been updated as well.
+    // After that, loop through again and update the
+    // blocks remaining of any WT^ that wasn't in the list
+    // that had their workscores updated.
 
-    uint8_t nSidechainIndex = 0;
-    size_t nWTIndex = 0;
-    for (size_t i = 3; i < script.size(); i++) {
-        if (!SidechainNumberValid(nSidechainIndex))
-            return false;
-
-        // Move on to this sidechain's next WT^
-        if (script[i] == SCOP_WT_DELIM) {
-            nWTIndex++;
-            continue;
-        }
-
-        // Move on to the next sidechain
-        if (script[i] == SCOP_SC_DELIM) {
-            nWTIndex = 0;
-            nSidechainIndex++;
-            continue;
-        }
-
-        // Check for valid vote type
-        const unsigned char& vote = script[i];
-        if (vote != SCOP_REJECT && vote != SCOP_VERIFY && vote != SCOP_IGNORE)
-            continue;
-
-        if (nSidechainIndex > vState.size())
-            return false;
-        if (nWTIndex > vState[nSidechainIndex].size())
-            return false;
-
-        const SidechainWTJoinState& old = vState[nSidechainIndex][nWTIndex];
-
-        uint16_t nBlocksLeft = old.nBlocksLeft;
-        if (nBlocksLeft > 0)
-            nBlocksLeft--;
-
-        uint16_t nWorkScore = old.nWorkScore;
-        if (vote == SCOP_REJECT) {
-            if (nWorkScore > 0)
-                nWorkScore--;
+    // Apply new work scores
+    for (const SidechainWTPrimeState& s : vNewScores) {
+        SCDBIndex& index = SCDB[s.nSidechain];
+        SidechainWTPrimeState wt;
+        if (index.GetMember(s.hashWTPrime, wt)) {
+            // Update an existing WT^
+            // Check that new work score is valid
+            if ((wt.nWorkScore == s.nWorkScore) ||
+                    (s.nWorkScore == (wt.nWorkScore + 1)) ||
+                    (s.nWorkScore == (wt.nWorkScore - 1)))
+            {
+                index.InsertMember(s);
+            }
         }
         else
-        if (vote == SCOP_VERIFY) {
-            nWorkScore++;
+        if (!index.IsFull()) {
+            // Add a new WT^
+            if (!s.nWorkScore == 0) // TODO == 1
+                continue;
+            if (s.nBlocksLeft != ValidSidechains[s.nSidechain].GetTau())
+                continue;
+            index.InsertMember(s);
         }
-
-        if (!Update(old.nSidechain, nBlocksLeft, nWorkScore, old.wtxid, fJustCheck) && fJustCheck)
-            return false;
     }
     return true;
+}
+
+bool SidechainDB::UpdateSCDBMatchMT(int nHeight, const uint256& hashMerkleRoot)
+{
+    // First see if we are already synchronized
+    if (GetHash() == hashMerkleRoot)
+        return true;
+
+    // TODO the loop below is functional. It isn't efficient.
+    // Changing the container of the update cache might be a good
+    // place to start.
+    //
+    // Try to update based on network messages
+    for (const SidechainUpdatePackage& update : vSidechainUpdateCache) {
+        if (update.nHeight != nHeight)
+            continue;
+
+        // Create WTPrimeState objects from the update message
+        std::vector<SidechainWTPrimeState> vWT;
+        for (const SidechainUpdateMSG& msg : update.vUpdate) {
+            // Is sidechain number valid?
+            if (!SidechainNumberValid(msg.nSidechain))
+                 return false;
+
+            SidechainWTPrimeState wt;
+            wt.nSidechain = msg.nSidechain;
+            wt.hashWTPrime = msg.hashWTPrime;
+            wt.nWorkScore = msg.nWorkScore;
+            wt.nBlocksLeft = ValidSidechains[wt.nSidechain].GetTau();
+
+            // Lookup the old state (for nBlocksLeft) TODO do this better
+            std::vector<SidechainWTPrimeState> vOld = GetState(wt.nSidechain);
+            for (const SidechainWTPrimeState& old : vOld) {
+                if (wt == old)
+                    wt.nBlocksLeft = old.nBlocksLeft - 1;
+            }
+
+            vWT.push_back(wt);
+        }
+
+        // Test out updating SCDB copy with this update package
+        // if it worked, apply the update
+        if (GetHashIfUpdate(vWT) == hashMerkleRoot) {
+            UpdateSCDBIndex(vWT);
+            return (GetHash() == hashMerkleRoot);
+        }
+    }
+    return false;
 }
 
 bool SidechainDB::ApplyDefaultUpdate()
 {
     if (!HasState())
-        return true;
-
-    // Collect WT^(s) that need to be updated
-    std::vector<SidechainWTJoinState> vNeedUpdate;
-    for (const Sidechain& s : ValidSidechains) {
-        const std::vector<SidechainWTJoinState> vState = GetState(s.nSidechain);
-        for (const SidechainWTJoinState& state : vState)
-            vNeedUpdate.push_back(state);
-    }
-
-    // Check that the updates can be applied
-    for (const SidechainWTJoinState& v : vNeedUpdate) {
-        if (!Update(v.nSidechain, v.nBlocksLeft - 1, v.nWorkScore, v.wtxid, true))
-            return false;
-    }
-    // Apply the updates
-    for (const SidechainWTJoinState& v : vNeedUpdate)
-        Update(v.nSidechain, v.nBlocksLeft - 1, v.nWorkScore, v.wtxid);
-
     return true;
-}
 
-bool SidechainDB::CheckWorkScore(const uint8_t& nSidechain, const uint256& wtxid) const
-{
-    if (!SidechainNumberValid(nSidechain))
-        return false;
-
-    std::vector<SidechainWTJoinState> vState = GetState(nSidechain);
-    for (const SidechainWTJoinState& state : vState) {
-        if (state.wtxid == wtxid) {
-            if (state.nWorkScore >= ValidSidechains[nSidechain].nMinWorkScore)
-                return true;
-            else
-                return false;
-        }
-    }
-    return false;
-}
-
-std::string SidechainDB::ToString() const
-{
-    std::string str;
-    str += "SidechainDB:\n";
+    // Decrement nBlocksLeft, nothing else changes
     for (const Sidechain& s : ValidSidechains) {
-        // Print sidechain name
-        str += "Sidechain: " + s.GetSidechainName() + "\n";
-        // Print sidechain WT^ workscore(s)
-        std::vector<SidechainWTJoinState> vState = GetState(s.nSidechain);
-        for (const SidechainWTJoinState& state : vState) {
-            str += "WT^: " + state.wtxid.ToString() + "\n";
-            str += "workscore: " + std::to_string(state.nWorkScore) + "\n";
+        SCDBIndex& index = SCDB[s.nSidechain];
+        for (SidechainWTPrimeState wt : index.members) {
+            // wt is a copy
+            wt.nBlocksLeft--;
+            index.InsertMember(wt);
         }
-        str += "\n";
     }
-    return str;
-}
-
-std::vector<CTransaction> SidechainDB::GetWTJoinCache() const
-{
-    return vWTJoinCache;
+    return true;
 }

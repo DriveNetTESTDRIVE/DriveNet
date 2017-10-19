@@ -36,12 +36,12 @@ struct Sidechain {
     uint16_t nVerificationPeriod;
     uint16_t nMinWorkScore;
 
-    std::string ToString() const;
     std::string GetSidechainName() const;
     uint16_t GetTau() const;
     // Return height of the end of previous / beginning of current tau
     int GetLastTauHeight(int nHeight) const;
     bool operator==(const Sidechain& a) const;
+    std::string ToString() const;
 };
 
 struct SidechainDeposit {
@@ -49,20 +49,32 @@ struct SidechainDeposit {
     CKeyID keyID;
     CMutableTransaction tx;
 
-    std::string ToString() const;
     bool operator==(const SidechainDeposit& a) const;
+    std::string ToString() const;
 };
 
-struct SidechainWTJoinState {
+struct SidechainUpdateMSG {
+    uint8_t nSidechain;
+    uint256 hashWTPrime;
+    uint16_t nWorkScore;
+    int nHeight;
+};
+
+struct SidechainUpdatePackage {
+    int nHeight;
+    std::vector<SidechainUpdateMSG> vUpdate;
+};
+
+struct SidechainWTPrimeState {
     uint8_t nSidechain;
     uint16_t nBlocksLeft;
     uint16_t nWorkScore;
-    uint256 wtxid;
+    uint256 hashWTPrime;
 
-    std::string ToString() const;
     bool IsNull() const;
     uint256 GetHash(void) const;
-    bool operator==(const SidechainWTJoinState& a) const;
+    bool operator==(const SidechainWTPrimeState& a) const;
+    std::string ToString() const;
 
     // For hash calculation
     ADD_SERIALIZE_METHODS
@@ -72,19 +84,19 @@ struct SidechainWTJoinState {
         READWRITE(nSidechain);
         READWRITE(nBlocksLeft);
         READWRITE(nWorkScore);
-        READWRITE(wtxid);
+        READWRITE(hashWTPrime);
     }
 };
 
 struct SCDBIndex {
-    std::array<SidechainWTJoinState, SIDECHAIN_MAX_WT> members;
+    std::array<SidechainWTPrimeState, SIDECHAIN_MAX_WT> members;
     bool IsPopulated() const;
     bool IsFull() const;
-    bool InsertMember(const SidechainWTJoinState& member);
+    bool InsertMember(const SidechainWTPrimeState& member);
     void ClearMembers();
     unsigned int CountPopulatedMembers() const;
     bool Contains(uint256 hashWT) const;
-    bool GetMember(uint256 hashWT, SidechainWTJoinState& wt) const;
+    bool GetMember(uint256 hashWT, SidechainWTPrimeState& wt) const;
 };
 
 // TODO c++11 std::array

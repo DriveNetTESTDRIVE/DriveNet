@@ -18,7 +18,9 @@ class uint256;
 
 struct Sidechain;
 struct SidechainDeposit;
-struct SidechainWTJoinState;
+struct SidechainUpdateMSG;
+struct SidechainUpdatePackage;
+struct SidechainWTPrimeState;
 struct SCDBIndex;
 
 class SidechainDB
@@ -29,42 +31,26 @@ public:
     /** Add deposit(s) to cache */
     void AddDeposits(const std::vector<CTransaction>& vtx);
 
+    /** Cache WT^ update TODO here for testing, move to networking */
+    void AddSidechainNetworkUpdatePackage(const SidechainUpdatePackage& update);
+
     /** Add a new WT^ to the database */
-    bool AddWTJoin(uint8_t nSidechain, const CTransaction& tx);
+    bool AddWTPrime(uint8_t nSidechain, const CTransaction& tx);
 
-    /** Return true if the deposit is cached */
-    bool HaveDepositCached(const SidechainDeposit& deposit) const;
-
-    /** Return true if the full WT^ CTransaction is cached */
-    bool HaveWTJoinCached(const uint256& wtxid) const;
-
-    /** Get status of nSidechain's WT^(s) (public for unit tests) */
-    std::vector<SidechainWTJoinState> GetState(uint8_t nSidechain) const;
+    /** Check SCDB WT^ verification status */
+    bool CheckWorkScore(const uint8_t& nSidechain, const uint256& hashWTPrime) const;
 
     /** Return vector of deposits this tau for nSidechain. */
     std::vector<SidechainDeposit> GetDeposits(uint8_t nSidechain) const;
 
-    /** Create a script with OP_RETURN data representing the DB state */
-    CScript CreateStateScript(int nHeight) const;
-
     /** Return serialization hash of SCDB latest verification(s) */
-    uint256 GetSCDBHash() const;
-
-    /** Check SCDB WT^ verification status */
-    bool CheckWorkScore(const uint8_t& nSidechain, const uint256& wtxid) const;
-
-    /**
-     * Update the DB state. This function is the only function that
-     * updates the SCDB state during normal operation. The update
-     * overload exists to facilitate testing.
-     */
-    bool Update(int nHeight, const uint256& hashBlock, const std::vector<CTxOut>& vout, std::string& strError);
-
-    /** Update the DB state (public for unit tests) */
-    bool Update(uint8_t nSidechain, uint16_t nBlocks, uint16_t nScore, uint256 wtxid, bool fJustCheck = false);
+    uint256 GetHash() const;
 
     /** Return the hash of the last block SCDB processed */
     uint256 GetHashBlockLastSeen();
+
+    /** Return what the SCDB hash would be if the updates are applied */
+    uint256 GetHashIfUpdate(const std::vector<SidechainWTPrimeState>& vNewScores) const;
 
     /**
      * Return from the BMM ratchet the data which is required to
@@ -72,14 +58,40 @@ public:
      */
     std::multimap<uint256, int> GetLinkingData() const;
 
-    /** Print SCDB WT^ verification status */
-    std::string ToString() const;
+    /** Get status of nSidechain's WT^(s) (public for unit tests) */
+    std::vector<SidechainWTPrimeState> GetState(uint8_t nSidechain) const;
+
+    /** Return the cached WT^ transaction */
+    std::vector<CTransaction> GetWTPrimeCache() const;
 
     /** Is there anything being tracked by the SCDB? */
     bool HasState() const;
 
-    /** Return the cached WT^ transaction */
-    std::vector<CTransaction> GetWTJoinCache() const;
+    /** Return true if the deposit is cached */
+    bool HaveDepositCached(const SidechainDeposit& deposit) const;
+
+    /** Return true if the full WT^ CTransaction is cached */
+    bool HaveWTPrimeCached(const uint256& hashWTPrime) const;
+
+    /** Reset SCDB and clear out all data tracked by SidechainDB */
+    void Reset();
+
+    /** Print SCDB WT^ verification status */
+    std::string ToString() const;
+
+    /**
+     * Update the DB state.
+     */
+    bool Update(int nHeight, const uint256& hashBlock, const std::vector<CTxOut>& vout, std::string& strError);
+
+    /** Update / add multiple SCDB WT^(s) to SCDB */
+    bool UpdateSCDBIndex(const std::vector<SidechainWTPrimeState>& vNewScores);
+
+    /** Read the SCDB hash in a new block and try to synchronize our SCDB
+     *  by testing possible work score updates until the SCDB hash of our
+     *  SCDB matches that of the new block. Return false if no match found.
+     */
+    bool UpdateSCDBMatchMT(int nHeight, const uint256& hashMerkleRoot);
 
 private:
     /** Sidechain "database" tracks verification status of WT^(s) */
@@ -90,16 +102,19 @@ private:
     std::queue<uint256> queueBMMLD;
 
     /** Cache of potential WT^ transactions */
-    std::vector<CTransaction> vWTJoinCache;
+    std::vector<CTransaction> vWTPrimeCache;
 
     /** Cache of deposits created during this tau */
     std::vector<SidechainDeposit> vDepositCache;
 
+    /** Cache of WT^ update messages.
+    *  TODO This is here to enable testing, remove
+    *  when RPC calls are replaced with network messages.
+    */
+    std::vector<SidechainUpdatePackage> vSidechainUpdateCache;
+
     /** The most recent block that SCDB has processed */
     uint256 hashBlockLastSeen;
-
-    /** Apply update to SCDB */
-    bool ApplyStateScript(const CScript& state, bool fJustCheck = false);
 
     /**
      * Submit default vote for all sidechain WT^(s).

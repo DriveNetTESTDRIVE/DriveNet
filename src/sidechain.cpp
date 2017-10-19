@@ -9,22 +9,6 @@
 
 #include <sstream>
 
-bool SidechainNumberValid(uint8_t nSidechain)
-{
-    if (!(nSidechain < ARRAYLEN(ValidSidechains)))
-        return false;
-
-    // Check that number corresponds to a valid sidechain
-    switch (nSidechain) {
-    case SIDECHAIN_TEST:
-    case SIDECHAIN_HIVEMIND:
-    case SIDECHAIN_WIMBLE:
-        return true;
-    default:
-        return false;
-    }
-}
-
 std::string GetSidechainName(uint8_t nSidechain)
 {
     if (!SidechainNumberValid(nSidechain))
@@ -72,6 +56,16 @@ bool Sidechain::operator==(const Sidechain& a) const
     return (a.nSidechain == nSidechain);
 }
 
+std::string Sidechain::ToString() const
+{
+    std::stringstream ss;
+    ss << "nSidechain=" << (unsigned int)nSidechain << std::endl;
+    ss << "nWaitPeriod=" << nWaitPeriod << std::endl;
+    ss << "nVerificationPeriod=" << nVerificationPeriod << std::endl;
+    ss << "nMinWorkScore=" << nMinWorkScore << std::endl;
+    return ss.str();
+}
+
 bool SidechainDeposit::operator==(const SidechainDeposit& a) const
 {
     return (a.nSidechain == nSidechain &&
@@ -79,20 +73,40 @@ bool SidechainDeposit::operator==(const SidechainDeposit& a) const
             a.tx == tx);
 }
 
-bool SidechainWTJoinState::operator==(const SidechainWTJoinState& a) const
+std::string SidechainDeposit::ToString() const
 {
-    return (a.nSidechain == nSidechain &&
-            a.wtxid == wtxid);
+    std::stringstream ss;
+    ss << "sidechain=" << GetSidechainName(nSidechain) << std::endl;
+    ss << "keyID=" << keyID.ToString() << std::endl;
+    ss << "hashWTPrime=" << tx.GetHash().ToString() << std::endl;
+    return ss.str();
 }
 
-bool SidechainWTJoinState::IsNull() const
+bool SidechainWTPrimeState::IsNull() const
 {
-    return (wtxid.IsNull());
+    return (hashWTPrime.IsNull());
 }
 
-uint256 SidechainWTJoinState::GetHash(void) const
+uint256 SidechainWTPrimeState::GetHash(void) const
 {
     return SerializeHash(*this);
+}
+
+bool SidechainWTPrimeState::operator==(const SidechainWTPrimeState& a) const
+{
+    return (a.nSidechain == nSidechain &&
+            a.hashWTPrime == hashWTPrime);
+}
+
+std::string SidechainWTPrimeState::ToString() const
+{
+    std::stringstream ss;
+    ss << "hash=" << GetHash().ToString() << std::endl;
+    ss << "sidechain=" << GetSidechainName(nSidechain) << std::endl;
+    ss << "nBlocksLeft=" << (unsigned int)nBlocksLeft << std::endl;
+    ss << "nWorkScore=" << (unsigned int)nWorkScore << std::endl;
+    ss << "hashWTPrime=" << hashWTPrime.ToString() << std::endl;
+    return ss.str();
 }
 
 bool SCDBIndex::IsPopulated() const
@@ -108,17 +122,17 @@ bool SCDBIndex::IsPopulated() const
 
 bool SCDBIndex::IsFull() const
 {
-    for (const SidechainWTJoinState& member : members) {
+    for (const SidechainWTPrimeState& member : members) {
         if (member.IsNull())
             return false;
     }
     return true;
 }
 
-bool SCDBIndex::InsertMember(const SidechainWTJoinState& member)
+bool SCDBIndex::InsertMember(const SidechainWTPrimeState& member)
 {
     for (size_t i = 0; i < members.size(); i++) {
-        if (members[i].IsNull() || members[i].wtxid == member.wtxid) {
+        if (members[i].IsNull() || members[i].hashWTPrime == member.hashWTPrime) {
             members[i] = member;
             return true;
         }
@@ -129,13 +143,13 @@ bool SCDBIndex::InsertMember(const SidechainWTJoinState& member)
 void SCDBIndex::ClearMembers()
 {
     for (size_t i = 0; i < members.size(); i++)
-        members[i].wtxid = uint256();
+        members[i].hashWTPrime = uint256();
 }
 
 unsigned int SCDBIndex::CountPopulatedMembers() const
 {
     unsigned int nMembers = 0;
-    for (const SidechainWTJoinState& member : members) {
+    for (const SidechainWTPrimeState& member : members) {
         if (!member.IsNull())
             nMembers++;
     }
@@ -144,17 +158,17 @@ unsigned int SCDBIndex::CountPopulatedMembers() const
 
 bool SCDBIndex::Contains(uint256 hashWT) const
 {
-    for (const SidechainWTJoinState& member : members) {
-        if (!member.IsNull() && member.wtxid == hashWT)
+    for (const SidechainWTPrimeState& member : members) {
+        if (!member.IsNull() && member.hashWTPrime == hashWT)
             return true;
     }
     return false;
 }
 
-bool SCDBIndex::GetMember(uint256 hashWT, SidechainWTJoinState& wt) const
+bool SCDBIndex::GetMember(uint256 hashWT, SidechainWTPrimeState& wt) const
 {
-    for (const SidechainWTJoinState& member : members) {
-        if (!member.IsNull() && member.wtxid == hashWT) {
+    for (const SidechainWTPrimeState& member : members) {
+        if (!member.IsNull() && member.hashWTPrime == hashWT) {
             wt = member;
             return true;
         }
@@ -162,32 +176,18 @@ bool SCDBIndex::GetMember(uint256 hashWT, SidechainWTJoinState& wt) const
     return false;
 }
 
-std::string Sidechain::ToString() const
+bool SidechainNumberValid(uint8_t nSidechain)
 {
-    std::stringstream ss;
-    ss << "nSidechain=" << (unsigned int)nSidechain << std::endl;
-    ss << "nWaitPeriod=" << nWaitPeriod << std::endl;
-    ss << "nVerificationPeriod=" << nVerificationPeriod << std::endl;
-    ss << "nMinWorkScore=" << nMinWorkScore << std::endl;
-    return ss.str();
-}
+    if (!(nSidechain < ARRAYLEN(ValidSidechains)))
+        return false;
 
-std::string SidechainDeposit::ToString() const
-{
-    std::stringstream ss;
-    ss << "sidechain=" << GetSidechainName(nSidechain) << std::endl;
-    ss << "keyID=" << keyID.ToString() << std::endl;
-    ss << "txid=" << tx.GetHash().ToString() << std::endl;
-    return ss.str();
-}
-
-std::string SidechainWTJoinState::ToString() const
-{
-    std::stringstream ss;
-    ss << "hash=" << GetHash().ToString() << std::endl;
-    ss << "sidechain=" << GetSidechainName(nSidechain) << std::endl;
-    ss << "nBlocksLeft=" << (unsigned int)nBlocksLeft << std::endl;
-    ss << "nWorkScore=" << (unsigned int)nWorkScore << std::endl;
-    ss << "wtxid=" << wtxid.ToString() << std::endl;
-    return ss.str();
+    // Check that number corresponds to a valid sidechain
+    switch (nSidechain) {
+    case SIDECHAIN_TEST:
+    case SIDECHAIN_HIVEMIND:
+    case SIDECHAIN_WIMBLE:
+        return true;
+    default:
+        return false;
+    }
 }
