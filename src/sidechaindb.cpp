@@ -4,6 +4,7 @@
 
 #include "sidechaindb.h"
 
+#include "consensus/consensus.h"
 #include "consensus/merkle.h"
 #include "primitives/transaction.h"
 #include "script/script.h"
@@ -13,7 +14,9 @@
 
 SidechainDB::SidechainDB()
 {
-    SCDB.resize(ARRAYLEN(ValidSidechains));
+    size_t nSidechains = ARRAYLEN(ValidSidechains);
+    SCDB.resize(nSidechains );
+    ratchet.resize(nSidechains);
 }
 
 void SidechainDB::AddDeposits(const std::vector<CTransaction>& vtx)
@@ -31,7 +34,7 @@ void SidechainDB::AddDeposits(const std::vector<CTransaction>& vtx)
                 continue;
 
             uint8_t nSidechain = (unsigned int)scriptPubKey[1];
-            if (!SidechainNumberValid(nSidechain))
+            if (!IsSidechainNumberValid(nSidechain))
                 continue;
 
             CScript::const_iterator pkey = scriptPubKey.begin() + 2;
@@ -71,7 +74,7 @@ bool SidechainDB::AddWTPrime(uint8_t nSidechain, const CTransaction& tx)
 {
     if (vWTPrimeCache.size() >= SIDECHAIN_MAX_WT)
         return false;
-    if (!SidechainNumberValid(nSidechain))
+    if (!IsSidechainNumberValid(nSidechain))
         return false;
     if (HaveWTPrimeCached(tx.GetHash()))
         return false;
@@ -95,9 +98,64 @@ bool SidechainDB::AddWTPrime(uint8_t nSidechain, const CTransaction& tx)
     return false;
 }
 
-bool SidechainDB::CheckWorkScore(const uint8_t& nSidechain, const uint256& hashWTPrime) const
+int SidechainDB::CountBlocksAtop(const CCriticalData& data) const
 {
-    if (!SidechainNumberValid(nSidechain))
+    // Translate critical data into LD
+    SidechainLD ld;
+    ld.hashCritical = data.hashCritical;
+
+    // Convert bytes to script for easy parsing
+    CScript bytes(data.bytes.begin(), data.bytes.end());
+
+    // Get nSidechain
+    CScript::const_iterator psidechain = bytes.begin() + 3;
+    opcodetype opcode;
+    std::vector<unsigned char> vchSidechain;
+    if (!bytes.GetOp(psidechain, opcode, vchSidechain))
+        return -1;
+
+    ld.nSidechain = CScriptNum(vchSidechain, true).getint();
+
+    if (!IsSidechainNumberValid(ld.nSidechain))
+        return -1;
+
+    // Get prevBlockRef
+    CScript::const_iterator pprevblock = bytes.begin() + 3 + vchSidechain.size();
+    std::vector<unsigned char> vchPrevBlockRef;
+    if (!bytes.GetOp(pprevblock, opcode, vchPrevBlockRef))
+        return -1;
+
+    ld.nPrevBlockRef = CScriptNum(vchPrevBlockRef, true).getint();
+
+    if (ld.nPrevBlockRef > BMM_MAX_PREVBLOCK)
+        return -1;
+
+    return CountBlocksAtop(ld);
+}
+
+int SidechainDB::CountBlocksAtop(const SidechainLD& ld) const
+{
+    if (!IsSidechainNumberValid(ld.nSidechain))
+        return -1;
+
+    // Nothing could have matured
+    if (ratchet[ld.nSidechain].size() < BMM_REQUEST_MATURITY) {
+        return -1;
+    }
+
+    // Check that LD has matured
+    for (size_t i = 0; i < ratchet[ld.nSidechain].size(); i++) {
+        if (ratchet[ld.nSidechain][i] == ld) {
+            return ratchet[ld.nSidechain].size() - i;
+        }
+    }
+
+    return -1;
+}
+
+bool SidechainDB::CheckWorkScore(uint8_t nSidechain, const uint256& hashWTPrime) const
+{
+    if (!IsSidechainNumberValid(nSidechain))
         return false;
 
     std::vector<SidechainWTPrimeState> vState = GetState(nSidechain);
@@ -148,14 +206,22 @@ uint256 SidechainDB::GetHashIfUpdate(const std::vector<SidechainWTPrimeState>& v
     return (scdbCopy.GetHash());
 }
 
-std::multimap<uint256, int> SidechainDB::GetLinkingData() const
+bool SidechainDB::GetLinkingData(uint8_t nSidechain, std::vector<SidechainLD>& ld) const
 {
-    return mapBMMLD;
+    if (!IsSidechainNumberValid(nSidechain))
+        return false;
+
+    if (nSidechain >= ratchet.size())
+        return false;
+
+    ld = ratchet[nSidechain];
+
+    return true;
 }
 
 std::vector<SidechainWTPrimeState> SidechainDB::GetState(uint8_t nSidechain) const
 {
-    if (!HasState() || !SidechainNumberValid(nSidechain))
+    if (!HasState() || !IsSidechainNumberValid(nSidechain))
         return std::vector<SidechainWTPrimeState>();
 
     std::vector<SidechainWTPrimeState> vState;
@@ -199,6 +265,18 @@ bool SidechainDB::HaveDepositCached(const SidechainDeposit &deposit) const
     return false;
 }
 
+bool SidechainDB::HaveLinkingData(uint8_t nSidechain, uint256 hashCritical) const
+{
+    if (!IsSidechainNumberValid(nSidechain))
+        return false;
+
+    for (const SidechainLD& ld : ratchet[nSidechain]) {
+        if (ld.hashCritical == hashCritical)
+            return true;
+    }
+    return false;
+}
+
 bool SidechainDB::HaveWTPrimeCached(const uint256& hashWTPrime) const
 {
     for (const CTransaction& tx : vWTPrimeCache) {
@@ -215,9 +293,10 @@ void SidechainDB::Reset()
         SCDB[s.nSidechain].ClearMembers();
 
     // Clear out LD
-    mapBMMLD.clear();
-    std::queue<uint256> queueEmpty;
-    std::swap(queueBMMLD, queueEmpty);
+    ratchet.clear();
+    //mapBMMLD.clear();
+    //std::queue<uint256> queueEmpty;
+    //std::swap(queueBMMLD, queueEmpty);
 
     // Clear out Deposit data
     vDepositCache.clear();
@@ -286,68 +365,66 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const std::vecto
         if (!scriptPubKey.IsCriticalHashCommit())
             continue;
 
-        /* TODO refactor along with DAG PR
-        CScript::const_iterator pbn = scriptPubKey.begin() + 1;
+        CScript::const_iterator phash = scriptPubKey.begin() + 5;
         opcodetype opcode;
-        std::vector<unsigned char> vchBN;
-        if (!scriptPubKey.GetOp(pbn, opcode, vchBN))
+        std::vector<unsigned char> vchHash;
+        if (!scriptPubKey.GetOp(phash, opcode, vchHash))
             continue;
-        if (vchBN.size() < 1 || vchBN.size() > 4)
-            continue;
-
-        CScriptNum nBlock(vchBN, true);
-
-        CScript::const_iterator phash = scriptPubKey.begin() + vchBN.size() + 2;
-        std::vector<unsigned char> vch;
-        if (!scriptPubKey.GetOp(phash, opcode, vch))
-            continue;
-        if (vch.size() != sizeof(uint256))
+        if (vchHash.size() != sizeof(uint256))
             continue;
 
-        uint256 hashCritical = uint256(vch);
+        uint256 hashCritical = uint256(vchHash);
 
-        // Check block number
-        bool fValid = false;
-        if (queueBMMLD.size()) {
-            // Compare block number with most recent h* block number
-            uint256 hashMostRecent = queueBMMLD.back();
-            std::multimap<uint256, int>::const_iterator it = mapBMMLD.find(hashMostRecent);
-            if (it == mapBMMLD.end())
-                return false;
+        // Read critical data bytes if there are any
+        std::vector<unsigned char> bytes;
+        if (scriptPubKey.size() > 37) {
+            CScript::const_iterator pbytes = scriptPubKey.begin() + 38;
+            if (!scriptPubKey.GetOp(pbytes, opcode, bytes))
+                continue;
 
-            int nHeightMostRecent = it->second;
+            // Do the bytes indicate that this is a sidechain h*?
+            if (bytes[0] != 0x00 || bytes[1] != 0xbf || bytes[2] != 0x00)
+                continue;
 
-            if ((nBlock.getint() - nHeightMostRecent) <= 1)
-                fValid = true;
-        } else {
-            // No previous h* to compare with
-            fValid = true;
-        }
-        if (!fValid) {
-            strError = "SidechainDB::Update: h* invalid";
-            continue;
-        }
+            // Read sidechain number
+            CScript::const_iterator psidechain = scriptPubKey.begin() + 42;
+            std::vector<unsigned char> vchSidechain;
+            if (!scriptPubKey.GetOp(psidechain, opcode, vchSidechain))
+                continue;
 
-        // Update BMM linking data
-        // Add new linking data
-        mapBMMLD.emplace(hashCritical, nBlock.getint());
-        queueBMMLD.push(hashCritical);
+            uint8_t nSidechain = CScriptNum(vchSidechain, true).getint();
 
-        // Remove old linking data if we need to
-        if (mapBMMLD.size() > SIDECHAIN_MAX_LD) {
-            uint256 hashRemove = queueBMMLD.front();
-            std::multimap<uint256, int>::const_iterator it = mapBMMLD.lower_bound(hashRemove);
-            if (it->first == hashRemove) {
-                mapBMMLD.erase(it);
-                queueBMMLD.pop();
+            if (!IsSidechainNumberValid(nSidechain))
+                continue;
+
+            // Read prev block ref
+            CScript::const_iterator pprevblockref = psidechain + vchSidechain.size();
+            std::vector<unsigned char> vchPrevBlock;
+            if (!scriptPubKey.GetOp(pprevblockref, opcode, vchPrevBlock))
+                continue;
+
+            CScriptNum nPrevBlockRef(vchPrevBlock, true);
+            if (nPrevBlockRef.getint() > BMM_MAX_PREVBLOCK)
+                continue;
+            if (nPrevBlockRef.getint() > ratchet[nSidechain].size())
+                continue;
+
+            SidechainLD ld;
+            ld.nSidechain = nSidechain;
+            ld.hashCritical = hashCritical;
+            ld.nPrevBlockRef = nPrevBlockRef.getint();
+
+            ratchet[nSidechain].push_back(ld);
+
+            // Maintain ratchet size limit
+            if (!(ratchet[nSidechain].size() < BMM_MAX_LD)) {
+                // TODO change to vector of queue for pop()
+                ratchet.erase(ratchet.begin());
             }
         }
-        */
     }
 
     // Scan for new WT^(s) and start tracking them
-    // TODO
-    // SidechainDB::AddWTPrime
     for (const CTxOut& out : vout) {
         const CScript& scriptPubKey = out.scriptPubKey;
         if (scriptPubKey.IsWTPrimeHashCommit()) {
@@ -370,7 +447,7 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const std::vecto
                 continue;
 
             CScriptNum nSidechain(vchNS, true);
-            if (!SidechainNumberValid(nSidechain.getint()))
+            if (!IsSidechainNumberValid(nSidechain.getint()))
                 continue;
 
             // Create WT object
@@ -427,7 +504,7 @@ bool SidechainDB::UpdateSCDBIndex(const std::vector<SidechainWTPrimeState>& vNew
 {
     // First check that sidechain numbers are valid
     for (const SidechainWTPrimeState& s : vNewScores) {
-        if (!SidechainNumberValid(s.nSidechain))
+        if (!IsSidechainNumberValid(s.nSidechain))
             return false;
     }
 
@@ -494,7 +571,7 @@ bool SidechainDB::UpdateSCDBMatchMT(int nHeight, const uint256& hashMerkleRoot)
         std::vector<SidechainWTPrimeState> vWT;
         for (const SidechainUpdateMSG& msg : update.vUpdate) {
             // Is sidechain number valid?
-            if (!SidechainNumberValid(msg.nSidechain))
+            if (!IsSidechainNumberValid(msg.nSidechain))
                  return false;
 
             SidechainWTPrimeState wt;

@@ -597,8 +597,21 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState& state, const C
             }
         }
 
+        bool fSpendsBMMRequest = false;
+        for (const CTxIn& txin : tx.vin) {
+            const CCoins *coins = view.AccessCoins(txin.prevout.hash);
+            if (coins->fCriticalData && coins->criticalData.IsBMMRequest()) {
+                // Check maturity
+                if (scdb.CountBlocksAtop(coins->criticalData) < BMM_REQUEST_MATURITY)
+                    return state.Invalid(false, REJECT_INVALID, "bad-txn-immature-bmm-request");
+
+                fSpendsBMMRequest = true;
+                break;
+            }
+        }
+
         CTxMemPoolEntry entry(ptx, nFees, nAcceptTime, chainActive.Height(),
-                              fSpendsCoinbase, nSigOpsCost, lp);
+                              fSpendsCoinbase, fSpendsBMMRequest, nSigOpsCost, lp);
         unsigned int nSize = entry.GetTxSize();
 
         // Check that the transaction doesn't have an excessive number of
@@ -1196,11 +1209,7 @@ bool CScriptCheck::operator()() {
     const CScript &scriptSig = ptxTo->vin[nIn].scriptSig;
     const CScriptWitness *witness = &ptxTo->vin[nIn].scriptWitness;
 
-    std::multimap<uint256, int> mapBMMLDCopy;
-    if (scriptPubKey.IsCriticalHashCommit())
-        mapBMMLDCopy = scdb.GetLinkingData();
-
-    return VerifyScript(scriptSig, scriptPubKey, witness, nFlags, CachingTransactionSignatureChecker(ptxTo, nIn, amount, cacheStore, *txdata, mapBMMLDCopy), &error);
+    return VerifyScript(scriptSig, scriptPubKey, witness, nFlags, CachingTransactionSignatureChecker(ptxTo, nIn, amount, cacheStore, *txdata), &error);
 }
 
 int GetSpendHeight(const CCoinsViewCache& inputs)
@@ -1234,6 +1243,12 @@ bool CheckInputs(const CTransaction& tx, CValidationState &state, const CCoinsVi
                 const COutPoint &prevout = tx.vin[i].prevout;
                 const CCoins* coins = inputs.AccessCoins(prevout.hash);
                 assert(coins);
+
+                // Check BMM h* request maturity when trying to spend
+                if (coins->fCriticalData && coins->criticalData.IsBMMRequest()) {
+                    if (scdb.CountBlocksAtop(coins->criticalData) < BMM_REQUEST_MATURITY)
+                        return state.Invalid(false, REJECT_INVALID, "bad-block-txn-immature-bmm-request");
+                }
 
                 // Verify signature
                 CScriptCheck check(*coins, tx, i, flags, cacheStore, &txdata);
@@ -1660,12 +1675,6 @@ static bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockInd
     if (IsWitnessEnabled(pindex->pprev, chainparams.GetConsensus())) {
         flags |= SCRIPT_VERIFY_WITNESS;
         flags |= SCRIPT_VERIFY_NULLDUMMY;
-    }
-
-    // TODO
-    // Activate BRIBE right now for testing
-    if (true) {
-        flags |= SCRIPT_VERIFY_BRIBE;
     }
 
     int64_t nTime2 = GetTimeMicros(); nTimeForks += nTime2 - nTime1;
@@ -2877,7 +2886,7 @@ std::vector<unsigned char> GenerateCoinbaseCommitment(CBlock& block, const CBloc
     return commitment;
 }
 
-CScript GenerateCriticalHashCommitment(int nHeight, const uint256& hashCritical)
+CScript GenerateCriticalHashCommitment(const CCriticalData& criticalData)
 {
     // TODO
     // check consensusParams.vDeployments[Consensus::DEPLOYMENT_DRIVECHAINS]
@@ -2885,16 +2894,17 @@ CScript GenerateCriticalHashCommitment(int nHeight, const uint256& hashCritical)
 
     // Add script header
     script << OP_RETURN;
-    script.push_back(0x23);
-    script.push_back(0x50);
-    script.push_back(0x50);
-    script.push_back(0x33);
-
-    // Add block number
-    //script << CScriptNum(nHeight);
+    script.push_back(0x48);
+    script.push_back(0x61);
+    script.push_back(0x73);
+    script.push_back(0x68);
 
     // Add h*
-    script << ToByteVector(hashCritical);
+    script << ToByteVector(criticalData.hashCritical);
+
+    // Add bytes (optional)
+    if (!criticalData.bytes.empty())
+        script << criticalData.bytes;
 
     return script;
 }
@@ -2935,7 +2945,6 @@ CScript GenerateWTPrimeHashCommitment(const uint256& hashWTPrime)
     script << ToByteVector(hashWTPrime);
 
     return script;
-
 }
 
 bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& state, const Consensus::Params& consensusParams, const CBlockIndex* pindexPrev, int64_t nAdjustedTime)
@@ -3043,7 +3052,8 @@ bool ContextualCheckBlock(const CBlock& block, CValidationState& state, const Co
         return state.DoS(100, false, REJECT_INVALID, "bad-blk-weight", false, strprintf("%s : weight limit failed", __func__));
     }
 
-    // Check critical data transactions
+
+    // Check critical data transactions (outputs, not spending)
     if (true /* TODO versionbits */) {
         for (const auto& tx: block.vtx) {
             // Look for transactions with non-null CCriticalData

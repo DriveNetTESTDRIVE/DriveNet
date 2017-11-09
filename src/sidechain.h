@@ -20,9 +20,7 @@ static const char* const SIDECHAIN_TEST_PRIV = "cQMQ99mA5Xi2Hm9YM3WmB2JcJai3tzGu
 static const char* const SIDECHAIN_TEST_SCRIPT_HEX = "76a914497f7d6b59281591c50b5e82fb4730adf0fbc10988ac";
 
 //! Max number of WT^(s) per sidechain during tau
-static const int SIDECHAIN_MAX_WT = 3;
-
-static const int SIDECHAIN_MAX_LD = 2600;
+static const int SIDECHAIN_MAX_WT = 3; // TODO remove
 
 enum SidechainNumber {
     SIDECHAIN_TEST = 0,
@@ -53,11 +51,18 @@ struct SidechainDeposit {
     std::string ToString() const;
 };
 
+struct SidechainLD {
+    int8_t nSidechain;
+    int8_t nPrevBlockRef;
+    uint256 hashCritical;
+
+    bool operator==(const SidechainLD& a) const;
+};
+
 struct SidechainUpdateMSG {
     uint8_t nSidechain;
     uint256 hashWTPrime;
     uint16_t nWorkScore;
-    int nHeight;
 };
 
 struct SidechainUpdatePackage {
@@ -108,7 +113,7 @@ static const Sidechain ValidSidechains[] =
     {SIDECHAIN_WIMBLE, 100, 200, 100},
 };
 
-bool SidechainNumberValid(uint8_t nSidechain);
+bool IsSidechainNumberValid(uint8_t nSidechain);
 
 std::string GetSidechainName(uint8_t nSidechain);
 

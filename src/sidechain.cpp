@@ -11,7 +11,7 @@
 
 std::string GetSidechainName(uint8_t nSidechain)
 {
-    if (!SidechainNumberValid(nSidechain))
+    if (!IsSidechainNumberValid(nSidechain))
         return "SIDECHAIN_UNKNOWN";
 
     return ValidSidechains[nSidechain].GetSidechainName();
@@ -80,6 +80,13 @@ std::string SidechainDeposit::ToString() const
     ss << "keyID=" << keyID.ToString() << std::endl;
     ss << "hashWTPrime=" << tx.GetHash().ToString() << std::endl;
     return ss.str();
+}
+
+bool SidechainLD::operator==(const SidechainLD& a) const
+{
+    return (a.nSidechain == nSidechain &&
+            a.nPrevBlockRef == nPrevBlockRef &&
+            a.hashCritical == hashCritical);
 }
 
 bool SidechainWTPrimeState::IsNull() const
@@ -176,7 +183,7 @@ bool SCDBIndex::GetMember(uint256 hashWT, SidechainWTPrimeState& wt) const
     return false;
 }
 
-bool SidechainNumberValid(uint8_t nSidechain)
+bool IsSidechainNumberValid(uint8_t nSidechain)
 {
     if (!(nSidechain < ARRAYLEN(ValidSidechains)))
         return false;
