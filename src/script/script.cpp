@@ -131,7 +131,7 @@ const char* GetOpName(opcodetype opcode)
     case OP_NOP1                   : return "OP_NOP1";
     case OP_CHECKLOCKTIMEVERIFY    : return "OP_CHECKLOCKTIMEVERIFY";
     case OP_CHECKSEQUENCEVERIFY    : return "OP_CHECKSEQUENCEVERIFY";
-    case OP_BRIBE                  : return "OP_BRIBE";
+    case OP_NOP4                   : return "OP_NOP4";
     case OP_NOP5                   : return "OP_NOP5";
     case OP_NOP6                   : return "OP_NOP6";
     case OP_NOP7                   : return "OP_NOP7";
@@ -248,10 +248,10 @@ bool CScript::IsCriticalHashCommit() const
 
     // Check script header
     if ((*this)[0] != OP_RETURN ||
-            (*this)[1] != 0x23 ||
-            (*this)[2] != 0x50 ||
-            (*this)[3] != 0x50 ||
-            (*this)[4] != 0x33)
+            (*this)[1] != 0x48 ||
+            (*this)[2] != 0x61 ||
+            (*this)[3] != 0x73 ||
+            (*this)[4] != 0x68)
         return false;
 
     return true;

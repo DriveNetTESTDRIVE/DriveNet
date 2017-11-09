@@ -129,15 +129,18 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "logging", 0, "include" },
     { "logging", 1, "exclude" },
     { "disconnectnode", 1, "nodeid" },
+<<<<<<< 78880ddc0ce848eae480052873af7ff075d90431
     { "addwitnessaddress", 1, "p2sh" },
     { "createbribe", 0, "amount" },
     { "createbribe", 1, "height" },
+=======
+    { "createcriticaldatatx", 0, "amount" },
+    { "createcriticaldatatx", 1, "height" },
+>>>>>>> Add work on BMM ratchet system & DAG for bip2-blind-merged-mining (#47)
     { "listsidechaindeposits", 0, "nsidechain" },
-    { "receivesidechainwtprime", 0, "nsidechain" },
-    { "receivesidechainwtprimeupdate", 0, "height" },
-    { "receivesidechainwtprimeupdate", 1, "update" },
-    { "refundbribe", 0, "amount" },
-    { "refundbribe", 2, "pos" },
+    { "receivewtprime", 0, "nsidechain" },
+    { "receivewtprimeupdate", 0, "height" },
+    { "receivewtprimeupdate", 1, "update" },
     // Echo with conversion (For testing only)
     { "echojson", 0, "arg0" },
     { "echojson", 1, "arg1" },
