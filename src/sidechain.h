@@ -21,6 +21,7 @@ static const char* const SIDECHAIN_TEST_SCRIPT_HEX = "76a914497f7d6b59281591c50b
 
 //! Max number of WT^(s) per sidechain during tau
 static const int SIDECHAIN_MAX_WT = 3; // TODO remove
+static const size_t VALID_SIDECHAINS_COUNT = 3;
 
 enum SidechainNumber {
     SIDECHAIN_TEST = 0,
@@ -104,14 +105,13 @@ struct SCDBIndex {
     bool GetMember(uint256 hashWT, SidechainWTPrimeState& wt) const;
 };
 
-// TODO c++11 std::array
-static const Sidechain ValidSidechains[] =
-{
+static const std::array<Sidechain, VALID_SIDECHAINS_COUNT> ValidSidechains = 
+{{
     // {nSidechain, nWaitPeriod, nVerificationPeriod, nMinWorkScore}
     {SIDECHAIN_TEST, 100, 200, 100},
     {SIDECHAIN_HIVEMIND, 100, 200, 100},
-    {SIDECHAIN_WIMBLE, 100, 200, 100},
-};
+    {SIDECHAIN_WIMBLE, 100, 200, 100}
+}};
 
 bool IsSidechainNumberValid(uint8_t nSidechain);
 
