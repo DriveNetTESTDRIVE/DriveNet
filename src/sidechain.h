@@ -58,6 +58,17 @@ struct SidechainLD {
     uint256 hashCritical;
 
     bool operator==(const SidechainLD& a) const;
+    uint256 GetHash(void) const;
+
+    // For hash calculation
+    ADD_SERIALIZE_METHODS
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action) {
+        READWRITE(nSidechain);
+        READWRITE(nPrevBlockRef);
+        READWRITE(hashCritical);
+    }
 };
 
 struct SidechainUpdateMSG {
@@ -105,7 +116,7 @@ struct SCDBIndex {
     bool GetMember(uint256 hashWT, SidechainWTPrimeState& wt) const;
 };
 
-static const std::array<Sidechain, VALID_SIDECHAINS_COUNT> ValidSidechains = 
+static const std::array<Sidechain, VALID_SIDECHAINS_COUNT> ValidSidechains =
 {{
     // {nSidechain, nWaitPeriod, nVerificationPeriod, nMinWorkScore}
     {SIDECHAIN_TEST, 100, 200, 100},
