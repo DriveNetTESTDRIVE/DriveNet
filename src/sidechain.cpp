@@ -89,6 +89,11 @@ bool SidechainLD::operator==(const SidechainLD& a) const
             a.hashCritical == hashCritical);
 }
 
+uint256 SidechainLD::GetHash(void) const
+{
+    return SerializeHash(*this);
+}
+
 bool SidechainWTPrimeState::IsNull() const
 {
     return (hashWTPrime.IsNull());

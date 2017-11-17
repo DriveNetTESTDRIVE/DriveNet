@@ -51,14 +51,17 @@ public:
     /** Return vector of deposits this tau for nSidechain. */
     std::vector<SidechainDeposit> GetDeposits(uint8_t nSidechain) const;
 
+    /** Return serialization hash of BMM ratchet data */
+    uint256 GetBMMHash() const;
+
     /** Return serialization hash of SCDB latest verification(s) */
-    uint256 GetHash() const;
+    uint256 GetSCDBHash() const;
 
     /** Return the hash of the last block SCDB processed */
     uint256 GetHashBlockLastSeen();
 
     /** Return what the SCDB hash would be if the updates are applied */
-    uint256 GetHashIfUpdate(const std::vector<SidechainWTPrimeState>& vNewScores) const;
+    uint256 GetSCDBHashIfUpdate(const std::vector<SidechainWTPrimeState>& vNewScores) const;
 
     /**  Return BMM ratchet data for the specified sidechain, if valid */
     bool GetLinkingData(uint8_t nSidechain, std::vector<SidechainLD>& ld) const;
