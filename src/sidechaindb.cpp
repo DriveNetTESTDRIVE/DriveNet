@@ -180,9 +180,19 @@ std::vector<SidechainDeposit> SidechainDB::GetDeposits(uint8_t nSidechain) const
     return vSidechainDeposit;
 }
 
-uint256 SidechainDB::GetHash() const
+uint256 SidechainDB::GetBMMHash() const
 {
-    // TODO add LD data to the tree
+    std::vector<uint256> vLeaf;
+    for (const auto& a : ratchet) {
+        for (const SidechainLD& ld : a) {
+            vLeaf.push_back(ld.GetHash());
+        }
+    }
+    return ComputeMerkleRoot(vLeaf);
+}
+
+uint256 SidechainDB::GetSCDBHash() const
+{
     std::vector<uint256> vLeaf;
     for (const Sidechain& s : ValidSidechains) {
         std::vector<SidechainWTPrimeState> vState = GetState(s.nSidechain);
@@ -198,12 +208,12 @@ uint256 SidechainDB::GetHashBlockLastSeen()
     return hashBlockLastSeen;
 }
 
-uint256 SidechainDB::GetHashIfUpdate(const std::vector<SidechainWTPrimeState>& vNewScores) const
+uint256 SidechainDB::GetSCDBHashIfUpdate(const std::vector<SidechainWTPrimeState>& vNewScores) const
 {
     SidechainDB scdbCopy = (*this);
     scdbCopy.UpdateSCDBIndex(vNewScores);
 
-    return (scdbCopy.GetHash());
+    return (scdbCopy.GetSCDBHash());
 }
 
 bool SidechainDB::GetLinkingData(uint8_t nSidechain, std::vector<SidechainLD>& ld) const
@@ -555,7 +565,7 @@ bool SidechainDB::UpdateSCDBIndex(const std::vector<SidechainWTPrimeState>& vNew
 bool SidechainDB::UpdateSCDBMatchMT(int nHeight, const uint256& hashMerkleRoot)
 {
     // First see if we are already synchronized
-    if (GetHash() == hashMerkleRoot)
+    if (GetSCDBHash() == hashMerkleRoot)
         return true;
 
     // TODO the loop below is functional. It isn't efficient.
@@ -592,9 +602,9 @@ bool SidechainDB::UpdateSCDBMatchMT(int nHeight, const uint256& hashMerkleRoot)
 
         // Test out updating SCDB copy with this update package
         // if it worked, apply the update
-        if (GetHashIfUpdate(vWT) == hashMerkleRoot) {
+        if (GetSCDBHashIfUpdate(vWT) == hashMerkleRoot) {
             UpdateSCDBIndex(vWT);
-            return (GetHash() == hashMerkleRoot);
+            return (GetSCDBHash() == hashMerkleRoot);
         }
     }
     return false;

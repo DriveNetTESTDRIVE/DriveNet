@@ -434,6 +434,9 @@ CScript GenerateCriticalHashCommitment(const CCriticalData& criticalData);
 /** Produce the SCDB hashMerkleRoot coinbase commitment for a block */
 CScript GenerateSCDBHashMerkleRootCommitment(const uint256& hashMerkleRoot);
 
+/** Produce the BMM hashMerkleRoot coinbase commitment for a block */
+CScript GenerateBMMHashMerkleRootCommitment(const uint256& hashMerkleRoot);
+
 /** Produce WT^ hash coinbase commitment for a block */
 CScript GenerateWTPrimeHashCommitment(const uint256& hashWTPrime);
 

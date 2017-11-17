@@ -236,14 +236,9 @@ bool CScript::IsWitnessProgram(int& version, std::vector<unsigned char>& program
 
 bool CScript::IsCriticalHashCommit() const
 {
-    // TODO
     // Check script size
-    // Size must be at least:
-    // sizeof(uint256) to include h*
-    // +
-    // opcode count
     size_t size = this->size();
-    if (size < 32)
+    if (size < 38) // sha256 hash + optional data / flag bytes + opcodes
         return false;
 
     // Check script header
@@ -252,6 +247,24 @@ bool CScript::IsCriticalHashCommit() const
             (*this)[2] != 0x61 ||
             (*this)[3] != 0x73 ||
             (*this)[4] != 0x68)
+        return false;
+
+    return true;
+}
+
+bool CScript::IsBMMHashMerkleRootCommit() const
+{
+    // Check script size
+    size_t size = this->size();
+    if (size != 38) // sha256 hash + opcodes
+        return false;
+
+    // Check script header
+    if ((*this)[0] != OP_RETURN ||
+            (*this)[1] != 0x43 ||
+            (*this)[2] != 0x24 ||
+            (*this)[3] != 0x70 ||
+            (*this)[4] != 0x53)
         return false;
 
     return true;

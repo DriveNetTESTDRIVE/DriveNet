@@ -188,6 +188,11 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
         CTxOut scdbCommit = CreateSCDBHashMerkleRootCommit();
         nSideFees += scdbCommit.nValue;
         coinbaseTx.vout.push_back(scdbCommit);
+
+        // Add BMM hashMerkleRoot coinbase commitment
+        CTxOut bmmCommit = CreateBMMHashMerkleRootCommit();
+        nSideFees += bmmCommit.nValue;
+        coinbaseTx.vout.push_back(bmmCommit);
     }
 
     coinbaseTx.vout[0].nValue = nFees + GetBlockSubsidy(nHeight, chainparams.GetConsensus());
@@ -414,9 +419,16 @@ CTransaction BlockAssembler::CreateWTPrimePayout(uint8_t nSidechain)
     return mtx;
 }
 
+CTxOut BlockAssembler::CreateBMMHashMerkleRootCommit()
+{
+    const uint256& hashMerkleRoot = scdb.GetBMMHash();
+    CScript script = GenerateBMMHashMerkleRootCommitment(hashMerkleRoot);
+    return CTxOut(CENT, script);
+}
+
 CTxOut BlockAssembler::CreateSCDBHashMerkleRootCommit()
 {
-    const uint256& hashMerkleRoot = scdb.GetHash();
+    const uint256& hashMerkleRoot = scdb.GetSCDBHash();
     CScript script = GenerateSCDBHashMerkleRootCommitment(hashMerkleRoot);
     return CTxOut(CENT, script);
 }

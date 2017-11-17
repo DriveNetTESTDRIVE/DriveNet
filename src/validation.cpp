@@ -3274,6 +3274,25 @@ CScript GenerateSCDBHashMerkleRootCommitment(const uint256& hashMerkleRoot)
     return script;
 }
 
+CScript GenerateBMMHashMerkleRootCommitment(const uint256& hashMerkleRoot)
+{
+    // TODO
+    // check consensusParams.vDeployments[Consensus::DEPLOYMENT_DRIVECHAINS]
+    CScript script;
+
+    // Add script header
+    script << OP_RETURN;
+    script.push_back(0x43);
+    script.push_back(0x24);
+    script.push_back(0x70);
+    script.push_back(0x53);
+
+    // Add BMM hashMerkleRoot
+    script << ToByteVector(hashMerkleRoot);
+
+    return script;
+}
+
 CScript GenerateWTPrimeHashCommitment(const uint256& hashWTPrime)
 {
     // TODO

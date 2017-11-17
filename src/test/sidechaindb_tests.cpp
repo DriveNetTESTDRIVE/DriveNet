@@ -194,7 +194,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MT_single)
     scdb.AddSidechainNetworkUpdatePackage(updatePackage);
 
     // Use MT hash prediction to update the original SCDB
-    BOOST_CHECK(scdb.UpdateSCDBMatchMT(1, scdbCopy.GetHash()));
+    BOOST_CHECK(scdb.UpdateSCDBMatchMT(1, scdbCopy.GetSCDBHash()));
 
     // Reset SCDB after testing
     scdb.Reset();
@@ -261,7 +261,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MT_multipleSC)
     scdb.AddSidechainNetworkUpdatePackage(updatePackage);
 
     // Use MT hash prediction to update the original SCDB
-    BOOST_CHECK(scdb.UpdateSCDBMatchMT(1, scdbCopy.GetHash()));
+    BOOST_CHECK(scdb.UpdateSCDBMatchMT(1, scdbCopy.GetSCDBHash()));
 
     // Reset SCDB after testing
     scdb.Reset();
@@ -335,7 +335,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MT_multipleWT)
     scdb.AddSidechainNetworkUpdatePackage(updatePackage);
 
     // Use MT hash prediction to update the original SCDB
-    BOOST_CHECK(scdb.UpdateSCDBMatchMT(1, scdbCopy.GetHash()));
+    BOOST_CHECK(scdb.UpdateSCDBMatchMT(1, scdbCopy.GetSCDBHash()));
 
     // Reset SCDB after testing
     scdb.Reset();
