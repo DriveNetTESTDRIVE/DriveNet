@@ -37,7 +37,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_isolated)
     // Start at +1 because we decrement in the loop
     wtTest.nBlocksLeft = test.GetTau() + 1;
     wtTest.nSidechain = SIDECHAIN_TEST;
-    for (int i = 0; i <= test.nMinWorkScore; i++) {
+    for (int i = 1; i <= test.nMinWorkScore; i++) {
         std::vector<SidechainWTPrimeState> vWT;
         wtTest.nWorkScore = i;
         wtTest.nBlocksLeft--;
@@ -51,7 +51,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_isolated)
     // Start at +1 because we decrement in the loop
     wtHivemind.nBlocksLeft = hivemind.GetTau() + 1;
     wtHivemind.nSidechain = SIDECHAIN_HIVEMIND;
-    for (int i = 0; i <= (hivemind.nMinWorkScore / 2); i++) {
+    for (int i = 1; i <= (hivemind.nMinWorkScore / 2); i++) {
         std::vector<SidechainWTPrimeState> vWT;
         wtHivemind.nWorkScore = i;
         wtHivemind.nBlocksLeft--;
@@ -65,7 +65,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_isolated)
     // Start at +1 because we decrement in the loop
     wtWimble.nBlocksLeft = wimble.GetTau() + 1;
     wtWimble.nSidechain = SIDECHAIN_WIMBLE;
-    wtWimble.nWorkScore = 0;
+    wtWimble.nWorkScore = 1;
 
     std::vector<SidechainWTPrimeState> vWT;
     vWT.push_back(wtWimble);
@@ -97,7 +97,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MultipleTauPeriods)
     // Start at +1 because we decrement in the loop
     wt1.nBlocksLeft = test.GetTau() + 1;
     wt1.nSidechain = SIDECHAIN_TEST;
-    for (int i = 0; i <= test.nMinWorkScore; i++) {
+    for (int i = 1; i <= test.nMinWorkScore; i++) {
         std::vector<SidechainWTPrimeState> vWT;
         wt1.nWorkScore = i;
         wt1.nBlocksLeft--;
@@ -129,7 +129,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MultipleTauPeriods)
     wt2.hashWTPrime = hashWTTest2;
     wt2.nBlocksLeft = test.GetTau();
     wt2.nSidechain = SIDECHAIN_TEST;
-    wt2.nWorkScore = 0;
+    wt2.nWorkScore = 1;
     vWT.push_back(wt2);
     scdb.UpdateSCDBIndex(vWT);
     BOOST_CHECK(!scdb.CheckWorkScore(SIDECHAIN_TEST, hashWTTest2));
@@ -137,7 +137,6 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MultipleTauPeriods)
     // Verify that SCDB has updated to correct WT^
     const std::vector<SidechainWTPrimeState> vState = scdb.GetState(SIDECHAIN_TEST);
     BOOST_CHECK(vState.size() == 1 && vState[0].hashWTPrime == hashWTTest2);
-
 
     // Give second transaction sufficient workscore and check work score
     for (int i = 1; i <= test.nMinWorkScore; i++) {
@@ -165,7 +164,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MT_single)
     SidechainWTPrimeState wt;
     wt.hashWTPrime = GetRandHash();
     wt.nBlocksLeft = ValidSidechains[SIDECHAIN_TEST].GetTau();
-    wt.nWorkScore = 0;
+    wt.nWorkScore = 1;
     wt.nSidechain = SIDECHAIN_TEST;
 
     vWT.push_back(wt);
@@ -185,16 +184,16 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MT_single)
     SidechainUpdateMSG msg;
     msg.nSidechain = SIDECHAIN_TEST;
     msg.hashWTPrime = wt.hashWTPrime;
-    msg.nWorkScore = 1;
+    msg.nWorkScore = 2;
 
     SidechainUpdatePackage updatePackage;
-    updatePackage.nHeight = 1;
+    updatePackage.nHeight = 2;
     updatePackage.vUpdate.push_back(msg);
 
     scdb.AddSidechainNetworkUpdatePackage(updatePackage);
 
-    // Use MT hash prediction to update the original SCDB
-    BOOST_CHECK(scdb.UpdateSCDBMatchMT(1, scdbCopy.GetSCDBHash()));
+
+    BOOST_CHECK(scdb.UpdateSCDBMatchMT(2, scdbCopy.GetSCDBHash()));
 
     // Reset SCDB after testing
     scdb.Reset();
@@ -212,19 +211,19 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MT_multipleSC)
     wtTest.hashWTPrime = GetRandHash();
     wtTest.nBlocksLeft = ValidSidechains[SIDECHAIN_TEST].GetTau();
     wtTest.nSidechain = SIDECHAIN_TEST;
-    wtTest.nWorkScore = 0;
+    wtTest.nWorkScore = 1;
 
     SidechainWTPrimeState wtHivemind;
     wtHivemind.hashWTPrime = GetRandHash();
     wtHivemind.nBlocksLeft = ValidSidechains[SIDECHAIN_HIVEMIND].GetTau();
     wtHivemind.nSidechain = SIDECHAIN_HIVEMIND;
-    wtHivemind.nWorkScore = 0;
+    wtHivemind.nWorkScore = 1;
 
     SidechainWTPrimeState wtWimble;
     wtWimble.hashWTPrime = GetRandHash();
     wtWimble.nBlocksLeft = ValidSidechains[SIDECHAIN_WIMBLE].GetTau();
     wtWimble.nSidechain = SIDECHAIN_WIMBLE;
-    wtWimble.nWorkScore = 0;
+    wtWimble.nWorkScore = 1;
 
     std::vector<SidechainWTPrimeState> vWT;
     vWT.push_back(wtTest);
@@ -252,16 +251,16 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MT_multipleSC)
     SidechainUpdateMSG msgTest;
     msgTest.nSidechain = SIDECHAIN_TEST;
     msgTest.hashWTPrime = wtTest.hashWTPrime;
-    msgTest.nWorkScore = 1;
+    msgTest.nWorkScore = 2;
 
     SidechainUpdatePackage updatePackage;
-    updatePackage.nHeight = 1;
+    updatePackage.nHeight = 2;
     updatePackage.vUpdate.push_back(msgTest);
 
     scdb.AddSidechainNetworkUpdatePackage(updatePackage);
 
     // Use MT hash prediction to update the original SCDB
-    BOOST_CHECK(scdb.UpdateSCDBMatchMT(1, scdbCopy.GetSCDBHash()));
+    BOOST_CHECK(scdb.UpdateSCDBMatchMT(2, scdbCopy.GetSCDBHash()));
 
     // Reset SCDB after testing
     scdb.Reset();
@@ -279,19 +278,19 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MT_multipleWT)
     wtTest.hashWTPrime = GetRandHash();
     wtTest.nBlocksLeft = ValidSidechains[SIDECHAIN_TEST].GetTau();
     wtTest.nSidechain = SIDECHAIN_TEST;
-    wtTest.nWorkScore = 0;
+    wtTest.nWorkScore = 1;
 
     SidechainWTPrimeState wtHivemind;
     wtHivemind.hashWTPrime = GetRandHash();
     wtHivemind.nBlocksLeft = ValidSidechains[SIDECHAIN_HIVEMIND].GetTau();
     wtHivemind.nSidechain = SIDECHAIN_HIVEMIND;
-    wtHivemind.nWorkScore = 0;
+    wtHivemind.nWorkScore = 1;
 
     SidechainWTPrimeState wtWimble;
     wtWimble.hashWTPrime = GetRandHash();
     wtWimble.nBlocksLeft = ValidSidechains[SIDECHAIN_WIMBLE].GetTau();
     wtWimble.nSidechain = SIDECHAIN_WIMBLE;
-    wtWimble.nWorkScore = 0;
+    wtWimble.nWorkScore = 1;
 
     std::vector<SidechainWTPrimeState> vWT;
     vWT.push_back(wtTest);
@@ -320,22 +319,22 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MT_multipleWT)
     SidechainUpdateMSG msgTest;
     msgTest.nSidechain = SIDECHAIN_TEST;
     msgTest.hashWTPrime = wtTest.hashWTPrime;
-    msgTest.nWorkScore = 1;
+    msgTest.nWorkScore = 2;
 
     SidechainUpdateMSG msgWimble;
     msgWimble.nSidechain = SIDECHAIN_WIMBLE;
     msgWimble.hashWTPrime = wtWimble.hashWTPrime;
-    msgWimble.nWorkScore = 1;
+    msgWimble.nWorkScore = 2;
 
     SidechainUpdatePackage updatePackage;
-    updatePackage.nHeight = 1;
+    updatePackage.nHeight = 2;
     updatePackage.vUpdate.push_back(msgTest);
     updatePackage.vUpdate.push_back(msgWimble);
 
     scdb.AddSidechainNetworkUpdatePackage(updatePackage);
 
     // Use MT hash prediction to update the original SCDB
-    BOOST_CHECK(scdb.UpdateSCDBMatchMT(1, scdbCopy.GetSCDBHash()));
+    BOOST_CHECK(scdb.UpdateSCDBMatchMT(2, scdbCopy.GetSCDBHash()));
 
     // Reset SCDB after testing
     scdb.Reset();
