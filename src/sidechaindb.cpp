@@ -86,7 +86,7 @@ bool SidechainDB::AddWTPrime(uint8_t nSidechain, const CTransaction& tx)
     SidechainWTPrimeState wt;
     wt.nSidechain = nSidechain;
     wt.nBlocksLeft = s.GetTau();
-    wt.nWorkScore = 0;
+    wt.nWorkScore = 1;
     wt.hashWTPrime = tx.GetHash();
 
     vWT.push_back(wt);
@@ -466,7 +466,7 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const std::vecto
             SidechainWTPrimeState wt;
             wt.nSidechain = nSidechain.getint();
             wt.nBlocksLeft = ValidSidechains[nSidechain.getint()].GetTau();
-            wt.nWorkScore = 0;
+            wt.nWorkScore = 1;
             wt.hashWTPrime = hashWT;
 
             vWT.push_back(wt);
@@ -552,7 +552,7 @@ bool SidechainDB::UpdateSCDBIndex(const std::vector<SidechainWTPrimeState>& vNew
         else
         if (!index.IsFull()) {
             // Add a new WT^
-            if (!s.nWorkScore == 0) // TODO == 1
+            if (s.nWorkScore != 1)
                 continue;
             if (s.nBlocksLeft != ValidSidechains[s.nSidechain].GetTau())
                 continue;
