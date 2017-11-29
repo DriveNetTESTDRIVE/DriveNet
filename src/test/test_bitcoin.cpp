@@ -113,7 +113,7 @@ TestChain100Setup::TestChain100Setup() : TestingSetup(CBaseChainParams::REGTEST)
 // scriptPubKey, and try to add it to the current chain.
 //
 CBlock
-TestChain100Setup::CreateAndProcessBlock(const std::vector<CMutableTransaction>& txns, const CScript& scriptPubKey, bool fReplaceCoinbase)
+TestChain100Setup::CreateAndProcessBlock(const std::vector<CMutableTransaction>& txns, const CScript& scriptPubKey, bool fReplaceMempool, bool fReplaceCoinbase)
 {
     const CChainParams& chainparams = Params();
     std::unique_ptr<CBlockTemplate> pblocktemplate = BlockAssembler(chainparams).CreateNewBlock(scriptPubKey);
@@ -123,6 +123,7 @@ TestChain100Setup::CreateAndProcessBlock(const std::vector<CMutableTransaction>&
     if (fReplaceCoinbase)
         block.vtx.clear();
     else
+    if (fReplaceMempool)
         block.vtx.resize(1);
     BOOST_FOREACH(const CMutableTransaction& tx, txns)
         block.vtx.push_back(MakeTransactionRef(tx));

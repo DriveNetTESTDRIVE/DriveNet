@@ -2886,65 +2886,106 @@ std::vector<unsigned char> GenerateCoinbaseCommitment(CBlock& block, const CBloc
     return commitment;
 }
 
-CScript GenerateCriticalHashCommitment(const CCriticalData& criticalData)
+void GenerateCriticalHashCommitment(CBlock& block, const Consensus::Params& consensusParams)
 {
+    if (block.vtx.size() < 2)
+        return;
+
     // TODO
     // check consensusParams.vDeployments[Consensus::DEPLOYMENT_DRIVECHAINS]
-    CScript script;
+    //
+    // TODO
+    // Combine BMM request commits into one output. Other non BMM request
+    // commits could also be combined.
+    std::vector<CCriticalData> vCriticalData = GetCriticalDataRequests(block);
+    std::vector<CTxOut> vout;
+    for (const CCriticalData& d : vCriticalData) {
+        CTxOut out;
+        out.nValue = 0;
+        out.scriptPubKey.resize(38);
+        out.scriptPubKey[0] = OP_RETURN;
+        out.scriptPubKey[1] = 0x24;
+        out.scriptPubKey[2] = 0x48;
+        out.scriptPubKey[3] = 0x61;
+        out.scriptPubKey[4] = 0x73;
+        out.scriptPubKey[5] = 0x68;
 
-    // Add script header
-    script << OP_RETURN;
-    script.push_back(0x48);
-    script.push_back(0x61);
-    script.push_back(0x73);
-    script.push_back(0x68);
+        memcpy(&out.scriptPubKey[6], &d.hashCritical, 32);
 
-    // Add h*
-    script << ToByteVector(criticalData.hashCritical);
+        // Add bytes (optional)
+        if (!d.bytes.empty())
+            out.scriptPubKey += CScript(d.bytes.begin(), d.bytes.end());
 
-    // Add bytes (optional)
-    if (!criticalData.bytes.empty())
-        script << criticalData.bytes;
+        vout.push_back(out);
+    }
 
-    return script;
+    // Update coinbase in block
+    if (!vout.empty()) {
+        CMutableTransaction mtx(*block.vtx[0]);
+        for (const CTxOut& o : vout)
+            mtx.vout.push_back(o);
+        block.vtx[0] = MakeTransactionRef(std::move(mtx));
+    }
 }
 
-CScript GenerateSCDBHashMerkleRootCommitment(const uint256& hashMerkleRoot)
+void GenerateSCDBHashMerkleRootCommitment(CBlock& block, const Consensus::Params& consensusParams)
 {
     // TODO
     // check consensusParams.vDeployments[Consensus::DEPLOYMENT_DRIVECHAINS]
-    CScript script;
+    if (!scdb.HasState())
+        return;
+
+    // Create output that commitment will be added to
+    CTxOut out;
+    out.nValue = 0;
 
     // Add script header
-    script << OP_RETURN;
-    script.push_back(0x43);
-    script.push_back(0x50);
-    script.push_back(0x50);
-    script.push_back(0x53);
+    out.scriptPubKey.resize(38);
+    out.scriptPubKey[0] = OP_RETURN;
+    out.scriptPubKey[1] = 0x24;
+    out.scriptPubKey[2] = 0x43;
+    out.scriptPubKey[3] = 0x50;
+    out.scriptPubKey[4] = 0x50;
+    out.scriptPubKey[5] = 0x53;
 
     // Add SCDB hashMerkleRoot
-    script << ToByteVector(hashMerkleRoot);
+    uint256 hashMerkleRoot = scdb.GetSCDBHash();
+    memcpy(&out.scriptPubKey[6], &hashMerkleRoot, 32);
 
-    return script;
+    // Update coinbase in block
+    CMutableTransaction mtx(*block.vtx[0]);
+    mtx.vout.push_back(out);
+    block.vtx[0] = MakeTransactionRef(std::move(mtx));
 }
 
-CScript GenerateBMMHashMerkleRootCommitment(const uint256& hashMerkleRoot)
+void GenerateBMMHashMerkleRootCommitment(CBlock& block, const Consensus::Params& consensusParams)
 {
     // TODO
     // check consensusParams.vDeployments[Consensus::DEPLOYMENT_DRIVECHAINS]
-    CScript script;
+    if (!scdb.HasState())
+        return;
+
+    // Create output that commitment will be added to
+    CTxOut out;
+    out.nValue = 0;
 
     // Add script header
-    script << OP_RETURN;
-    script.push_back(0x43);
-    script.push_back(0x24);
-    script.push_back(0x70);
-    script.push_back(0x53);
+    out.scriptPubKey.resize(38);
+    out.scriptPubKey[0] = OP_RETURN;
+    out.scriptPubKey[1] = 0x24;
+    out.scriptPubKey[2] = 0x43;
+    out.scriptPubKey[3] = 0x24;
+    out.scriptPubKey[4] = 0x70;
+    out.scriptPubKey[5] = 0x53;
 
     // Add BMM hashMerkleRoot
-    script << ToByteVector(hashMerkleRoot);
+    uint256 hashMerkleRoot = scdb.GetBMMHash();
+    memcpy(&out.scriptPubKey[6], &hashMerkleRoot, 32);
 
-    return script;
+    // Update coinbase in block
+    CMutableTransaction mtx(*block.vtx[0]);
+    mtx.vout.push_back(out);
+    block.vtx[0] = MakeTransactionRef(std::move(mtx));
 }
 
 CScript GenerateWTPrimeHashCommitment(const uint256& hashWTPrime)
@@ -2960,10 +3001,25 @@ CScript GenerateWTPrimeHashCommitment(const uint256& hashWTPrime)
     script.push_back(0x50);
     script.push_back(0x43);
 
-    // Add SCDB hashMerkleRoot
+    // Add WT^ hash
     script << ToByteVector(hashWTPrime);
 
     return script;
+}
+
+std::vector<CCriticalData> GetCriticalDataRequests(const CBlock& block)
+{
+    std::vector<CCriticalData> vCriticalData;
+
+    if (block.vtx.size() < 2)
+        return vCriticalData;
+
+    for (const CTransactionRef& tx : block.vtx) {
+        if (!tx->criticalData.IsNull()) {
+            vCriticalData.push_back(tx->criticalData);
+        }
+    }
+    return vCriticalData;
 }
 
 bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& state, const Consensus::Params& consensusParams, const CBlockIndex* pindexPrev, int64_t nAdjustedTime)
@@ -3080,31 +3136,19 @@ bool ContextualCheckBlock(const CBlock& block, CValidationState& state, const Co
                 // Check block height
                 // TODO use checker.CheckLockTime()
                 if (nHeight != tx->nLockTime)
-                    return false;
+                    return state.DoS(100, false, REJECT_INVALID, "bad-critical-data-locktime", true, strprintf("%s : critical data transaction locktime does not match block height", __func__));
 
                 // TODO move?
                 // Check size of critical data extra bytes
                 if (tx->criticalData.bytes.size() > MAX_CRITICAL_DATA_BYTES)
-                    return false;
+                    return state.DoS(100, false, REJECT_INVALID, "bad-critical-data-bytes", true, strprintf("%s : extra bytes size > MAX_CRITICAL_DATA_BYTES", __func__));
 
                 // Check for hashCritical commitment in coinbase
                 bool fFound = false;
                 for (const CTxOut& out : block.vtx[0]->vout) {
                     const CScript &scriptPubKey = out.scriptPubKey;
                     if (scriptPubKey.IsCriticalHashCommit()) {
-                        CScript::const_iterator phash = scriptPubKey.begin() + 5;
-                        opcodetype opcode;
-                        std::vector<unsigned char> vchHash;
-                        if (!scriptPubKey.GetOp(phash, opcode, vchHash))
-                            continue;
-                        if (vchHash.size() != sizeof(uint256))
-                            continue;
-
-                        uint256 hashCritical = uint256(uint256(vchHash));
-                        if (hashCritical.IsNull())
-                            continue;
-
-                        if (hashCritical == tx->criticalData.hashCritical) {
+                        if (memcmp(tx->criticalData.hashCritical.begin(), &scriptPubKey[6], 32) == 0) {
                             fFound = true;
                             break;
                         }
@@ -3112,7 +3156,7 @@ bool ContextualCheckBlock(const CBlock& block, CValidationState& state, const Co
                 }
                 // Did we find hashCritical?
                 if (!fFound) {
-                    return false;
+                    return state.DoS(100, false, REJECT_INVALID, "bad-critical-data-no-commit", true, strprintf("%s : no commit found for critical data", __func__));
                 }
             }
         }
