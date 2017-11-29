@@ -9,6 +9,7 @@
 #include "miner.h"
 #include "random.h"
 #include "script/sigcache.h"
+#include "script/standard.h"
 #include "sidechain.h"
 #include "sidechaindb.h"
 #include "uint256.h"
@@ -23,16 +24,12 @@ BOOST_FIXTURE_TEST_SUITE(bmm_tests, TestChain100Setup)
 
 BOOST_AUTO_TEST_CASE(bmm_valid)
 {
-    // Check that valid sidechain critical hash commit is added to ratchet
-    SidechainDB scdb;
+    BOOST_CHECK(chainActive.Height() == 100);
 
-    // Create coinbase with h* commit
-    CMutableTransaction mtx;
-    mtx.nVersion = 1;
-    mtx.vin.resize(1);
-    mtx.vin[0].prevout.SetNull();
-    mtx.vin[0].scriptSig = CScript() << 486604799;
+    CreateAndProcessBlock({}, GetScriptForRawPubKey(coinbaseKey.GetPubKey()));
 
+    BOOST_CHECK(chainActive.Height() == 101);
+    // Create a BMM h* request transaction
     // Create critical data
     CScript bytes;
     bytes.resize(3);
@@ -47,16 +44,40 @@ BOOST_AUTO_TEST_CASE(bmm_valid)
     criticalData.bytes = std::vector<unsigned char>(bytes.begin(), bytes.end());
     criticalData.hashCritical = GetRandHash();
 
-    // Add h* commit to coinbase
-    mtx.vout.push_back(CTxOut(50 * CENT, GenerateCriticalHashCommitment(criticalData)));
+    // Create transaction with critical data
+    CMutableTransaction mtx;
+    mtx.nVersion = 1;
+    mtx.vin.resize(1);
+    mtx.vout.resize(1);
+    mtx.vin[0].prevout.hash = coinbaseTxns[0].GetHash();
+    mtx.vin[0].prevout.n = 0;
+    mtx.vout[0].scriptPubKey = CScript() << OP_0;
+    mtx.vout[0].nValue = 50 * CENT;
 
-    // Update SCDB so that h* is processed
-    uint256 hashBlock = GetRandHash();
-    std::string strError = "";
-    scdb.Update(0, hashBlock, mtx.vout, strError);
+    // Set locktime to the block we would like critical data to be commited in
+    mtx.nLockTime = 102;
+
+    // Add critical data
+    mtx.criticalData = criticalData;
+
+    // Sign
+    const CTransaction txToSign(mtx);
+    std::vector<unsigned char> vchSig;
+    uint256 hash = SignatureHash(GetScriptForRawPubKey(coinbaseKey.GetPubKey()), txToSign, 0, SIGHASH_ALL, 0, SIGVERSION_BASE);
+    BOOST_CHECK(coinbaseKey.Sign(hash, vchSig));
+    vchSig.push_back((unsigned char)SIGHASH_ALL);
+    mtx.vin[0].scriptSig << vchSig;
+
+    TestMemPoolEntryHelper entry;
+    mempool.addUnchecked(mtx.GetHash(), entry.Fee(10000).FromTx(mtx));
+
+    CreateAndProcessBlock({}, GetScriptForRawPubKey(coinbaseKey.GetPubKey()), false, false);
 
     // Verify that h* was added
     BOOST_CHECK(scdb.HaveLinkingData(SIDECHAIN_TEST, criticalData.hashCritical));
+
+    // Reset SCDB after testing
+    scdb.Reset();
 }
 
 BOOST_AUTO_TEST_CASE(bmm_invalid_sidechain)
@@ -64,12 +85,12 @@ BOOST_AUTO_TEST_CASE(bmm_invalid_sidechain)
     // Commit with invalid sidechain number should be ignored
     SidechainDB scdb;
 
-    // Create coinbase with h* commit
-    CMutableTransaction mtx;
-    mtx.nVersion = 1;
-    mtx.vin.resize(1);
-    mtx.vin[0].prevout.SetNull();
-    mtx.vin[0].scriptSig = CScript() << 486604799;
+    // Create dummy coinbase
+    CMutableTransaction coinbase;
+    coinbase.nVersion = 1;
+    coinbase.vin.resize(1);
+    coinbase.vin[0].prevout.SetNull();
+    coinbase.vin[0].scriptSig = CScript() << 486604799;
 
     // Create critical data
     CScript bytes;
@@ -86,13 +107,45 @@ BOOST_AUTO_TEST_CASE(bmm_invalid_sidechain)
     criticalData.bytes = std::vector<unsigned char>(bytes.begin(), bytes.end());
     criticalData.hashCritical = GetRandHash();
 
-    // Add h* commit to coinbase
-    mtx.vout.push_back(CTxOut(50 * CENT, GenerateCriticalHashCommitment(criticalData)));
+    // Create transaction with critical data
+    CMutableTransaction mtx;
+    mtx.nVersion = 1;
+    mtx.vin.resize(1);
+    mtx.vout.resize(1);
+    mtx.vin[0].prevout.hash = coinbaseTxns[0].GetHash();
+    mtx.vin[0].prevout.n = 0;
+    mtx.vout[0].scriptPubKey = CScript() << OP_0;
+    mtx.vout[0].nValue = 50 * CENT;
+
+    // Set locktime to the block we would like critical data to be commited in
+    mtx.nLockTime = 101;
+
+    // Add critical data
+    mtx.criticalData = criticalData;
+
+    // Sign
+    const CTransaction txToSign(mtx);
+    std::vector<unsigned char> vchSig;
+    uint256 hash = SignatureHash(GetScriptForRawPubKey(coinbaseKey.GetPubKey()), txToSign, 0, SIGHASH_ALL, 0, SIGVERSION_BASE);
+    BOOST_CHECK(coinbaseKey.Sign(hash, vchSig));
+    vchSig.push_back((unsigned char)SIGHASH_ALL);
+    mtx.vin[0].scriptSig << vchSig;
+
+    // Add dummy coinbase & critical data tx to block
+    CBlock block;
+    block.vtx.push_back(MakeTransactionRef(std::move(coinbase)));
+    block.vtx.push_back(MakeTransactionRef(std::move(mtx)));
+
+    // Generate commit
+    GenerateCriticalHashCommitment(block, Params().GetConsensus());
+
+    // Copy coinbase from block
+    CMutableTransaction commit(*block.vtx[0]);
 
     // Update SCDB so that h* is processed
     uint256 hashBlock = GetRandHash();
     std::string strError = "";
-    scdb.Update(0, hashBlock, mtx.vout, strError);
+    scdb.Update(0, hashBlock, commit.vout, strError);
 
     // Verify that h* was rejected
     BOOST_CHECK(!scdb.HaveLinkingData(SIDECHAIN_TEST, criticalData.hashCritical));
@@ -100,15 +153,15 @@ BOOST_AUTO_TEST_CASE(bmm_invalid_sidechain)
 
 BOOST_AUTO_TEST_CASE(bmm_invalid_prevblockref_limit)
 {
-    // An h* commit with a prevBlockRef number > BMM_MAX_PREVBLOCK
+    // Commit with invalid nPrevBlockRef (greater than limit) should be ignored
     SidechainDB scdb;
 
-    // Create coinbase with h* commit
-    CMutableTransaction mtx;
-    mtx.nVersion = 1;
-    mtx.vin.resize(1);
-    mtx.vin[0].prevout.SetNull();
-    mtx.vin[0].scriptSig = CScript() << 486604799;
+    // Create dummy coinbase
+    CMutableTransaction coinbase;
+    coinbase.nVersion = 1;
+    coinbase.vin.resize(1);
+    coinbase.vin[0].prevout.SetNull();
+    coinbase.vin[0].scriptSig = CScript() << 486604799;
 
     // Create critical data
     CScript bytes;
@@ -117,6 +170,7 @@ BOOST_AUTO_TEST_CASE(bmm_invalid_prevblockref_limit)
     bytes[1] = 0xbf;
     bytes[2] = 0x00;
 
+    // Use invalid nPrevBlockRef > BMM_MAX_PREVBLOCK
     bytes << CScriptNum::serialize(0);
     bytes << CScriptNum::serialize(BMM_MAX_PREVBLOCK + 1);
 
@@ -124,31 +178,61 @@ BOOST_AUTO_TEST_CASE(bmm_invalid_prevblockref_limit)
     criticalData.bytes = std::vector<unsigned char>(bytes.begin(), bytes.end());
     criticalData.hashCritical = GetRandHash();
 
-    // Add h* commit to coinbase
-    mtx.vout.push_back(CTxOut(50 * CENT, GenerateCriticalHashCommitment(criticalData)));
+    // Create transaction with critical data
+    CMutableTransaction mtx;
+    mtx.nVersion = 1;
+    mtx.vin.resize(1);
+    mtx.vout.resize(1);
+    mtx.vin[0].prevout.hash = coinbaseTxns[0].GetHash();
+    mtx.vin[0].prevout.n = 0;
+    mtx.vout[0].scriptPubKey = CScript() << OP_0;
+    mtx.vout[0].nValue = 50 * CENT;
+
+    // Set locktime to the block we would like critical data to be commited in
+    mtx.nLockTime = 101;
+
+    // Add critical data
+    mtx.criticalData = criticalData;
+
+    // Sign
+    const CTransaction txToSign(mtx);
+    std::vector<unsigned char> vchSig;
+    uint256 hash = SignatureHash(GetScriptForRawPubKey(coinbaseKey.GetPubKey()), txToSign, 0, SIGHASH_ALL, 0, SIGVERSION_BASE);
+    BOOST_CHECK(coinbaseKey.Sign(hash, vchSig));
+    vchSig.push_back((unsigned char)SIGHASH_ALL);
+    mtx.vin[0].scriptSig << vchSig;
+
+    // Add dummy coinbase & critical data tx to block
+    CBlock block;
+    block.vtx.push_back(MakeTransactionRef(std::move(coinbase)));
+    block.vtx.push_back(MakeTransactionRef(std::move(mtx)));
+
+    // Generate commit
+    GenerateCriticalHashCommitment(block, Params().GetConsensus());
+
+    // Copy coinbase from block
+    CMutableTransaction commit(*block.vtx[0]);
 
     // Update SCDB so that h* is processed
     uint256 hashBlock = GetRandHash();
     std::string strError = "";
-    scdb.Update(0, hashBlock, mtx.vout, strError);
+    scdb.Update(0, hashBlock, commit.vout, strError);
 
-    // Verify that h* was rejected from the ratchet
+    // Verify that h* was rejected
     BOOST_CHECK(!scdb.HaveLinkingData(SIDECHAIN_TEST, criticalData.hashCritical));
 }
 
 BOOST_AUTO_TEST_CASE(bmm_invalid_prevblockref)
 {
-    // Commit with invalid prevBlockRef number should be ignored
+    // Commit with invalid nPrevBlockRef (greater than limit) should be ignored
     SidechainDB scdb;
 
-    // Add some valid data to the ratchet
-
-    // Create coinbase with h* commit
-    CMutableTransaction mtx;
-    mtx.nVersion = 1;
-    mtx.vin.resize(1);
-    mtx.vin[0].prevout.SetNull();
-    mtx.vin[0].scriptSig = CScript() << 486604799;
+    // Create dummy coinbase
+    CMutableTransaction coinbase;
+    coinbase.nVersion = 1;
+    coinbase.vin.resize(1);
+    coinbase.vin[0].prevout.SetNull();
+    coinbase.vin[0].scriptSig = CScript() << 486604799;
 
     // Create critical data
     CScript bytes;
@@ -157,6 +241,7 @@ BOOST_AUTO_TEST_CASE(bmm_invalid_prevblockref)
     bytes[1] = 0xbf;
     bytes[2] = 0x00;
 
+    // Use invalid nPrevBlockRef > BMM_MAX_PREVBLOCK
     bytes << CScriptNum::serialize(0);
     bytes << CScriptNum::serialize(21);
 
@@ -164,15 +249,47 @@ BOOST_AUTO_TEST_CASE(bmm_invalid_prevblockref)
     criticalData.bytes = std::vector<unsigned char>(bytes.begin(), bytes.end());
     criticalData.hashCritical = GetRandHash();
 
-    // Add h* commit to coinbase
-    mtx.vout.push_back(CTxOut(50 * CENT, GenerateCriticalHashCommitment(criticalData)));
+    // Create transaction with critical data
+    CMutableTransaction mtx;
+    mtx.nVersion = 1;
+    mtx.vin.resize(1);
+    mtx.vout.resize(1);
+    mtx.vin[0].prevout.hash = coinbaseTxns[0].GetHash();
+    mtx.vin[0].prevout.n = 0;
+    mtx.vout[0].scriptPubKey = CScript() << OP_0;
+    mtx.vout[0].nValue = 50 * CENT;
+
+    // Set locktime to the block we would like critical data to be commited in
+    mtx.nLockTime = 101;
+
+    // Add critical data
+    mtx.criticalData = criticalData;
+
+    // Sign
+    const CTransaction txToSign(mtx);
+    std::vector<unsigned char> vchSig;
+    uint256 hash = SignatureHash(GetScriptForRawPubKey(coinbaseKey.GetPubKey()), txToSign, 0, SIGHASH_ALL, 0, SIGVERSION_BASE);
+    BOOST_CHECK(coinbaseKey.Sign(hash, vchSig));
+    vchSig.push_back((unsigned char)SIGHASH_ALL);
+    mtx.vin[0].scriptSig << vchSig;
+
+    // Add dummy coinbase & critical data tx to block
+    CBlock block;
+    block.vtx.push_back(MakeTransactionRef(std::move(coinbase)));
+    block.vtx.push_back(MakeTransactionRef(std::move(mtx)));
+
+    // Generate commit
+    GenerateCriticalHashCommitment(block, Params().GetConsensus());
+
+    // Copy coinbase from block
+    CMutableTransaction commit(*block.vtx[0]);
 
     // Update SCDB so that h* is processed
     uint256 hashBlock = GetRandHash();
     std::string strError = "";
-    scdb.Update(0, hashBlock, mtx.vout, strError);
+    scdb.Update(0, hashBlock, commit.vout, strError);
 
-    // Verify that h* was rejected from the ratchet
+    // Verify that h* was rejected
     BOOST_CHECK(!scdb.HaveLinkingData(SIDECHAIN_TEST, criticalData.hashCritical));
 }
 

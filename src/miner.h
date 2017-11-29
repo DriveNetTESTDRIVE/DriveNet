@@ -203,10 +203,6 @@ private:
     // SidechainDB
     /** Returns a WT^ payout transaction for nSidechain if there is one */
     CTransaction CreateWTPrimePayout(uint8_t nSidechain);
-    /** Returns an output with a commitment to the BMM hashMerkleRoot */
-    CTxOut CreateBMMHashMerkleRootCommit();
-    /** Returns an output with a commitment to the SCDB hashMerkleRoot */
-    CTxOut CreateSCDBHashMerkleRootCommit();
 };
 
 /** Modify the extranonce in a block */

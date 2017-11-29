@@ -144,8 +144,8 @@ std::string CTransaction::ToString() const
     for (unsigned int i = 0; i < vout.size(); i++)
         str += "    " + vout[i].ToString() + "\n";
     if (!criticalData.IsNull()) {
-        str += strprintf("Critical Data:\nbytes=%s\nhashCritical=%s",
-        std::string(criticalData.bytes.begin(), criticalData.bytes.end()),
+        str += strprintf("Critical Data:\nbytes.size=%s\nhashCritical=%s",
+        criticalData.bytes.size(),
         criticalData.hashCritical.ToString());
     }
 >>>>>>> Add new optional data to extended transactions
