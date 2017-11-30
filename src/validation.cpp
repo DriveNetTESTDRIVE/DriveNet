@@ -3392,8 +3392,8 @@ CScript GenerateWTPrimeHashCommitment(const uint256& hashWTPrime, const uint8_t 
  * M5: (Drivechain Deposit): A deposit will increase the amount of coins
  * held in the CTIP output of the sidechain.
  *
- * M6: (Drivechain Withdrawal): A withdrawal from  will decrease the
- * amount of coins held in the CTIP output of the sidechain.
+ * M6: (Drivechain Withdrawal): A withdrawal will decrease the amount of coins
+ * held in the CTIP output of the sidechain.
  */
 
 std::vector<CCriticalData> GetCriticalDataRequests(const CBlock& block)
