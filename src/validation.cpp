@@ -3234,6 +3234,11 @@ std::vector<unsigned char> GenerateCoinbaseCommitment(CBlock& block, const CBloc
 
 void GenerateCriticalHashCommitment(CBlock& block, const Consensus::Params& consensusParams)
 {
+    /*
+     * M8 (v1)
+     * Critical data / Drivechain BMM commitment request.
+     * BIP: (INSERT HERE ONCE ASSIGNED) // TODO
+     */
     if (block.vtx.size() < 2)
         return;
 
@@ -3251,7 +3256,7 @@ void GenerateCriticalHashCommitment(CBlock& block, const Consensus::Params& cons
         out.scriptPubKey.resize(38);
         out.scriptPubKey[0] = OP_RETURN;
         out.scriptPubKey[1] = 0x24;
-        out.scriptPubKey[2] = 0x48;
+        out.scriptPubKey[2] = 0xD1;
         out.scriptPubKey[3] = 0x61;
         out.scriptPubKey[4] = 0x73;
         out.scriptPubKey[5] = 0x68;
@@ -3276,6 +3281,12 @@ void GenerateCriticalHashCommitment(CBlock& block, const Consensus::Params& cons
 
 void GenerateSCDBHashMerkleRootCommitment(CBlock& block, const Consensus::Params& consensusParams)
 {
+    /*
+     * M7 (A)
+     * Sidechain DB data once per block hashMerkleRoot commitment.
+     * BIP: (INSERT HERE ONCE ASSIGNED) // TODO
+     */
+
     // TODO
     // check consensusParams.vDeployments[Consensus::DEPLOYMENT_DRIVECHAINS]
     if (!scdb.HasState())
@@ -3289,10 +3300,10 @@ void GenerateSCDBHashMerkleRootCommitment(CBlock& block, const Consensus::Params
     out.scriptPubKey.resize(38);
     out.scriptPubKey[0] = OP_RETURN;
     out.scriptPubKey[1] = 0x24;
-    out.scriptPubKey[2] = 0x43;
-    out.scriptPubKey[3] = 0x50;
+    out.scriptPubKey[2] = 0xD2;
+    out.scriptPubKey[3] = 0x8E;
     out.scriptPubKey[4] = 0x50;
-    out.scriptPubKey[5] = 0x53;
+    out.scriptPubKey[5] = 0x8C;
 
     // Add SCDB hashMerkleRoot
     uint256 hashMerkleRoot = scdb.GetSCDBHash();
@@ -3306,6 +3317,12 @@ void GenerateSCDBHashMerkleRootCommitment(CBlock& block, const Consensus::Params
 
 void GenerateBMMHashMerkleRootCommitment(CBlock& block, const Consensus::Params& consensusParams)
 {
+    /*
+     * M7 (B)
+     * Drivechain BMM linking data once per block hashMerkleRoot commitment.
+     * BIP: (INSERT HERE ONCE ASSIGNED) // TODO
+     */
+
     // TODO
     // check consensusParams.vDeployments[Consensus::DEPLOYMENT_DRIVECHAINS]
     if (!scdb.HasState())
@@ -3319,8 +3336,8 @@ void GenerateBMMHashMerkleRootCommitment(CBlock& block, const Consensus::Params&
     out.scriptPubKey.resize(38);
     out.scriptPubKey[0] = OP_RETURN;
     out.scriptPubKey[1] = 0x24;
-    out.scriptPubKey[2] = 0x43;
-    out.scriptPubKey[3] = 0x24;
+    out.scriptPubKey[2] = 0xD3;
+    out.scriptPubKey[3] = 0x40;
     out.scriptPubKey[4] = 0x70;
     out.scriptPubKey[5] = 0x53;
 
@@ -3334,21 +3351,32 @@ void GenerateBMMHashMerkleRootCommitment(CBlock& block, const Consensus::Params&
     block.vtx[0] = MakeTransactionRef(std::move(mtx));
 }
 
-CScript GenerateWTPrimeHashCommitment(const uint256& hashWTPrime)
+CScript GenerateWTPrimeHashCommitment(const uint256& hashWTPrime, const uint8_t nSidechain)
 {
+    /*
+     * M3
+     * Drivechain WT^ commit message "Propose Withdrawal".
+     * BIP: (INSERT HERE ONCE ASSIGNED) // TODO
+     */
+
     // TODO
     // check consensusParams.vDeployments[Consensus::DEPLOYMENT_DRIVECHAINS]
     CScript script;
 
     // Add script header
-    script << OP_RETURN;
-    script.push_back(0x53);
-    script.push_back(0x50);
-    script.push_back(0x50);
-    script.push_back(0x43);
+    script.resize(38);
+    script[0] = OP_RETURN;
+    script[1] = 0x24;
+    script[2] = 0xD4;
+    script[3] = 0x5A;
+    script[4] = 0xA9;
+    script[5] = 0x43;
 
     // Add WT^ hash
-    script << ToByteVector(hashWTPrime);
+    memcpy(&script[6], &hashWTPrime, 32);
+
+    // Add nSidechain
+    script << CScriptNum(nSidechain);
 
     return script;
 }

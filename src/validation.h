@@ -438,7 +438,7 @@ void GenerateSCDBHashMerkleRootCommitment(CBlock& block, const Consensus::Params
 void GenerateBMMHashMerkleRootCommitment(CBlock& block, const Consensus::Params& consensusParams);
 
 /** Produce WT^ hash coinbase commitment for a block */
-CScript GenerateWTPrimeHashCommitment(const uint256& hashWTPrime);
+CScript GenerateWTPrimeHashCommitment(const uint256& hashWTPrime, const uint8_t nSidechain);
 
 /** Return a vector of all of the critical data requests found in a block */
 std::vector<CCriticalData>  GetCriticalDataRequests(const CBlock& block);
