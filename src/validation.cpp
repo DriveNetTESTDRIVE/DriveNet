@@ -2936,7 +2936,7 @@ void GenerateCriticalHashCommitment(CBlock& block, const Consensus::Params& cons
 void GenerateSCDBHashMerkleRootCommitment(CBlock& block, const Consensus::Params& consensusParams)
 {
     /*
-     * M7 (A)
+     * "M1, M2, M3, M4"
      * Sidechain DB data once per block hashMerkleRoot commitment.
      * BIP: (INSERT HERE ONCE ASSIGNED) // TODO
      */
@@ -2972,7 +2972,7 @@ void GenerateSCDBHashMerkleRootCommitment(CBlock& block, const Consensus::Params
 void GenerateBMMHashMerkleRootCommitment(CBlock& block, const Consensus::Params& consensusParams)
 {
     /*
-     * M7 (B)
+     * M7
      * Drivechain BMM linking data once per block hashMerkleRoot commitment.
      * BIP: (INSERT HERE ONCE ASSIGNED) // TODO
      */
@@ -3034,6 +3034,21 @@ CScript GenerateWTPrimeHashCommitment(const uint256& hashWTPrime, const uint8_t 
 
     return script;
 }
+
+/**
+ * M5 & M6
+ * Also note that while not commited to by miners, the messages M5 & M6 also
+ * exist. These are regular Bitcoin transactions, which can be identified by
+ * the outputs they are spending. M5 and M6 transactions spend the outputs of
+ * Critical TxID-index Pairs (a "CTIP") of sidechains to create deposits (M5)
+ * or withdrawals (M6).
+
+ * M5: (Drivechain Deposit): A deposit will increase the amount of coins
+ * held in the CTIP output of the sidechain.
+ *
+ * M6: (Drivechain Withdrawal): A withdrawal from  will decrease the
+ * amount of coins held in the CTIP output of the sidechain.
+ */
 
 std::vector<CCriticalData> GetCriticalDataRequests(const CBlock& block)
 {
