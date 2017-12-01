@@ -450,7 +450,7 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState& state, const C
         GetSidechainValues(tx, amtSidechainUTXO, amtUserInput, amtReturning, amtWithdrawn);
 
         if (amtSidechainUTXO > amtReturning) {
-            // Withdrawal
+            // M6 Withdrawal
 
             // Block sidechain withdrawals from the memory pool.
             // WT^(s) can only valid when added to a block by miners
@@ -458,7 +458,7 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState& state, const C
             // work score will be verified before the block is connected.
             return state.DoS(100, false, REJECT_INVALID, "sidechain-withdraw-loose");
         } else {
-            // Deposit
+            // M5 Deposit
             // TODO we need some additional logic to determine whether a
             // sidechain deposit should be accepted into the mempool.
             //
@@ -1744,6 +1744,24 @@ static bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockInd
             control.Add(vChecks);
         }
 
+        /*
+         * Note: While not commited to by miners in a coinbase, the messages
+         * M5 & M6 also exist. These are regular Bitcoin transactions, which can
+         * be identified by the outputs they are spending. M5 & M6 transactions
+         * spend the outputs of Critical TxID-index Pairs (a "CTIP") owned by
+         * sidechains to create deposits (M5) or withdrawals (M6).
+         *
+         * Also look at AcceptToMemoryPoolWorker() and GetSidechainValues()
+         * functions to see how M5 and M6 are detected.
+         *
+         * M5: (Drivechain Deposit): A deposit will increase the amount of coins
+         * held in the CTIP output of the sidechain.
+         *
+         * M6: (Drivechain Withdrawal): A withdrawal will decrease the amount of coins
+         * held in the CTIP output of the sidechain.
+         */
+
+
         if (fSidechainInputs) {
             // We must get the B-WT^ hash as work is applied to
             // WT^ before inputs and the change output are known.
@@ -2933,6 +2951,54 @@ void GenerateCriticalHashCommitment(CBlock& block, const Consensus::Params& cons
     }
 }
 
+void GenerateLNCriticalHashCommitment(CBlock& block, const Consensus::Params& consensusParams)
+{
+    /*
+     * M8 (v2)
+     * Example Lightning version of Drivechain BMM commitment request.
+     * BIP: (INSERT HERE ONCE ASSIGNED) // TODO
+     */
+    // TODO
+    // check consensusParams.vDeployments[Consensus::DEPLOYMENT_DRIVECHAINS]
+    //
+    // TODO
+    std::vector<CCriticalData> vCriticalData; // = GetLNBMMRequests();
+    std::vector<CTxOut> vout;
+    for (const CCriticalData& d : vCriticalData) {
+        CTxOut out;
+        out.nValue = 0;
+        out.scriptPubKey.resize(70);
+        out.scriptPubKey[0] = OP_RETURN;
+        out.scriptPubKey[1] = 0x44;
+        out.scriptPubKey[2] = 0xD0;
+        out.scriptPubKey[3] = 0x52;
+        out.scriptPubKey[4] = 0x0C;
+        out.scriptPubKey[5] = 0x6E;
+
+        // Add side:block hash
+        memcpy(&out.scriptPubKey[6], &d.hashCritical, 32);
+
+        // Add previous side:block hash
+        // TODO
+        uint256 prevBlockHash = uint256(); // d.prevBlockHash
+        memcpy(&out.scriptPubKey[39], &prevBlockHash, 32);
+
+        // Add bytes (optional)
+        if (!d.bytes.empty())
+            out.scriptPubKey += CScript(d.bytes.begin(), d.bytes.end());
+
+        vout.push_back(out);
+    }
+
+    // Update coinbase in block
+    if (!vout.empty()) {
+        CMutableTransaction mtx(*block.vtx[0]);
+        for (const CTxOut& o : vout)
+            mtx.vout.push_back(o);
+        block.vtx[0] = MakeTransactionRef(std::move(mtx));
+    }
+}
+
 void GenerateSCDBHashMerkleRootCommitment(CBlock& block, const Consensus::Params& consensusParams)
 {
     /*
@@ -3034,21 +3100,6 @@ CScript GenerateWTPrimeHashCommitment(const uint256& hashWTPrime, const uint8_t 
 
     return script;
 }
-
-/**
- * M5 & M6
- * Also note that while not commited to by miners, the messages M5 & M6 also
- * exist. These are regular Bitcoin transactions, which can be identified by
- * the outputs they are spending. M5 and M6 transactions spend the outputs of
- * Critical TxID-index Pairs (a "CTIP") of sidechains to create deposits (M5)
- * or withdrawals (M6).
-
- * M5: (Drivechain Deposit): A deposit will increase the amount of coins
- * held in the CTIP output of the sidechain.
- *
- * M6: (Drivechain Withdrawal): A withdrawal will decrease the amount of coins
- * held in the CTIP output of the sidechain.
- */
 
 std::vector<CCriticalData> GetCriticalDataRequests(const CBlock& block)
 {
