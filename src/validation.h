@@ -431,6 +431,9 @@ std::vector<unsigned char> GenerateCoinbaseCommitment(CBlock& block, const CBloc
 /** Produce a BMM h* coinbase commitment for a block */
 void GenerateCriticalHashCommitment(CBlock& block, const Consensus::Params& consensusParams);
 
+/** Produce a BMM h* coinbase commitment for a block (with lightning)*/
+void GenerateLNCriticalHashCommitment(CBlock& block, const Consensus::Params& consensusParams);
+
 /** Produce the SCDB hashMerkleRoot coinbase commitment for a block */
 void GenerateSCDBHashMerkleRootCommitment(CBlock& block, const Consensus::Params& consensusParams);
 
