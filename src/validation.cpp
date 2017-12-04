@@ -366,10 +366,12 @@ void GetSidechainValues(const CTransaction &tx, CAmount& amtSidechainUTXO, CAmou
     for (auto it = mapCoinsDeposit.begin(); it != mapCoinsDeposit.end(); it++) {
         for (const CTxOut& out : it->second.vout) {
             CScript scriptPubKey = out.scriptPubKey;
-            if (HexStr(scriptPubKey) == SIDECHAIN_TEST_SCRIPT_HEX) {
-                amtSidechainUTXO += out.nValue;
-            } else {
-                amtUserInput += out.nValue;
+            for (const Sidechain& s : ValidSidechains){
+                if (HexStr(scriptPubKey) == s.sidechainHex) {
+                    amtSidechainUTXO += out.nValue;
+                } else {
+                    amtUserInput += out.nValue;
+                }        
             }
         }
     }
@@ -377,10 +379,12 @@ void GetSidechainValues(const CTransaction &tx, CAmount& amtSidechainUTXO, CAmou
     // Count outputs
     for (const CTxOut& out : tx.vout) {
         CScript scriptPubKey = out.scriptPubKey;
-        if (HexStr(scriptPubKey) == SIDECHAIN_TEST_SCRIPT_HEX) {
-            amtReturning += out.nValue;
-        } else {
-            amtWithdrawn += out.nValue;
+        for (const Sidechain& s : ValidSidechains){
+            if (HexStr(scriptPubKey) == s.sidechainHex) {
+                amtReturning += out.nValue;
+            } else {
+                amtWithdrawn += out.nValue;
+            }
         }
     }
 }
@@ -1702,9 +1706,10 @@ static bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockInd
         nInputs += tx.vin.size();
 
         bool fSidechainInputs = false;
+        uint8_t nSidechain = 0;
         if (!tx.IsCoinBase())
         {
-            if (!view.HaveInputs(tx, &fSidechainInputs))
+            if (!view.HaveInputs(tx, &fSidechainInputs, &nSidechain))
                 return state.DoS(100, error("ConnectBlock(): inputs missing/spent"),
                                  REJECT_INVALID, "bad-txns-inputs-missingorspent");
 
@@ -1752,7 +1757,7 @@ static bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockInd
                 return error("ConnectBlock(): WT^ (full id): %s has invalid format", tx.GetHash().ToString());
 
             // Check workscore TODO nSidechain
-            if (!scdb.CheckWorkScore(SIDECHAIN_TEST, hashBWT))
+            if (!scdb.CheckWorkScore(nSidechain, hashBWT))
                 return error("ConnectBlock(): CheckWorkScore failed for %s", hashBWT.ToString());
         }
 
@@ -1761,8 +1766,10 @@ static bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockInd
             bool fSidechainOutput = false;
             for (const CTxOut out : tx.vout) {
                 const CScript& scriptPubKey = out.scriptPubKey;
-                if (HexStr(scriptPubKey) == SIDECHAIN_TEST_SCRIPT_HEX)
-                    fSidechainOutput = true;
+                for (const Sidechain& s : ValidSidechains) {
+                    if (HexStr(scriptPubKey) == s.sidechainHex)
+                        fSidechainOutput = true;
+                }
             }
             if (fSidechainOutput)
                 vDepositTx.push_back(tx);
