@@ -10,15 +10,6 @@
 
 #include <array>
 
-/**
- * Sidechain Keys
- */
-//! KeyID for testing
-// 4LQSw2aWn3EuC52va1JLzCDAHud2VaougL
-static const char* const SIDECHAIN_TEST_KEY = "09c1fbf0ad3047fb825e0bc5911528596b7d7f49";
-static const char* const SIDECHAIN_TEST_PRIV = "cQMQ99mA5Xi2Hm9YM3WmB2JcJai3tzGupuFb5b7HWiwNgTKoaFr5";
-static const char* const SIDECHAIN_TEST_SCRIPT_HEX = "76a914497f7d6b59281591c50b5e82fb4730adf0fbc10988ac";
-
 //! Max number of WT^(s) per sidechain during tau
 static const int SIDECHAIN_MAX_WT = 3; // TODO remove
 static const size_t VALID_SIDECHAINS_COUNT = 3;
@@ -34,6 +25,9 @@ struct Sidechain {
     uint16_t nWaitPeriod;
     uint16_t nVerificationPeriod;
     uint16_t nMinWorkScore;
+    const char* sidechainKey;
+    const char* sidechainPriv;
+    const char* sidechainHex;
 
     std::string GetSidechainName() const;
     uint16_t GetTau() const;
@@ -118,11 +112,12 @@ struct SCDBIndex {
 
 static const std::array<Sidechain, VALID_SIDECHAINS_COUNT> ValidSidechains =
 {{
-    // {nSidechain, nWaitPeriod, nVerificationPeriod, nMinWorkScore}
-    {SIDECHAIN_TEST, 100, 200, 100},
-    {SIDECHAIN_HIVEMIND, 100, 200, 100},
-    {SIDECHAIN_WIMBLE, 100, 200, 100}
+    // {nSidechain, nWaitPeriod, nVerificationPeriod, nMinWorkScore, sidechainKey, sidechainPriv, sidechainHex}
+    {SIDECHAIN_TEST, 100, 200, 100, "09c1fbf0ad3047fb825e0bc5911528596b7d7f49", "cQMQ99mA5Xi2Hm9YM3WmB2JcJai3tzGupuFb5b7HWiwNgTKoaFr5", "76a914497f7d6b59281591c50b5e82fb4730adf0fbc10988ac"},
+    {SIDECHAIN_HIVEMIND, 100, 200, 100, "09c1fbf0ad3047fb825e0bc5911528596b7d7f49", "cQMQ99mA5Xi2Hm9YM3WmB2JcJai3tzGupuFb5b7HWiwNgTKoaFr5", "76a914497f7d6b59281591c50b5e82fb4730adf0fbc10988ac"},
+    {SIDECHAIN_WIMBLE, 100, 200, 100, "09c1fbf0ad3047fb825e0bc5911528596b7d7f49", "cQMQ99mA5Xi2Hm9YM3WmB2JcJai3tzGupuFb5b7HWiwNgTKoaFr5", "76a914497f7d6b59281591c50b5e82fb4730adf0fbc10988ac"}
 }};
+
 
 bool IsSidechainNumberValid(uint8_t nSidechain);
 

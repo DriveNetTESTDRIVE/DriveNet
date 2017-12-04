@@ -447,7 +447,7 @@ public:
      * the UTXO set represented by this view. Optionally return whether
      * or not any sidechain UTXO inputs are in the tx.
      */
-    bool HaveInputs(const CTransaction& tx, bool* fSidechainInputs = NULL) const;
+    bool HaveInputs(const CTransaction& tx, bool* fSidechainInputs = NULL, uint8_t* nSidechain = NULL) const;
 
 private:
     CCoinsMap::iterator FetchCoin(const COutPoint &outpoint) const;

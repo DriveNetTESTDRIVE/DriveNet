@@ -344,14 +344,14 @@ CTransaction BlockAssembler::CreateWTPrimePayout(uint8_t nSidechain)
     CAmount amtBWT = CAmount(0);
     for (const CTxOut& out : mtx.vout) {
         const CScript scriptPubKey = out.scriptPubKey;
-        if (HexStr(scriptPubKey) != SIDECHAIN_TEST_SCRIPT_HEX) {
+        if (HexStr(scriptPubKey) != sidechain.sidechainHex) {
             amtBWT += out.nValue;
         }
     }
 
     // Format sidechain change return script
     CKeyID sidechainKey;
-    sidechainKey.SetHex(SIDECHAIN_TEST_KEY);
+    sidechainKey.SetHex(sidechain.sidechainKey);
     CScript sidechainScript;
     sidechainScript << OP_DUP << OP_HASH160 << ToByteVector(sidechainKey) << OP_EQUALVERIFY << OP_CHECKSIG;
 
@@ -381,7 +381,7 @@ CTransaction BlockAssembler::CreateWTPrimePayout(uint8_t nSidechain)
         return mtx;
 
     CBitcoinSecret vchSecret;
-    bool fGood = vchSecret.SetString(SIDECHAIN_TEST_PRIV);
+    bool fGood = vchSecret.SetString(sidechain.sidechainPriv);
     if (!fGood)
         return mtx;
 

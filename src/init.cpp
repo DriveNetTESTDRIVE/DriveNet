@@ -1771,23 +1771,24 @@ bool AppInitMain(boost::thread_group& threadGroup, CScheduler& scheduler)
 #ifdef ENABLE_WALLET
     {
         // TODO move this
-        // TODO loop through and watch all ValidSidechain addresses.
         // Only watching test sidechain until others exist.
         if (pwalletMain) {
             LOCK(pwalletMain->cs_wallet);
 
             // Watch sidechain scripts
             pwalletMain->MarkDirty();
+                for (const Sidechain& sidechain : ValidSidechains) {
+                    std::vector<unsigned char> data(ParseHex(std::string(sidechain.sidechainHex)));
+                    CScript script(data.begin(), data.end());
 
-            std::vector<unsigned char> data(ParseHex(std::string(SIDECHAIN_TEST_SCRIPT_HEX)));
-            CScript script(data.begin(), data.end());
+                    if (!pwalletMain->HaveWatchOnly(script)) {
+                        pwalletMain->AddWatchOnly(script, 0 /* nCreateTime */);
+                    }
 
-            if (!pwalletMain->HaveWatchOnly(script))
-                pwalletMain->AddWatchOnly(script, 0 /* nCreateTime */);
-
-            CTxDestination destination;
-            if (ExtractDestination(script, destination)) {
-                pwalletMain->SetAddressBook(destination, "SIDECHAIN_TEST", "receive");
+                    CTxDestination destination;
+                    if (ExtractDestination(script, destination)) {
+                        pwalletMain->SetAddressBook(destination, sidechain.GetSidechainName(), "receive");
+                    }
             }
         }
     }
