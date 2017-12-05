@@ -366,25 +366,21 @@ void GetSidechainValues(const CTransaction &tx, CAmount& amtSidechainUTXO, CAmou
     for (auto it = mapCoinsDeposit.begin(); it != mapCoinsDeposit.end(); it++) {
         for (const CTxOut& out : it->second.vout) {
             CScript scriptPubKey = out.scriptPubKey;
-            for (const Sidechain& s : ValidSidechains){
-                if (HexStr(scriptPubKey) == s.sidechainHex) {
-                    amtSidechainUTXO += out.nValue;
-                } else {
-                    amtUserInput += out.nValue;
-                }        
-            }
+            if (ValidSidechainField.find(HexStr(scriptPubKey)) != ValidSidechainField.end()) {
+                amtSidechainUTXO += out.nValue;
+            } else {
+                amtUserInput += out.nValue;
+            }        
         }
     }
 
     // Count outputs
     for (const CTxOut& out : tx.vout) {
         CScript scriptPubKey = out.scriptPubKey;
-        for (const Sidechain& s : ValidSidechains){
-            if (HexStr(scriptPubKey) == s.sidechainHex) {
-                amtReturning += out.nValue;
-            } else {
-                amtWithdrawn += out.nValue;
-            }
+        if (ValidSidechainField.find(HexStr(scriptPubKey)) != ValidSidechainField.end()) {
+            amtReturning += out.nValue;
+        } else {
+            amtWithdrawn += out.nValue;
         }
     }
 }
@@ -1766,9 +1762,8 @@ static bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockInd
             bool fSidechainOutput = false;
             for (const CTxOut out : tx.vout) {
                 const CScript& scriptPubKey = out.scriptPubKey;
-                for (const Sidechain& s : ValidSidechains) {
-                    if (HexStr(scriptPubKey) == s.sidechainHex)
-                        fSidechainOutput = true;
+                if (ValidSidechainField.find(HexStr(scriptPubKey)) != ValidSidechainField.end()) {
+                    fSidechainOutput = true;
                 }
             }
             if (fSidechainOutput)

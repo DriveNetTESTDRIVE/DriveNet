@@ -118,6 +118,13 @@ static const std::array<Sidechain, VALID_SIDECHAINS_COUNT> ValidSidechains =
     {SIDECHAIN_WIMBLE, 100, 200, 100, "09c1fbf0ad3047fb825e0bc5911528596b7d7f49", "cQMQ99mA5Xi2Hm9YM3WmB2JcJai3tzGupuFb5b7HWiwNgTKoaFr5", "76a914497f7d6b59281591c50b5e82fb4730adf0fbc10988ac"}
 }};
 
+static const std::map<std::string, int> ValidSidechainField = 
+{
+    {"76a914497f7d6b59281591c50b5e82fb4730adf0fbc10988ac", 0},
+    {"76a914497f7d6b59281591c50b5e82fb4730adf0fbc10988ac", 1},
+    {"76a914497f7d6b59281591c50b5e82fb4730adf0fbc10988ac", 2}
+};
+
 
 bool IsSidechainNumberValid(uint8_t nSidechain);
 
