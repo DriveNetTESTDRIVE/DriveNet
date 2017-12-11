@@ -375,35 +375,27 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const std::vecto
         if (!scriptPubKey.IsCriticalHashCommit())
             continue;
 
-        CScript::const_iterator phash = scriptPubKey.begin() + 5;
-        opcodetype opcode;
-        std::vector<unsigned char> vchHash;
-        if (!scriptPubKey.GetOp(phash, opcode, vchHash))
-            continue;
-        if (vchHash.size() != sizeof(uint256))
-            continue;
+        uint256 hashCritical(std::vector<unsigned char>(scriptPubKey.begin() + 6, scriptPubKey.begin() + 38));
 
-        uint256 hashCritical = uint256(vchHash);
+        CCriticalData criticalData;
+        criticalData.hashCritical = hashCritical;
 
         // Read critical data bytes if there are any
-        std::vector<unsigned char> bytes;
-        if (scriptPubKey.size() > 37) {
-            CScript::const_iterator pbytes = scriptPubKey.begin() + 38;
-            if (!scriptPubKey.GetOp(pbytes, opcode, bytes))
-                continue;
+        if (scriptPubKey.size() > 38) {
+            criticalData.bytes = std::vector<unsigned char>(scriptPubKey.begin() + 38, scriptPubKey.end());
 
             // Do the bytes indicate that this is a sidechain h*?
-            if (bytes[0] != 0x00 || bytes[1] != 0xbf || bytes[2] != 0x00)
+            if (!criticalData.IsBMMRequest())
                 continue;
 
             // Read sidechain number
-            CScript::const_iterator psidechain = scriptPubKey.begin() + 42;
+            CScript::const_iterator psidechain = scriptPubKey.begin() + 41;
+            opcodetype opcode;
             std::vector<unsigned char> vchSidechain;
             if (!scriptPubKey.GetOp(psidechain, opcode, vchSidechain))
                 continue;
 
             uint8_t nSidechain = CScriptNum(vchSidechain, true).getint();
-
             if (!IsSidechainNumberValid(nSidechain))
                 continue;
 

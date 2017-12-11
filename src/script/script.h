@@ -624,8 +624,8 @@ public:
 
     /** Script formats for Drivechains */
     bool IsCriticalHashCommit() const;
-    bool IsBMMHashMerkleRootCommit() const;
     bool IsSCDBHashMerkleRootCommit() const;
+    bool IsBMMHashMerkleRootCommit() const;
     bool IsWTPrimeHashCommit() const;
 
     /** Called by IsStandardTx and P2SH/BIP62 VerifyScript (which makes it consensus-critical). */

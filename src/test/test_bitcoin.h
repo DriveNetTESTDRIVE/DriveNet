@@ -53,6 +53,7 @@ struct TestChain100Setup : public TestingSetup {
     // scriptPubKey, and try to add it to the current chain.
     CBlock CreateAndProcessBlock(const std::vector<CMutableTransaction>& txns,
                                  const CScript& scriptPubKey,
+                                 bool fReplaceMempool = true,
                                  bool fReplaceCoinbase = false);
 
     ~TestChain100Setup();

@@ -243,28 +243,11 @@ bool CScript::IsCriticalHashCommit() const
 
     // Check script header
     if ((*this)[0] != OP_RETURN ||
-            (*this)[1] != 0x48 ||
-            (*this)[2] != 0x61 ||
-            (*this)[3] != 0x73 ||
-            (*this)[4] != 0x68)
-        return false;
-
-    return true;
-}
-
-bool CScript::IsBMMHashMerkleRootCommit() const
-{
-    // Check script size
-    size_t size = this->size();
-    if (size != 38) // sha256 hash + opcodes
-        return false;
-
-    // Check script header
-    if ((*this)[0] != OP_RETURN ||
-            (*this)[1] != 0x43 ||
-            (*this)[2] != 0x24 ||
-            (*this)[3] != 0x70 ||
-            (*this)[4] != 0x53)
+            (*this)[1] != 0x24 ||
+            (*this)[2] != 0xD1 ||
+            (*this)[3] != 0x61 ||
+            (*this)[4] != 0x73 ||
+            (*this)[5] != 0x68)
         return false;
 
     return true;
@@ -274,15 +257,35 @@ bool CScript::IsSCDBHashMerkleRootCommit() const
 {
     // Check script size
     size_t size = this->size();
-    if (size != 38) // sha256 hash + opcodes
+    if (size < 38) // sha256 hash + opcodes
         return false;
 
     // Check script header
     if ((*this)[0] != OP_RETURN ||
-            (*this)[1] != 0x43 ||
-            (*this)[2] != 0x50 ||
-            (*this)[3] != 0x50 ||
-            (*this)[4] != 0x53)
+            (*this)[1] != 0x24 ||
+            (*this)[2] != 0xD2 ||
+            (*this)[3] != 0x8E ||
+            (*this)[4] != 0x50 ||
+            (*this)[5] != 0x8C)
+        return false;
+
+    return true;
+}
+
+bool CScript::IsBMMHashMerkleRootCommit() const
+{
+    // Check script size
+    size_t size = this->size();
+    if (size < 38) // sha256 hash + opcodes
+        return false;
+
+    // Check script header
+    if ((*this)[0] != OP_RETURN ||
+            (*this)[1] != 0x24 ||
+            (*this)[2] != 0xD3 ||
+            (*this)[3] != 0x40 ||
+            (*this)[4] != 0x70 ||
+            (*this)[5] != 0x53)
         return false;
 
     return true;
@@ -292,15 +295,16 @@ bool CScript::IsWTPrimeHashCommit() const
 {
     // Check script size
     size_t size = this->size();
-    if (size < 39 || size > 41) // sha256 hash + nSidechain + opcodes
+    if (size < 39) // sha256 hash + nSidechain + opcodes
         return false;
 
     // Check script header
     if ((*this)[0] != OP_RETURN ||
-            (*this)[1] != 0x53 ||
-            (*this)[2] != 0x50 ||
-            (*this)[3] != 0x50 ||
-            (*this)[4] != 0x43)
+            (*this)[1] != 0x24 ||
+            (*this)[2] != 0xD4 ||
+            (*this)[3] != 0x5A ||
+            (*this)[4] != 0xA9 ||
+            (*this)[5] != 0x43)
         return false;
 
     return true;

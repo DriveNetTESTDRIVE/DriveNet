@@ -466,16 +466,22 @@ void UpdateUncommittedBlockStructures(CBlock& block, const CBlockIndex* pindexPr
 std::vector<unsigned char> GenerateCoinbaseCommitment(CBlock& block, const CBlockIndex* pindexPrev, const Consensus::Params& consensusParams);
 
 /** Produce a BMM h* coinbase commitment for a block */
-CScript GenerateCriticalHashCommitment(const CCriticalData& criticalData);
+void GenerateCriticalHashCommitment(CBlock& block, const Consensus::Params& consensusParams);
+
+/** Produce a BMM h* coinbase commitment for a block (with lightning)*/
+void GenerateLNCriticalHashCommitment(CBlock& block, const Consensus::Params& consensusParams);
 
 /** Produce the SCDB hashMerkleRoot coinbase commitment for a block */
-CScript GenerateSCDBHashMerkleRootCommitment(const uint256& hashMerkleRoot);
+void GenerateSCDBHashMerkleRootCommitment(CBlock& block, const Consensus::Params& consensusParams);
 
 /** Produce the BMM hashMerkleRoot coinbase commitment for a block */
-CScript GenerateBMMHashMerkleRootCommitment(const uint256& hashMerkleRoot);
+void GenerateBMMHashMerkleRootCommitment(CBlock& block, const Consensus::Params& consensusParams);
 
 /** Produce WT^ hash coinbase commitment for a block */
-CScript GenerateWTPrimeHashCommitment(const uint256& hashWTPrime);
+CScript GenerateWTPrimeHashCommitment(const uint256& hashWTPrime, const uint8_t nSidechain);
+
+/** Return a vector of all of the critical data requests found in a block */
+std::vector<CCriticalData>  GetCriticalDataRequests(const CBlock& block);
 
 /** RAII wrapper for VerifyDB: Verify consistency of the block and coin databases */
 class CVerifyDB {
