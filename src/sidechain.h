@@ -113,16 +113,16 @@ struct SCDBIndex {
 static const std::array<Sidechain, VALID_SIDECHAINS_COUNT> ValidSidechains =
 {{
     // {nSidechain, nWaitPeriod, nVerificationPeriod, nMinWorkScore, sidechainKey, sidechainPriv, sidechainHex}
-    {SIDECHAIN_TEST, 100, 200, 100, "09c1fbf0ad3047fb825e0bc5911528596b7d7f49", "cQMQ99mA5Xi2Hm9YM3WmB2JcJai3tzGupuFb5b7HWiwNgTKoaFr5", "76a914497f7d6b59281591c50b5e82fb4730adf0fbc10988ac"},
-    {SIDECHAIN_HIVEMIND, 100, 200, 100, "09c1fbf0ad3047fb825e0bc5911528596b7d7f49", "cQMQ99mA5Xi2Hm9YM3WmB2JcJai3tzGupuFb5b7HWiwNgTKoaFr5", "76a914497f7d6b59281591c50b5e82fb4730adf0fbc10988ac"},
-    {SIDECHAIN_WIMBLE, 100, 200, 100, "09c1fbf0ad3047fb825e0bc5911528596b7d7f49", "cQMQ99mA5Xi2Hm9YM3WmB2JcJai3tzGupuFb5b7HWiwNgTKoaFr5", "76a914497f7d6b59281591c50b5e82fb4730adf0fbc10988ac"}
+    {SIDECHAIN_TEST, 100, 200, 100, "690571d5b3b11768bedce16b332e3099f1737534", "L22kLvHXmmtwLkhSVVyAus8HR6sD3meTuB1zNkFUJ43mMTAW642m", "76a914347573f199302e336be1dcbe6817b1b3d571056988ac"},
+    {SIDECHAIN_HIVEMIND, 100, 200, 100, "7fdcbdadc76f01b474b7cf9ce1d253f0fb9adbcb", "L2dkgnU2tWtSm4teY95xjFrDENWLLZqG8NDfr3u6nkPE8KFAm5yZ", "76a914cbdb9afbf053d2e19ccfb774b4016fc7adbddc7f88ac"},
+    {SIDECHAIN_WIMBLE, 100, 200, 100, "92cdebd5167167297d2b5293447e60c195162fc0", "L54Xj1NokdPBsaV8L5KEkx5nUUFvix8TcxNk6ZX5a5BoYhzMUGML", "76a914c02f1695c1607e4493522b7d29677116d5ebcd9288ac"}
 }};
 
-static const std::map<std::string, int> ValidSidechainField = 
+static const std::map<std::string, int> ValidSidechainField =
 {
-    {"76a914497f7d6b59281591c50b5e82fb4730adf0fbc10988ac", 0},
-    {"76a914497f7d6b59281591c50b5e82fb4730adf0fbc10988ac", 1},
-    {"76a914497f7d6b59281591c50b5e82fb4730adf0fbc10988ac", 2}
+    {"76a914497f7d6b59281591c50b5e82fb4730adf0fbc10988ac", SIDECHAIN_TEST},
+    {"76a914cbdb9afbf053d2e19ccfb774b4016fc7adbddc7f88ac", SIDECHAIN_HIVEMIND},
+    {"76a914c02f1695c1607e4493522b7d29677116d5ebcd9288ac", SIDECHAIN_WIMBLE}
 };
 
 
