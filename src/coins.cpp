@@ -283,7 +283,7 @@ CAmount CCoinsViewCache::GetValueIn(const CTransaction& tx) const
     return nResult;
 }
 
-bool CCoinsViewCache::HaveInputs(const CTransaction& tx, bool* fSidechainInputs) const
+bool CCoinsViewCache::HaveInputs(const CTransaction& tx, bool* fSidechainInputs, uint8_t* nSidechain) const
 {
     if (!tx.IsCoinBase()) {
         for (unsigned int i = 0; i < tx.vin.size(); i++) {
@@ -294,8 +294,12 @@ bool CCoinsViewCache::HaveInputs(const CTransaction& tx, bool* fSidechainInputs)
             }
             if (fSidechainInputs) {
                 for (const CTxOut out : coins->vout) {
-                    if (HexStr(out.scriptPubKey) == SIDECHAIN_TEST_SCRIPT_HEX)
-                        *fSidechainInputs = true;
+                    auto vsf = ValidSidechainField.find(HexStr(out.scriptPubKey));
+                    if (vsf != ValidSidechainField.end()) {
+                          *fSidechainInputs = true;
+                          *nSidechain = vsf->second;
+                          break;
+                    }
                 }
             }
         }

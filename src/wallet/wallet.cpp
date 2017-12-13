@@ -2094,12 +2094,12 @@ void CWallet::AvailableSidechainCoins(std::vector<COutput>& vSidechainCoins, con
 {
     std::vector<COutput> vCoins;
     AvailableCoins(vCoins, true);
-
+    const Sidechain& s = ValidSidechains[nSidechain];
     // TODO check correct script hex based on nSidechain param
     for (const COutput& output : vCoins) {
         CScript scriptPubKey = output.tx->tx->vout[output.i].scriptPubKey;
 
-        if (HexStr(scriptPubKey) == SIDECHAIN_TEST_SCRIPT_HEX) {
+        if (HexStr(scriptPubKey) == s.sidechainHex) {
             vSidechainCoins.push_back(output);
         }
     }
@@ -2761,9 +2761,9 @@ bool CWallet::CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, 
     // User deposit data script
     CScript dataScript = CScript() << OP_RETURN << nSidechain << ToByteVector(keyID);
 
-    // TODO should be based on nSidechain param
+    const Sidechain& sidechain = ValidSidechains[nSidechain];
     CKeyID sidechainKey;
-    sidechainKey.SetHex(SIDECHAIN_TEST_KEY);
+    sidechainKey.SetHex(sidechain.sidechainKey);
     CScript sidechainScript;
     sidechainScript << OP_DUP << OP_HASH160 << ToByteVector(sidechainKey) << OP_EQUALVERIFY << OP_CHECKSIG;
 
@@ -2824,7 +2824,7 @@ bool CWallet::CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, 
          * Sign the sidechain utxo input
          */
         CBitcoinSecret vchSecret;
-        bool fGood = vchSecret.SetString(SIDECHAIN_TEST_PRIV);
+        bool fGood = vchSecret.SetString(sidechain.sidechainPriv);
         if (!fGood) {
             strFail = "Invalid sidechain private key encoding!\n";
             return false;
