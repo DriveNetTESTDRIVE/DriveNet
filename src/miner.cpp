@@ -360,7 +360,9 @@ CTransaction BlockAssembler::CreateWTPrimePayout(uint8_t nSidechain)
 
     // Get SCUTXO(s)
     std::vector<COutput> vSidechainCoins;
-    pwalletMain->AvailableSidechainCoins(vSidechainCoins, 0);
+    for (CWalletRef pwallet : vpwallets) {
+        pwallet->AvailableSidechainCoins(vSidechainCoins, 0);
+    }
     if (!vSidechainCoins.size())
         return mtx;
 

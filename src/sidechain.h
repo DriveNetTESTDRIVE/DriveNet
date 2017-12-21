@@ -5,8 +5,8 @@
 #ifndef BITCOIN_SIDECHAIN_H
 #define BITCOIN_SIDECHAIN_H
 
-#include "primitives/transaction.h"
-#include "pubkey.h"
+#include <primitives/transaction.h>
+#include <pubkey.h>
 
 #include <array>
 

@@ -20,6 +20,9 @@
 #include "merkleblock.h"
 #include "policy/fees.h"
 #include "policy/policy.h"
+#include "policy/rbf.h"
+#include "cuckoocache.h"
+#include "reverse_iterator.h"
 #include "pow.h"
 #include "primitives/block.h"
 #include "primitives/transaction.h"
@@ -550,13 +553,12 @@ void GetSidechainValues(const CTransaction &tx, CAmount& amtSidechainUTXO, CAmou
                         CAmount& amtReturning, CAmount& amtWithdrawn)
 {
     // Collect coins from inputs
-    std::map<const uint256, CCoins> mapCoinsDeposit;
+    std::map<const uint256, Coin> mapCoinsDeposit;
     for (const CTxIn& in : tx.vin) {
-        CCoins coins;
-        uint256 hash = in.prevout.hash;
-        if (mapCoinsDeposit.find(hash) == mapCoinsDeposit.end()) {
-            pcoinsTip->GetCoins(hash, coins);
-            mapCoinsDeposit[hash] = coins;
+        Coin coins;
+        if (mapCoinsDeposit.find(in.prevout.hash) == mapCoinsDeposit.end()) {
+            pcoinsTip->GetCoin(in.prevout, coins);
+            mapCoinsDeposit[in.prevout.hash] = coins;
         }
     }
 
@@ -797,10 +799,10 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
 
         bool fSpendsBMMRequest = false;
         for (const CTxIn& txin : tx.vin) {
-            const CCoins *coins = view.AccessCoins(txin.prevout.hash);
-            if (coins->fCriticalData && coins->criticalData.IsBMMRequest()) {
+            const Coin &coins = view.AccessCoin(txin.prevout);
+            if (coins.fCriticalData && coins.criticalData.IsBMMRequest()) {
                 // Check maturity
-                if (scdb.CountBlocksAtop(coins->criticalData) < BMM_REQUEST_MATURITY)
+                if (scdb.CountBlocksAtop(coins.criticalData) < BMM_REQUEST_MATURITY)
                     return state.Invalid(false, REJECT_INVALID, "bad-txn-immature-bmm-request");
 
                 fSpendsBMMRequest = true;
@@ -1416,12 +1418,8 @@ void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, int nHeight)
 bool CScriptCheck::operator()() {
     const CScript &scriptSig = ptxTo->vin[nIn].scriptSig;
     const CScriptWitness *witness = &ptxTo->vin[nIn].scriptWitness;
-    std::multimap<uint256, int> mapBMMLDCopy;
-    if (scriptPubKey.IsBribe())
-        mapBMMLDCopy = scdb.GetLinkingData();
 
-
-    return VerifyScript(scriptSig, scriptPubKey, witness, nFlags, CachingTransactionSignatureChecker(ptxTo, nIn, amount, cacheStore, *txdata), &error);
+    return VerifyScript(scriptSig, m_tx_out.scriptPubKey, witness, nFlags, CachingTransactionSignatureChecker(ptxTo, nIn, m_tx_out.nValue, cacheStore, *txdata), &error);
 }
 
 int GetSpendHeight(const CCoinsViewCache& inputs)
@@ -1502,8 +1500,8 @@ bool CheckInputs(const CTransaction& tx, CValidationState &state, const CCoinsVi
                 // spent being checked as a part of CScriptCheck.
 
                 // Check BMM h* request maturity when trying to spend
-                if (coins->fCriticalData && coins->criticalData.IsBMMRequest()) {
-                    if (scdb.CountBlocksAtop(coins->criticalData) < BMM_REQUEST_MATURITY)
+                if (coin.fCriticalData && coin.criticalData.IsBMMRequest()) {
+                    if (scdb.CountBlocksAtop(coin.criticalData) < BMM_REQUEST_MATURITY)
                         return state.Invalid(false, REJECT_INVALID, "bad-block-txn-immature-bmm-request");
                 }
 
@@ -3464,7 +3462,7 @@ std::vector<CCriticalData> GetCriticalDataRequests(const CBlock& block)
     return vCriticalData;
 }
 
-bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& state, const Consensus::Params& consensusParams, const CBlockIndex* pindexPrev, int64_t nAdjustedTime)
+bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& state, const CChainParams& params, const CBlockIndex* pindexPrev, int64_t nAdjustedTime)
 {
     assert(pindexPrev != nullptr);
     const int nHeight = pindexPrev->nHeight + 1;

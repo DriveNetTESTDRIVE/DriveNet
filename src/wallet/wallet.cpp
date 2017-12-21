@@ -2,41 +2,41 @@
 // Copyright (c) 2009-2016 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
+#include <wallet/wallet.h>
 
-#include "wallet/wallet.h"
-
-#include "base58.h"
-#include "checkpoints.h"
-#include "chain.h"
-#include "wallet/coincontrol.h"
-#include "consensus/consensus.h"
-#include "consensus/validation.h"
-#include "fs.h"
-#include "key.h"
-#include "keystore.h"
-#include "validation.h"
-#include "net.h"
-#include "policy/fees.h"
-#include "policy/policy.h"
-#include "policy/rbf.h"
-#include "primitives/block.h"
-#include "primitives/transaction.h"
-#include "script/script.h"
-#include "script/sign.h"
-#include "scheduler.h"
-#include "sidechain.h"
-#include "sidechaindb.h"
-#include "timedata.h"
-#include "txmempool.h"
-#include "util.h"
-#include "ui_interface.h"
-#include "utilmoneystr.h"
+#include <base58.h>
+#include <checkpoints.h>
+#include <chain.h>
+#include <wallet/coincontrol.h>
+#include <consensus/consensus.h>
+#include <consensus/validation.h>
+#include <fs.h>
+#include <wallet/init.h>
+#include <key.h>
+#include <keystore.h>
+#include <validation.h>
+#include <net.h>
+#include <policy/fees.h>
+#include <policy/policy.h>
+#include <policy/rbf.h>
+#include <primitives/block.h>
+#include <primitives/transaction.h>
+#include <script/script.h>
+#include <scheduler.h>
+#include <timedata.h>
+#include <txmempool.h>
+#include <util.h>
+#include <utilmoneystr.h>
+#include <wallet/fees.h>
 
 #include <assert.h>
 #include <future>
 
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/thread.hpp>
+
+#include <sidechain.h>
+#include <sidechaindb.h>
 
 std::vector<CWalletRef> vpwallets;
 /** Transaction fee set by the user */
@@ -2346,6 +2346,8 @@ const CTxOut& CWallet::FindNonChangeParentOutput(const CTransaction& tx, int out
         n = prevout.n;
     }
     return ptx->vout[n];
+}
+
 void CWallet::AvailableSidechainCoins(std::vector<COutput>& vSidechainCoins, const uint8_t& nSidechain) const
 {
     std::vector<COutput> vCoins;
@@ -3020,7 +3022,11 @@ bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletT
 
 bool CWallet::CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, const uint8_t& nSidechain, const CAmount& nAmount, const CKeyID& keyID)
 {
-    LOCK2(cs_main, pwalletMain->cs_wallet);
+    if (vpwallets.empty()){
+        strFail = "No active wallet!\n";
+        return false;
+    }
+    LOCK2(cs_main, vpwallets[0]->cs_wallet);
 
     // User deposit data script
     CScript dataScript = CScript() << OP_RETURN << nSidechain << ToByteVector(keyID);
@@ -3046,7 +3052,7 @@ bool CWallet::CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, 
 
     // Handle change if there is any
     const CAmount nChange = nAmountRet - nAmount;
-    CReserveKey reserveKey(pwalletMain);
+    CReserveKey reserveKey(vpwallets[0]);
     if (nChange > 0) {
         CScript scriptChange;
 
@@ -3081,8 +3087,8 @@ bool CWallet::CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, 
         for (const COutput& output : vSidechainCoins) {
             mtx.vin.push_back(CTxIn(output.tx->GetHash(), output.i));
             returnAmount += output.tx->tx->vout[output.i].nValue;
-            mtx.vout.back().nValue += returnAmount;
         }
+        mtx.vout.back().nValue += returnAmount;
 
         /*
          * Sign the sidechain utxo input

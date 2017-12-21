@@ -82,11 +82,7 @@ BITCOIN_TESTS =\
   test/timedata_tests.cpp \
   test/torcontrol_tests.cpp \
   test/transaction_tests.cpp \
-<<<<<<< 3f83fdb539daa3466725dfda87b225866f4e34b8
   test/txvalidation_tests.cpp \
-=======
-  test/transaction_criticaldata_tests.cpp \
->>>>>>> Add new optional data to extended transactions
   test/txvalidationcache_tests.cpp \
   test/versionbits_tests.cpp \
   test/uint256_tests.cpp \

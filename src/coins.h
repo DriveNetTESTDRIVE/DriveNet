@@ -106,21 +106,13 @@ public:
         std::swap(to.nHeight, nHeight);
         std::swap(to.nVersion, nVersion);
     }
+    bool IsPruned() const {
+        BOOST_FOREACH(const CTxOut &out, vout)
+            if (!out.IsNull())
+                return false;
+        return true;
+    }
 
-    //! equality test
-    friend bool operator==(const Coin &a, const Coin &b) {
-         // Empty CCoins objects are always equal.
-         if (a.IsPruned() && b.IsPruned())
-             return true;
-         return a.fCoinBase == b.fCoinBase &&
-                a.fCriticalData == b.fCriticalData &&
-                a.nHeight == b.nHeight &&
-                a.nVersion == b.nVersion &&
-                a.vout == b.vout;
-    }
-    friend bool operator!=(const Coin &a, const Coin &b) {
-        return !(a == b);
-    }
 
     void CalcMaskSize(unsigned int &nBytes, unsigned int &nNonzeroBytes) const;
 

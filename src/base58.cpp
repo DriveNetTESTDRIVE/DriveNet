@@ -121,6 +121,29 @@ bool DecodeBase58(const std::string& str, std::vector<unsigned char>& vchRet)
     return DecodeBase58(str.c_str(), vchRet);
 }
 
+bool CBitcoinAddress::GetKeyID(CKeyID& keyID) const		
+ {		
+     if (!IsValid() || vchVersion != Params().Base58Prefix(CChainParams::PUBKEY_ADDRESS))		
+         return false;		
+     uint160 id;		
+     memcpy(&id, vchData.data(), 20);		
+     keyID = CKeyID(id);		
+     return true;		
+ }
+
+ bool CBitcoinAddress::IsValid() const
+{
+    return IsValid(Params());
+}
+
+bool CBitcoinAddress::IsValid(const CChainParams& params) const
+{
+    bool fCorrectSize = vchData.size() == 20;
+    bool fKnownVersion = vchVersion == params.Base58Prefix(CChainParams::PUBKEY_ADDRESS) ||
+                         vchVersion == params.Base58Prefix(CChainParams::SCRIPT_ADDRESS);
+    return fCorrectSize && fKnownVersion;
+}
+
 std::string EncodeBase58Check(const std::vector<unsigned char>& vchIn)
 {
     // add 4-byte hash check to the end

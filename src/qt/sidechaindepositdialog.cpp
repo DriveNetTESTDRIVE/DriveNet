@@ -3,9 +3,10 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "sidechaindepositdialog.h"
-#include "ui_sidechaindepositdialog.h"
+#include "forms/ui_sidechaindepositdialog.h"
 
-#include "base58.h"
+
+#include <base58.h>
 #include "bitcoinunits.h"
 #include "consensus/validation.h"
 #include "guiutil.h"
@@ -38,14 +39,21 @@ SidechainDepositDialog::~SidechainDepositDialog()
 void SidechainDepositDialog::on_pushButtonDeposit_clicked()
 {
     QMessageBox messageBox;
+    
+    if (vpwallets.empty()) {
+        messageBox.setWindowTitle("Wallet Error!");
+        messageBox.setText("No active wallets to create the deposit.");
+        messageBox.exec();
+        return;    
+    }
 
-    if (pwalletMain->IsLocked()) {
+    if (vpwallets[0]->IsLocked()) {
         // Locked wallet message box
         messageBox.setWindowTitle("Wallet locked!");
         messageBox.setText("Wallet must be unlocked to create sidechain deposit.");
         messageBox.exec();
         return;
-    }
+    }            
 
     if (!validateDepositAmount()) {
         // Invalid deposit amount message box
@@ -80,14 +88,16 @@ void SidechainDepositDialog::on_pushButtonDeposit_clicked()
     const CAmount& nValue = ui->payAmount->value();
     CTransactionRef tx;
     std::string strFail = "";
-    if (!pwalletMain->CreateSidechainDeposit(tx, strFail, nSidechain, nValue, keyID)) {
-        // Create transaction error message box
-        messageBox.setWindowTitle("Creating deposit transaction failed!");
-        QString createError = "Error creating transaction!\n\n";
-        createError += QString::fromStdString(strFail);
-        messageBox.setText(createError);
-        messageBox.exec();
-        return;
+    if (!vpwallets.empty()) {
+        if (!vpwallets[0]->CreateSidechainDeposit(tx, strFail, nSidechain, nValue, keyID)) {
+            // Create transaction error message box
+            messageBox.setWindowTitle("Creating deposit transaction failed!");
+            QString createError = "Error creating transaction!\n\n";
+            createError += QString::fromStdString(strFail);
+            messageBox.setText(createError);
+            messageBox.exec();
+            return;
+        }
     }
 
     // Successful deposit message box

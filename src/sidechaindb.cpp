@@ -2,15 +2,15 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "sidechaindb.h"
+#include <sidechaindb.h>
 
-#include "consensus/consensus.h"
-#include "consensus/merkle.h"
-#include "primitives/transaction.h"
-#include "script/script.h"
-#include "sidechain.h"
-#include "uint256.h"
-#include "utilstrencodings.h"
+#include <consensus/consensus.h>
+#include <consensus/merkle.h>
+#include <primitives/transaction.h>
+#include <script/script.h>
+#include <sidechain.h>
+#include <uint256.h>
+#include <utilstrencodings.h>
 
 SidechainDB::SidechainDB()
 {

@@ -23,6 +23,7 @@
 #include "utilmoneystr.h"
 #include "utilstrencodings.h"
 #include "validation.h"
+#include "wallet/coincontrol.h"
 #ifdef ENABLE_WALLET
 #include <wallet/rpcwallet.h>
 #include <wallet/wallet.h>
@@ -651,24 +652,30 @@ UniValue createcriticaldatatx(const JSONRPCRequest& request)
 
 #ifdef ENABLE_WALLET
     // Create and send the transaction
+    std::string strError;
+    if (vpwallets.empty()){
+        strError = "Error: no wallets are available";
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+    }
     std::vector<CRecipient> vecSend;
     CRecipient recipient = {CScript() << OP_0, nAmount, false};
     vecSend.push_back(recipient);
 
-    LOCK2(cs_main, pwalletMain->cs_wallet);
+    LOCK2(cs_main, vpwallets[0]->cs_wallet);
 
     CWalletTx wtx;
-    CReserveKey reservekey(pwalletMain);
+    CReserveKey reservekey(vpwallets[0]);
     CAmount nFeeRequired;
-    std::string strError;
     int nChangePosRet = -1;
-    if (!pwalletMain->CreateTransaction(vecSend, wtx, reservekey, nFeeRequired, nChangePosRet, strError)) {
-        if (nAmount + nFeeRequired > pwalletMain->GetBalance())
+    //TODO: set this as a real thing
+    CCoinControl cc;
+    if (!vpwallets[0]->CreateTransaction(vecSend, wtx, reservekey, nFeeRequired, nChangePosRet, strError, cc)) {
+        if (nAmount + nFeeRequired > vpwallets[0]->GetBalance())
             strError = strprintf("Error: This transaction requires a transaction fee of at least %s", FormatMoney(nFeeRequired));
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
     CValidationState state;
-    if (!pwalletMain->CommitTransaction(wtx, reservekey, g_connman.get(), state)) {
+    if (!vpwallets[0]->CommitTransaction(wtx, reservekey, g_connman.get(), state)) {
         strError = strprintf("Error: The transaction was rejected! Reason given: %s", state.GetRejectReason());
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
@@ -717,8 +724,10 @@ UniValue listsidechaindeposits(const JSONRPCRequest& request)
 
     // Get deposit output
     CBlockIndex* pblockindex = NULL;
-    CCoins coins;
-    if (pcoinsTip->GetCoins(txid, coins) && coins.nHeight > 0 && coins.nHeight <= chainActive.Height())
+    Coin coins;
+    COutPoint c;
+    c.hash = txid;
+    if (pcoinsTip->GetCoin(c, coins) && coins.nHeight > 0 && coins.nHeight <= chainActive.Height())
         pblockindex = chainActive[coins.nHeight];
 
     if (pblockindex == NULL)
@@ -751,7 +760,7 @@ UniValue listsidechaindeposits(const JSONRPCRequest& request)
     GetSidechainValues(deposit.tx, amtSidechainUTXO, amtUserInput, amtReturning, amtWithdrawn);
 
     std::vector<COutput> vSidechainCoins;
-    pwalletMain->AvailableSidechainCoins(vSidechainCoins, nSidechain);
+    vpwallets[0]->AvailableSidechainCoins(vSidechainCoins, nSidechain);
 
     amtSidechainUTXO = 0;
     for (const COutput& output : vSidechainCoins)
@@ -975,27 +984,26 @@ UniValue echo(const JSONRPCRequest& request)
 }
 
 static const CRPCCommand commands[] =
-{ //  category              name                        actor (function)            okSafeMode
-  //  --------------------- ------------------------    -----------------------     ----------
-    { "control",            "getinfo",                  &getinfo,                   true,  {} }, /* uses wallet if enabled */
-    { "control",            "getmemoryinfo",            &getmemoryinfo,             true,  {"mode"} },
-    { "util",               "validateaddress",          &validateaddress,           true,  {"address"} }, /* uses wallet if enabled */
-    { "util",               "createmultisig",           &createmultisig,            true,  {"nrequired","keys"} },
-    { "util",               "verifymessage",            &verifymessage,             true,  {"address","signature","message"} },
-    { "util",               "signmessagewithprivkey",   &signmessagewithprivkey,    true,  {"privkey","message"} },
+{ //  category              name                      actor (function)         argNames
+  //  --------------------- ------------------------  -----------------------  ----------
+    { "control",            "getmemoryinfo",          &getmemoryinfo,          {"mode"} },
+    { "control",            "logging",                &logging,                {"include", "exclude"}},
+    { "util",               "validateaddress",        &validateaddress,        {"address"} }, /* uses wallet if enabled */
+    { "util",               "createmultisig",         &createmultisig,         {"nrequired","keys"} },
+    { "util",               "verifymessage",          &verifymessage,          {"address","signature","message"} },
+    { "util",               "signmessagewithprivkey", &signmessagewithprivkey, {"privkey","message"} },
 
     /* Not shown in help */
-    { "hidden",             "setmocktime",              &setmocktime,               true,  {"timestamp"}},
-    { "hidden",             "echo",                     &echo,                      true,  {"arg0","arg1","arg2","arg3","arg4","arg5","arg6","arg7","arg8","arg9"}},
-    { "hidden",             "echojson",                 &echo,                      true,  {"arg0","arg1","arg2","arg3","arg4","arg5","arg6","arg7","arg8","arg9"}},
-    { "hidden",             "logging",                  &logging,                   true,  {"include", "exclude"}},
+    { "hidden",             "setmocktime",            &setmocktime,            {"timestamp"}},
+    { "hidden",             "echo",                   &echo,                   {"arg0","arg1","arg2","arg3","arg4","arg5","arg6","arg7","arg8","arg9"}},
+    { "hidden",             "echojson",               &echo,                   {"arg0","arg1","arg2","arg3","arg4","arg5","arg6","arg7","arg8","arg9"}},
 
     /* Used by sidechain (not shown in help) */
-    { "hidden",             "createcriticaldatatx",     &createcriticaldatatx,      false, {"amount", "crticalhash", "address"}},
-    { "hidden",             "listsidechaindeposits",    &listsidechaindeposits,     false, {"nsidechain"}},
-    { "hidden",             "receivewtprime",           &receivewtprime,            false, {"nsidechain","rawtx"}},
-    { "hidden",             "receivewtprimeupdate",     &receivewtprimeupdate,      false, {"height","update"}},
-    { "hidden",             "getbmmproof",              &getbmmproof,               false, {"blockhash", "criticalhash"}},
+    { "hidden",             "createcriticaldatatx",     &createcriticaldatatx,      {"amount", "crticalhash", "address"}},
+    { "hidden",             "listsidechaindeposits",    &listsidechaindeposits,     {"nsidechain"}},
+    { "hidden",             "receivewtprime",           &receivewtprime,            {"nsidechain","rawtx"}},
+    { "hidden",             "receivewtprimeupdate",     &receivewtprimeupdate,      {"height","update"}},
+    { "hidden",             "getbmmproof",              &getbmmproof,               {"blockhash", "criticalhash"}},
 };
 
 void RegisterMiscRPCCommands(CRPCTable &t)

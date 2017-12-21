@@ -208,17 +208,19 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, bool fChe
 
 bool Consensus::CheckTxInputs(const CTransaction& tx, CValidationState& state, const CCoinsViewCache& inputs, int nSpendHeight, CAmount& txfee)
 {
-        // This doesn't trigger the DoS code on purpose; if it did, it would make it easier
-        // for an attacker to attempt to split the network.
-        if (!inputs.HaveInputs(tx))
-            return state.Invalid(false, 0, "", "Inputs unavailable");
+        // are the actual inputs available?
+        if (!inputs.HaveInputs(tx)) {
+            return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputs-missingorspent", false,
+                    strprintf("%s: inputs missing/spent", __func__));
+        }
+
 
         CAmount nValueIn = 0;
         CAmount nFees = 0;
         for (unsigned int i = 0; i < tx.vin.size(); i++)
         {
             const COutPoint &prevout = tx.vin[i].prevout;
-            const Coin& coin = inputs.AccessCoins(prevout.hash);
+            const Coin& coin = inputs.AccessCoin(prevout);
             assert(!coin.IsSpent());
 
             // If prev is coinbase, check that it's matured
@@ -233,7 +235,7 @@ bool Consensus::CheckTxInputs(const CTransaction& tx, CValidationState& state, c
                 if (nSpendHeight - coin.nHeight < CRITICAL_DATA_MATURITY)
                     return state.Invalid(false,
                         REJECT_INVALID, "bad-txns-premature-spend-of-critical-data",
-                        strprintf("tried to spend critical data at depth %d", nSpendHeight - coins->nHeight));
+                        strprintf("tried to spend critical data at depth %d", nSpendHeight - coin.nHeight));
                 // TODO should we check this here?
                 //if (coins->criticalData.IsBMMRequest()) {
                 //    if (scdb.CountBlocksAtop(coins->criticalData) < BMM_REQUEST_MATURITY)
@@ -242,11 +244,6 @@ bool Consensus::CheckTxInputs(const CTransaction& tx, CValidationState& state, c
                 //            strprintf("tried to spend critical data bmm request at depth %d", nSpendHeight - coins->nHeight));
                 //}
             }
-
-            // Check for negative or overflow input values
-            nValueIn += coin.vout[prevout.n].nValue;
-            if (!MoneyRange(coin.vout[prevout.n].nValue) || !MoneyRange(nValueIn))
-                return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputvalues-outofrange");
 
         // Check for negative or overflow input values
         nValueIn += coin.out.nValue;

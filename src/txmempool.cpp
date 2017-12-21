@@ -11,6 +11,7 @@
 #include "validation.h"
 #include "policy/policy.h"
 #include "policy/fees.h"
+#include "reverse_iterator.h"
 #include "sidechaindb.h"
 #include "streams.h"
 #include "timedata.h"
@@ -532,9 +533,9 @@ void CTxMemPool::removeForReorg(const CCoinsViewCache *pcoins, unsigned int nMem
                 indexed_transaction_set::const_iterator it2 = mapTx.find(txin.prevout.hash);
                 if (it2 != mapTx.end())
                     continue;
-                const CCoins *coins = pcoins->AccessCoins(txin.prevout.hash);
-                if (nCheckFrequency != 0) assert(coins);
-                if (!coins || (coins->fCriticalData && (scdb.CountBlocksAtop(coins->criticalData) < BMM_REQUEST_MATURITY))) {
+                const Coin &coin = pcoins->AccessCoin(txin.prevout);
+                if (nCheckFrequency != 0) assert(!coin.IsSpent());
+                if (coin.IsSpent() || (coin.fCriticalData && (scdb.CountBlocksAtop(coin.criticalData) < BMM_REQUEST_MATURITY))) {
                     txToRemove.insert(it);
                     break;
                 }

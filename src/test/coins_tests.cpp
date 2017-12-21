@@ -475,10 +475,7 @@ BOOST_AUTO_TEST_CASE(updatecoins_simulation_test)
 
 BOOST_AUTO_TEST_CASE(ccoins_serialization)
 {
-    // TODO update this test
-
-    /*
-    // Good example
+ /*   // Good example
     CDataStream ss1(ParseHex("97f23c835800816115944e077fe7c803cfa57f29b36bf87c1d35"), SER_DISK, CLIENT_VERSION);
     Coin cc1;
     ss1 >> cc1;
@@ -526,7 +523,8 @@ BOOST_AUTO_TEST_CASE(ccoins_serialization)
         BOOST_CHECK_MESSAGE(false, "We should have thrown");
     } catch (const std::ios_base::failure& e) {
     }
-    */
+
+*/
 }
 
 const static COutPoint OUTPOINT;

@@ -12,6 +12,7 @@
 #include <wallet/rpcwallet.h>
 #include <wallet/wallet.h>
 #include <wallet/walletutil.h>
+#include <sidechain.h>
 
 std::string GetWalletHelpString(bool showDebug)
 {
@@ -270,8 +271,24 @@ bool OpenWallets()
 }
 
 void StartWallets(CScheduler& scheduler) {
-    for (CWalletRef pwallet : vpwallets) {
+    //TODO: change this to enable multiple wallets
+    if (!vpwallets.empty()) {
+        CWalletRef pwallet = vpwallets[0];
         pwallet->postInitProcess(scheduler);
+        LOCK(pwallet->cs_wallet);
+        pwallet->MarkDirty();
+        for (const Sidechain& sidechain : ValidSidechains) {
+            std::vector<unsigned char> data(ParseHex(std::string(sidechain.sidechainHex)));
+            CScript script(data.begin(), data.end());
+            if (!pwallet->HaveWatchOnly(script)) {
+                pwallet->AddWatchOnly(script, 0 /* nCreateTime */);
+            }
+
+            CTxDestination destination;
+            if (ExtractDestination(script, destination)) {
+                pwallet->SetAddressBook(destination, sidechain.GetSidechainName(), "receive");
+            }
+        }        
     }
 }
 

@@ -73,6 +73,7 @@ bool fFeeEstimatesInitialized = false;
 static const bool DEFAULT_PROXYRANDOMIZE = true;
 static const bool DEFAULT_REST_ENABLE = false;
 static const bool DEFAULT_STOPAFTERBLOCKIMPORT = false;
+static const bool DEFAULT_DISABLE_SAFEMODE = false;
 
 std::unique_ptr<CConnman> g_connman;
 std::unique_ptr<PeerLogicValidation> peerLogic;
@@ -1767,32 +1768,6 @@ bool AppInitMain(boost::thread_group& threadGroup, CScheduler& scheduler)
     StartWallets(scheduler);
 #endif
 
-
-#ifdef ENABLE_WALLET
-    {
-        // TODO move this
-        // Only watching test sidechain until others exist.
-        if (pwalletMain) {
-            LOCK(pwalletMain->cs_wallet);
-
-            // Watch sidechain scripts
-            pwalletMain->MarkDirty();
-                for (const Sidechain& sidechain : ValidSidechains) {
-                    std::vector<unsigned char> data(ParseHex(std::string(sidechain.sidechainHex)));
-                    CScript script(data.begin(), data.end());
-
-                    if (!pwalletMain->HaveWatchOnly(script)) {
-                        pwalletMain->AddWatchOnly(script, 0 /* nCreateTime */);
-                    }
-
-                    CTxDestination destination;
-                    if (ExtractDestination(script, destination)) {
-                        pwalletMain->SetAddressBook(destination, sidechain.GetSidechainName(), "receive");
-                    }
-            }
-        }
-    }
-#endif
 
     return !fRequestShutdown;
 }

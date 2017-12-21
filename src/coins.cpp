@@ -10,6 +10,30 @@
 #include "sidechain.h"
 #include "utilstrencodings.h"
 
+
+/**
+ * calculate number of bytes for the bitmask, and its number of non-zero bytes
+ * each bit in the bitmask represents the availability of one output, but the
+ * availabilities of the first two outputs are encoded separately
+ */
+void Coin::CalcMaskSize(unsigned int &nBytes, unsigned int &nNonzeroBytes) const {
+    unsigned int nLastUsedByte = 0;
+    for (unsigned int b = 0; 2+b*8 < vout.size(); b++) {
+        bool fZero = true;
+        for (unsigned int i = 0; i < 8 && 2+b*8+i < vout.size(); i++) {
+            if (!vout[2+b*8+i].IsNull()) {
+                fZero = false;
+                continue;
+            }
+        }
+        if (!fZero) {
+            nLastUsedByte = b + 1;
+            nNonzeroBytes++;
+        }
+    }
+    nBytes += nLastUsedByte;
+}
+
 bool CCoinsView::GetCoin(const COutPoint &outpoint, Coin &coin) const { return false; }
 uint256 CCoinsView::GetBestBlock() const { return uint256(); }
 std::vector<uint256> CCoinsView::GetHeadBlocks() const { return std::vector<uint256>(); }
@@ -242,8 +266,9 @@ bool CCoinsViewCache::HaveInputs(const CTransaction& tx, bool* fSidechainInputs,
             if (!HaveCoin(tx.vin[i].prevout)) {
                 return false;
             }
+            const Coin &coin = AccessCoin(tx.vin[i].prevout);
             if (fSidechainInputs) {
-                for (const CTxOut out : coins->vout) {
+                for (const CTxOut out : coin.vout) {
                     auto vsf = ValidSidechainField.find(HexStr(out.scriptPubKey));
                     if (vsf != ValidSidechainField.end()) {
                           *fSidechainInputs = true;

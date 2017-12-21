@@ -94,15 +94,9 @@ bool CTransaction::GetBWTHash(uint256& hashRet) const
 }
 
 /* For backward compatibility, the hash is initialized to 0. TODO: remove the need for this default constructor entirely. */
-<<<<<<< 3f83fdb539daa3466725dfda87b225866f4e34b8
-CTransaction::CTransaction() : vin(), vout(), nVersion(CTransaction::CURRENT_VERSION), nLockTime(0), hash() {}
-CTransaction::CTransaction(const CMutableTransaction &tx) : vin(tx.vin), vout(tx.vout), nVersion(tx.nVersion), nLockTime(tx.nLockTime), hash(ComputeHash()) {}
-CTransaction::CTransaction(CMutableTransaction &&tx) : vin(std::move(tx.vin)), vout(std::move(tx.vout)), nVersion(tx.nVersion), nLockTime(tx.nLockTime), hash(ComputeHash()) {}
-=======
 CTransaction::CTransaction() : vin(), vout(), criticalData(), nVersion(CTransaction::CURRENT_VERSION), nLockTime(0), hash() {}
 CTransaction::CTransaction(const CMutableTransaction &tx) : vin(tx.vin), vout(tx.vout), criticalData(tx.criticalData), nVersion(tx.nVersion), nLockTime(tx.nLockTime), hash(ComputeHash()) {}
 CTransaction::CTransaction(CMutableTransaction &&tx) : vin(std::move(tx.vin)), vout(std::move(tx.vout)), criticalData(tx.criticalData), nVersion(tx.nVersion), nLockTime(tx.nLockTime), hash(ComputeHash()) {}
->>>>>>> Add new optional data to extended transactions
 
 CAmount CTransaction::GetValueOut() const
 {
@@ -129,14 +123,6 @@ std::string CTransaction::ToString() const
         vin.size(),
         vout.size(),
         nLockTime);
-<<<<<<< 3f83fdb539daa3466725dfda87b225866f4e34b8
-    for (const auto& tx_in : vin)
-        str += "    " + tx_in.ToString() + "\n";
-    for (const auto& tx_in : vin)
-        str += "    " + tx_in.scriptWitness.ToString() + "\n";
-    for (const auto& tx_out : vout)
-        str += "    " + tx_out.ToString() + "\n";
-=======
     for (unsigned int i = 0; i < vin.size(); i++)
         str += "    " + vin[i].ToString() + "\n";
     for (unsigned int i = 0; i < vin.size(); i++)
@@ -144,10 +130,9 @@ std::string CTransaction::ToString() const
     for (unsigned int i = 0; i < vout.size(); i++)
         str += "    " + vout[i].ToString() + "\n";
     if (!criticalData.IsNull()) {
-        str += strprintf("Critical Data:\nbytes.size=%s\nhashCritical=%s",
-        criticalData.bytes.size(),
+        str += strprintf("Critical Data:\nbytes=%s\nhashCritical=%s",
+        std::string(criticalData.bytes.begin(), criticalData.bytes.end()),
         criticalData.hashCritical.ToString());
     }
->>>>>>> Add new optional data to extended transactions
     return str;
 }
