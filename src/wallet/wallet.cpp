@@ -2817,8 +2817,8 @@ bool CWallet::CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, 
         for (const COutput& output : vSidechainCoins) {
             mtx.vin.push_back(CTxIn(output.tx->GetHash(), output.i));
             returnAmount += output.tx->tx->vout[output.i].nValue;
-            mtx.vout.back().nValue += returnAmount;
         }
+        mtx.vout.back().nValue += returnAmount;
 
         /*
          * Sign the sidechain utxo input
