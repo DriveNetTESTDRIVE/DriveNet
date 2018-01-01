@@ -2350,10 +2350,16 @@ const CTxOut& CWallet::FindNonChangeParentOutput(const CTransaction& tx, int out
 
 void CWallet::AvailableSidechainCoins(std::vector<COutput>& vSidechainCoins, const uint8_t& nSidechain) const
 {
+    // Check if sidechain number is valid
+    if (!IsSidechainNumberValid(nSidechain))
+        return;
+
+    // Collect available outputs
     std::vector<COutput> vCoins;
     AvailableCoins(vCoins, true);
+
+    // Search for available Sidechain outputs
     const Sidechain& s = ValidSidechains[nSidechain];
-    // TODO check correct script hex based on nSidechain param
     for (const COutput& output : vCoins) {
         CScript scriptPubKey = output.tx->tx->vout[output.i].scriptPubKey;
 
@@ -3022,10 +3028,16 @@ bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletT
 
 bool CWallet::CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, const uint8_t& nSidechain, const CAmount& nAmount, const CKeyID& keyID)
 {
-    if (vpwallets.empty()){
+    if (!IsSidechainNumberValid(nSidechain)) {
+        strFail = "Invalid Sidechain number!\n";
+        return false;
+    }
+
+    if (vpwallets.empty()) {
         strFail = "No active wallet!\n";
         return false;
     }
+
     LOCK2(cs_main, vpwallets[0]->cs_wallet);
 
     // User deposit data script
@@ -3080,7 +3092,7 @@ bool CWallet::CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, 
 
     // Handle existing sidechain utxo
     std::vector<COutput> vSidechainCoins;
-    AvailableSidechainCoins(vSidechainCoins, 0);
+    AvailableSidechainCoins(vSidechainCoins, nSidechain);
     if (vSidechainCoins.size()) {
         CAmount returnAmount = CAmount(0);
 

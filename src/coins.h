@@ -106,13 +106,6 @@ public:
         std::swap(to.nHeight, nHeight);
         std::swap(to.nVersion, nVersion);
     }
-    bool IsPruned() const {
-        BOOST_FOREACH(const CTxOut &out, vout)
-            if (!out.IsNull())
-                return false;
-        return true;
-    }
-
 
     void CalcMaskSize(unsigned int &nBytes, unsigned int &nNonzeroBytes) const;
 
