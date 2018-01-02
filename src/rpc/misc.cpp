@@ -703,6 +703,13 @@ UniValue listsidechaindeposits(const JSONRPCRequest& request)
             + HelpExampleRpc("listsidechaindeposits", "\"nsidechain\"")
             );
 
+    // Check for active wallet
+    std::string strError;
+    if (vpwallets.empty()) {
+        strError = "Error: no wallets are available";
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+    }
+
     // Is nSidechain valid?
     uint8_t nSidechain = std::stoi(request.params[0].getValStr());
     if (!IsSidechainNumberValid(nSidechain))
