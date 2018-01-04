@@ -17,12 +17,10 @@
 #include <assert.h>
 #include <stdint.h>
 
-#include <boost/foreach.hpp>
 #include <unordered_map>
 
 /**
  * A UTXO entry.
- * Pruned version of CTransaction: only retains metadata and unspent transaction outputs
  *
  * Serialized format:
  * - VARINT((coinbase ? 1 : 0) | (height << 1))
@@ -35,156 +33,52 @@ public:
     CTxOut out;
 
     //! whether containing transaction was a coinbase
-    bool fCoinBase;
-    //! whether transaction has critical data
-    bool fCriticalData;
-    CCriticalData criticalData;
+    unsigned int fCoinBase : 1;
 
-    //! unspent transaction outputs; spent outputs are .IsNull(); spent outputs at the end of the array are dropped
-    std::vector<CTxOut> vout;
+    //! whether containing transaction was a coinbase
+    unsigned int fCriticalData : 2;
 
     //! at which height this containing transaction was included in the active block chain
-    int nHeight;
+    uint32_t nHeight : 31;
 
     //! construct a Coin from a CTxOut and height/coinbase information.
-    Coin(CTxOut&& outIn, int nHeightIn, bool fCoinBaseIn) : out(std::move(outIn)), fCoinBase(fCoinBaseIn), nHeight(nHeightIn) {}
-    Coin(const CTxOut& outIn, int nHeightIn, bool fCoinBaseIn) : out(outIn), fCoinBase(fCoinBaseIn),nHeight(nHeightIn) {}
-    //! version of the CTransaction; accesses to this value should probably check for nHeight as well,
-    //! as new tx version will probably only be introduced at certain heights
-    int nVersion;
-
-    void FromTx(const CTransaction &tx, int nHeightIn) {
-        fCoinBase = tx.IsCoinBase();
-        fCriticalData = !tx.criticalData.IsNull();
-        if (fCriticalData) {
-            criticalData = tx.criticalData;
-        }
-        vout = tx.vout;
-        nHeight = nHeightIn;
-        nVersion = tx.nVersion;
-        ClearUnspendable();
-    }
-
-    //! construct a CCoins from a CTransaction, at a given height
-    Coin(const CTransaction &tx, int nHeightIn) {
-        FromTx(tx, nHeightIn);
-    }
+    Coin(CTxOut&& outIn, int nHeightIn, bool fCoinBaseIn, bool fCriticalDataIn) : out(std::move(outIn)), fCoinBase(fCoinBaseIn), fCriticalData(fCriticalDataIn), nHeight(nHeightIn) {}
+    Coin(const CTxOut& outIn, int nHeightIn, bool fCoinBaseIn, bool fCriticalDataIn) : out(outIn), fCoinBase(fCoinBaseIn), fCriticalData(fCriticalDataIn), nHeight(nHeightIn) {}
 
     void Clear() {
         out.SetNull();
         fCoinBase = false;
         fCriticalData = false;
-        criticalData.SetNull();
-        std::vector<CTxOut>().swap(vout);
         nHeight = 0;
     }
 
     //! empty constructor
-    Coin() : fCoinBase(false), fCriticalData(false), criticalData(), vout(0), nHeight(0), nVersion(0) { }
-
-    //!remove spent outputs at the end of vout
-    void Cleanup() {
-        while (vout.size() > 0 && vout.back().IsNull())
-            vout.pop_back();
-        if (vout.empty())
-            std::vector<CTxOut>().swap(vout);
-    }
-
-    void ClearUnspendable() {
-        BOOST_FOREACH(CTxOut &txout, vout) {
-            if (txout.scriptPubKey.IsUnspendable())
-                txout.SetNull();
-        }
-        Cleanup();
-    }
-
-    void swap(Coin &to) {
-        std::swap(to.fCoinBase, fCoinBase);
-        std::swap(to.fCriticalData, fCriticalData);
-        std::swap(to.criticalData, criticalData);
-        to.vout.swap(vout);
-        std::swap(to.nHeight, nHeight);
-        std::swap(to.nVersion, nVersion);
-    }
-
-    void CalcMaskSize(unsigned int &nBytes, unsigned int &nNonzeroBytes) const;
+    Coin() : fCoinBase(false), fCriticalData(false), nHeight(0) { }
 
     bool IsCoinBase() const {
         return fCoinBase;
     }
 
+    bool IsCriticalData() const {
+        return fCriticalData;
+    }
+
     template<typename Stream>
     void Serialize(Stream &s) const {
-        unsigned int nMaskSize = 0, nMaskCode = 0;
-        CalcMaskSize(nMaskSize, nMaskCode);
-        bool fFirst = vout.size() > 0 && !vout[0].IsNull();
-        bool fSecond = vout.size() > 1 && !vout[1].IsNull();
-        assert(fFirst || fSecond || nMaskCode);
-        unsigned int nCode = 8*(nMaskCode - (fFirst || fSecond ? 0 : 1)) + (fCoinBase ? 1 : 0) + (fFirst ? 2 : 0) + (fSecond ? 4 : 0);
-        // version
-        ::Serialize(s, VARINT(this->nVersion));
-        // header code
-        ::Serialize(s, VARINT(nCode));
-        // spentness bitmask
-        for (unsigned int b = 0; b<nMaskSize; b++) {
-            unsigned char chAvail = 0;
-            for (unsigned int i = 0; i < 8 && 2+b*8+i < vout.size(); i++)
-                if (!vout[2+b*8+i].IsNull())
-                    chAvail |= (1 << i);
-            ::Serialize(s, chAvail);
-        }
-        // critical data
-        ::Serialize(s, fCriticalData);
-        if (fCriticalData)
-            ::Serialize(s, criticalData);
-
-        // txouts themself
-        for (unsigned int i = 0; i < vout.size(); i++) {
-            if (!vout[i].IsNull())
-                ::Serialize(s, CTxOutCompressor(REF(vout[i])));
-        }
-        // coinbase height
-        ::Serialize(s, VARINT(nHeight));
+        assert(!IsSpent());
+        uint32_t code = nHeight * 2 + fCoinBase + fCriticalData;
+        ::Serialize(s, VARINT(code));
+        ::Serialize(s, CTxOutCompressor(REF(out)));
     }
 
     template<typename Stream>
     void Unserialize(Stream &s) {
-        unsigned int nCode = 0;
-        // version
-        ::Unserialize(s, VARINT(this->nVersion));
-        // header code
-        ::Unserialize(s, VARINT(nCode));
-        fCoinBase = nCode & 1;
-        std::vector<bool> vAvail(2, false);
-        vAvail[0] = (nCode & 2) != 0;
-        vAvail[1] = (nCode & 4) != 0;
-        unsigned int nMaskCode = (nCode / 8) + ((nCode & 6) != 0 ? 0 : 1);
-        // spentness bitmask
-        while (nMaskCode > 0) {
-            unsigned char chAvail = 0;
-            ::Unserialize(s, chAvail);
-            for (unsigned int p = 0; p < 8; p++) {
-                bool f = (chAvail & (1 << p)) != 0;
-                vAvail.push_back(f);
-            }
-            if (chAvail != 0)
-                nMaskCode--;
-        }
-
-        // critical data
-        ::Unserialize(s, fCriticalData);
-        if (fCriticalData)
-            ::Unserialize(s, criticalData);
-
-        // txouts themself
-        vout.assign(vAvail.size(), CTxOut());
-        for (unsigned int i = 0; i < vAvail.size(); i++) {
-            if (vAvail[i])
-                ::Unserialize(s, REF(CTxOutCompressor(vout[i])));
-        }
-        // coinbase height
-        ::Unserialize(s, VARINT(nHeight));
-        Cleanup();
+        uint32_t code = 0;
+        ::Unserialize(s, VARINT(code));
+        nHeight = code >> 1;
+        fCoinBase = code & 1;
+        fCriticalData = code & 2;
+        ::Unserialize(s, REF(CTxOutCompressor(out)));
     }
 
     bool IsSpent() const {
@@ -312,28 +206,6 @@ public:
 };
 
 
-class CCoinsViewCache;
-
-/**
- * A reference to a mutable cache entry. Encapsulating it allows us to run
- *  cleanup code after the modification is finished, and keeping track of
- *  concurrent modifications.
- */
-class CCoinsModifier
-{
-private:
-    CCoinsViewCache& cache;
-    CCoinsMap::iterator it;
-    size_t cachedCoinUsage; // Cached memory usage of the CCoins object before modification
-    CCoinsModifier(CCoinsViewCache& cache_, CCoinsMap::iterator it_, size_t usage);
-
-public:
-    Coin* operator->() { return &it->second.coin; }
-    Coin& operator*() { return it->second.coin; }
-    ~CCoinsModifier();
-    friend class CCoinsViewCache;
-};
-
 /** CCoinsView that adds a memory cache for transactions to another CCoinsView */
 class CCoinsViewCache : public CCoinsViewBacked
 {
@@ -427,11 +299,8 @@ public:
      */
     CAmount GetValueIn(const CTransaction& tx) const;
 
-    /**
-     * Check whether all prevouts of the transaction are present in
-     * the UTXO set represented by this view. Optionally return whether
-     * or not any sidechain UTXO inputs are in the tx.
-     */
+    //! Check whether all prevouts of the transaction are present in the UTXO set represented by this view
+    // Optionally return whether or not any sidechain UTXO inputs are spent by the tx.
     bool HaveInputs(const CTransaction& tx, bool* fSidechainInputs = NULL, uint8_t* nSidechain = NULL) const;
 
 private:

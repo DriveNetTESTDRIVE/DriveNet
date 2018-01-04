@@ -3,36 +3,11 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <coins.h>
+
 #include <consensus/consensus.h>
-
-#include "memusage.h"
-#include "random.h"
-#include "sidechain.h"
-#include "utilstrencodings.h"
-
-
-/**
- * calculate number of bytes for the bitmask, and its number of non-zero bytes
- * each bit in the bitmask represents the availability of one output, but the
- * availabilities of the first two outputs are encoded separately
- */
-void Coin::CalcMaskSize(unsigned int &nBytes, unsigned int &nNonzeroBytes) const {
-    unsigned int nLastUsedByte = 0;
-    for (unsigned int b = 0; 2+b*8 < vout.size(); b++) {
-        bool fZero = true;
-        for (unsigned int i = 0; i < 8 && 2+b*8+i < vout.size(); i++) {
-            if (!vout[2+b*8+i].IsNull()) {
-                fZero = false;
-                continue;
-            }
-        }
-        if (!fZero) {
-            nLastUsedByte = b + 1;
-            nNonzeroBytes++;
-        }
-    }
-    nBytes += nLastUsedByte;
-}
+#include <random.h>
+#include <sidechain.h>
+#include <utilstrencodings.h>
 
 bool CCoinsView::GetCoin(const COutPoint &outpoint, Coin &coin) const { return false; }
 uint256 CCoinsView::GetBestBlock() const { return uint256(); }
@@ -118,7 +93,7 @@ void AddCoins(CCoinsViewCache& cache, const CTransaction &tx, int nHeight, bool 
         bool overwrite = check ? cache.HaveCoin(COutPoint(txid, i)) : fCoinbase;
         // Always set the possible_overwrite flag to AddCoin for coinbase txn, in order to correctly
         // deal with the pre-BIP30 occurrences of duplicate coinbase transactions.
-        cache.AddCoin(COutPoint(txid, i), Coin(tx.vout[i], nHeight, fCoinbase), overwrite);
+        cache.AddCoin(COutPoint(txid, i), Coin(tx.vout[i], nHeight, fCoinbase, !tx.criticalData.IsNull()), overwrite);
     }
 }
 
@@ -266,15 +241,16 @@ bool CCoinsViewCache::HaveInputs(const CTransaction& tx, bool* fSidechainInputs,
             if (!HaveCoin(tx.vin[i].prevout)) {
                 return false;
             }
-            const Coin &coin = AccessCoin(tx.vin[i].prevout);
-            if (fSidechainInputs) {
-                for (const CTxOut out : coin.vout) {
-                    auto vsf = ValidSidechainField.find(HexStr(out.scriptPubKey));
-                    if (vsf != ValidSidechainField.end()) {
-                          *fSidechainInputs = true;
-                          *nSidechain = vsf->second;
-                          break;
-                    }
+
+            // Optionally check for Sidechain UTXO inputs
+            if (fSidechainInputs && nSidechain) {
+                const Coin &coin = AccessCoin(tx.vin[i].prevout);
+
+                auto vsf = ValidSidechainField.find(HexStr(coin.out.scriptPubKey));
+                if (vsf != ValidSidechainField.end()) {
+                    *fSidechainInputs = true;
+                    *nSidechain = vsf->second;
+                    break;
                 }
             }
         }

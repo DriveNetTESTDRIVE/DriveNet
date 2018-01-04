@@ -19,6 +19,8 @@
 
 #include <memory>
 
+#include <boost/foreach.hpp>
+
 void CConnmanTest::AddNode(CNode& node)
 {
     LOCK(g_connman->cs_vNodes);

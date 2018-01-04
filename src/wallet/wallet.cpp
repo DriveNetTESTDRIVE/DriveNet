@@ -4282,7 +4282,7 @@ int CMerkleTx::GetBlocksToMaturity() const
         return std::max(0, (COINBASE_MATURITY+1) - GetDepthInMainChain());
     else
     if (tx->criticalData.IsBMMRequest())
-        return (BMM_REQUEST_MATURITY - scdb.CountBlocksAtop(tx->criticalData));
+        return (BMM_RATCHET_MATURITY - scdb.CountBlocksAtop(tx->criticalData));
     else
     if (!tx->criticalData.IsNull())
         return std::max(0, (CRITICAL_DATA_MATURITY+1) - GetDepthInMainChain());

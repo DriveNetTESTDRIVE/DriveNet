@@ -360,7 +360,7 @@ bool CheckSequenceLocks(const CTransaction &tx, int flags, LockPoints* lp, bool 
 
     CBlockIndex* tip = chainActive.Tip();
     assert(tip != nullptr);
-    
+
     CBlockIndex index;
     index.pprev = tip;
     // CheckSequenceLocks() uses chainActive.Height()+1 to evaluate
@@ -564,13 +564,12 @@ void GetSidechainValues(const CTransaction &tx, CAmount& amtSidechainUTXO, CAmou
 
     // Count inputs
     for (auto it = mapCoinsDeposit.begin(); it != mapCoinsDeposit.end(); it++) {
-        for (const CTxOut& out : it->second.vout) {
-            CScript scriptPubKey = out.scriptPubKey;
-            if (ValidSidechainField.find(HexStr(scriptPubKey)) != ValidSidechainField.end()) {
-                amtSidechainUTXO += out.nValue;
-            } else {
-                amtUserInput += out.nValue;
-            }        
+        const CTxOut& out = it->second.out;
+        CScript scriptPubKey = out.scriptPubKey;
+        if (ValidSidechainField.find(HexStr(scriptPubKey)) != ValidSidechainField.end()) {
+            amtSidechainUTXO += out.nValue;
+        } else {
+            amtUserInput += out.nValue;
         }
     }
 
@@ -797,21 +796,26 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
             }
         }
 
-        bool fSpendsBMMRequest = false;
+        bool fSpendsCriticalData = false;
         for (const CTxIn& txin : tx.vin) {
-            const Coin &coins = view.AccessCoin(txin.prevout);
-            if (coins.fCriticalData && coins.criticalData.IsBMMRequest()) {
-                // Check maturity
-                if (scdb.CountBlocksAtop(coins.criticalData) < BMM_REQUEST_MATURITY)
-                    return state.Invalid(false, REJECT_INVALID, "bad-txn-immature-bmm-request");
-
-                fSpendsBMMRequest = true;
+            const Coin &coin = view.AccessCoin(txin.prevout);
+            if (coin.IsCriticalData()) {
+                fSpendsCriticalData = true;
                 break;
             }
+            // TODO check maturity / blocks atop?
+            //if (coins.fCriticalData && coins.criticalData.IsBMMRequest()) {
+            //    // Check maturity
+            //    if (scdb.CountBlocksAtop(coins.criticalData) < BMM_REQUEST_MATURITY)
+            //        return state.Invalid(false, REJECT_INVALID, "bad-txn-immature-bmm-request");
+
+            //    fSpendsBMMRequest = true;
+            //    break;
+            //}
         }
 
         CTxMemPoolEntry entry(ptx, nFees, nAcceptTime, chainActive.Height(),
-                              fSpendsCoinbase, fSpendsBMMRequest, nSigOpsCost, lp);
+                              fSpendsCoinbase, fSpendsCriticalData, nSigOpsCost, lp);
         unsigned int nSize = entry.GetTxSize();
 
         // Check that the transaction doesn't have an excessive number of
@@ -1499,11 +1503,12 @@ bool CheckInputs(const CTransaction& tx, CValidationState &state, const CCoinsVi
                 // failures through additional data in, eg, the coins being
                 // spent being checked as a part of CScriptCheck.
 
-                // Check BMM h* request maturity when trying to spend
-                if (coin.fCriticalData && coin.criticalData.IsBMMRequest()) {
-                    if (scdb.CountBlocksAtop(coin.criticalData) < BMM_REQUEST_MATURITY)
-                        return state.Invalid(false, REJECT_INVALID, "bad-block-txn-immature-bmm-request");
-                }
+                // Check ratchet blocks_atop
+                // TODO
+                //if (coin.IsBMMRequest()) {
+                //  if (scdb.CountBlocksAtop(coin.criticalData) < BMM_REQUEST_MATURITY)
+                //      return state.Invalid(false, REJECT_INVALID, "bad-block-txn-immature-bmm-request");
+                //}
 
                 // Verify signature
                 CScriptCheck check(coin.out, tx, i, flags, cacheSigStore, &txdata);
@@ -3265,7 +3270,7 @@ void GenerateCriticalHashCommitment(CBlock& block, const Consensus::Params& cons
     //
     // TODO
     // Combine BMM request commits into one output. Other non BMM request
-    // commits could also be combined.
+    // commits could also be combined (in a seperate output).
     std::vector<CCriticalData> vCriticalData = GetCriticalDataRequests(block);
     std::vector<CTxOut> vout;
     for (const CCriticalData& d : vCriticalData) {
