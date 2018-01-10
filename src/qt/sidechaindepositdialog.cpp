@@ -8,12 +8,13 @@
 
 #include <base58.h>
 #include "bitcoinunits.h"
-#include "consensus/validation.h"
+#include "chain.h"
 #include "guiutil.h"
 #include "net.h"
 #include "primitives/transaction.h"
 #include "sidechain.h"
 #include "txdb.h"
+#include "validation.h"
 #include "wallet/wallet.h"
 
 #include <QClipboard>
@@ -26,9 +27,14 @@ SidechainDepositDialog::SidechainDepositDialog(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    for (const Sidechain& s : ValidSidechains) {
-        ui->comboBoxSidechains->addItem(QString::fromStdString(s.GetSidechainName()));
+    if (IsDrivechainEnabled(chainActive.Tip(), Params().GetConsensus())) {
+        for (const Sidechain& s : ValidSidechains) {
+            ui->comboBoxSidechains->addItem(QString::fromStdString(s.GetSidechainName()));
+        }
+    } else {
+        ui->pushButtonDeposit->setEnabled(false);
     }
+
 }
 
 SidechainDepositDialog::~SidechainDepositDialog()
@@ -39,12 +45,12 @@ SidechainDepositDialog::~SidechainDepositDialog()
 void SidechainDepositDialog::on_pushButtonDeposit_clicked()
 {
     QMessageBox messageBox;
-    
+
     if (vpwallets.empty()) {
         messageBox.setWindowTitle("Wallet Error!");
         messageBox.setText("No active wallets to create the deposit.");
         messageBox.exec();
-        return;    
+        return;
     }
 
     if (vpwallets[0]->IsLocked()) {
@@ -53,7 +59,7 @@ void SidechainDepositDialog::on_pushButtonDeposit_clicked()
         messageBox.setText("Wallet must be unlocked to create sidechain deposit.");
         messageBox.exec();
         return;
-    }            
+    }
 
     if (!validateDepositAmount()) {
         // Invalid deposit amount message box

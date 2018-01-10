@@ -5,6 +5,8 @@
 
 #include "txmempool.h"
 
+#include "chain.h"
+#include "chainparams.h"
 #include "consensus/consensus.h"
 #include "consensus/tx_verify.h"
 #include "consensus/validation.h"
@@ -512,6 +514,7 @@ void CTxMemPool::removeForReorg(const CCoinsViewCache *pcoins, unsigned int nMem
         const CTransaction& tx = it->GetTx();
         LockPoints lp = it->GetLockPoints();
         bool validLP =  TestLockPointValidity(&lp);
+        bool drivechainsEnabled = IsDrivechainEnabled(chainActive.Tip(), Params().GetConsensus());
         if (!CheckFinalTx(tx, flags) || !CheckSequenceLocks(tx, flags, &lp, validLP)) {
             // Note if CheckSequenceLocks fails the LockPoints may still be invalid
             // So it's critical that we remove the tx and not depend on the LockPoints.
@@ -528,7 +531,7 @@ void CTxMemPool::removeForReorg(const CCoinsViewCache *pcoins, unsigned int nMem
                     break;
                 }
             }
-        } else if (it->GetSpendsCriticalData()) {
+        } else if (drivechainsEnabled && it->GetSpendsCriticalData()) {
             for (const CTxIn& txin : tx.vin) {
                 indexed_transaction_set::const_iterator it2 = mapTx.find(txin.prevout.hash);
                 if (it2 != mapTx.end())
@@ -541,7 +544,7 @@ void CTxMemPool::removeForReorg(const CCoinsViewCache *pcoins, unsigned int nMem
                 }
 
                 // TODO BMM ratchet blocks_atop check
-                //if (coin.fCriticalData && (scdb.CountBlocksAtop(coin.criticalData) < BMM_REQUEST_MATURITY))) {
+                //if (coin->fCriticalData && (scdb.CountBlocksAtop(coins->criticalData) < BMM_REQUEST_MATURITY)))) {
                 //    txToRemove.insert(it);
                 //    break;
                 //}

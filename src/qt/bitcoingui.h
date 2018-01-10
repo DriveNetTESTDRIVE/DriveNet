@@ -25,6 +25,7 @@ class OptionsModel;
 class PlatformStyle;
 class RPCConsole;
 class SendCoinsRecipient;
+class SidechainTableDialog;
 class UnitDisplayStatusBarControl;
 class WalletFrame;
 class WalletModel;
@@ -111,6 +112,7 @@ private:
     QAction *openRPCConsoleAction;
     QAction *openAction;
     QAction *showHelpMessageAction;
+    QAction *showSidechainTableDialogAction;
 
     QSystemTrayIcon *trayIcon;
     QMenu *trayIconMenu;
@@ -118,6 +120,9 @@ private:
     RPCConsole *rpcConsole;
     HelpMessageDialog *helpMessageDialog;
     ModalOverlay *modalOverlay;
+
+    /** Sidechain table dialog (for testing) */
+    SidechainTableDialog *sidechainTableDialog;
 
     /** Keep track of previous number of blocks, to detect progress */
     int prevBlocks;
@@ -218,6 +223,8 @@ private Q_SLOTS:
     void showDebugWindowActivateConsole();
     /** Show help message dialog */
     void showHelpMessageClicked();
+    /** Show sidechain table dialog */
+    void showSidechainTableDialog();
 #ifndef Q_OS_MAC
     /** Handle tray icon clicked */
     void trayIconActivated(QSystemTrayIcon::ActivationReason reason);
@@ -233,7 +240,7 @@ private Q_SLOTS:
 
     /** Show progress dialog e.g. for verifychain */
     void showProgress(const QString &title, int nProgress);
-    
+
     /** When hideTrayIcon setting is changed in OptionsModel hide or show the icon accordingly. */
     void setTrayIconVisible(bool);
 

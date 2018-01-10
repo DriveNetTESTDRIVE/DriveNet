@@ -173,20 +173,26 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     coinbaseTx.vout.resize(1);
     coinbaseTx.vout[0].scriptPubKey = scriptPubKeyIn;
 
-    // Add WT^(s) which have been validated
-    for (const Sidechain& s : ValidSidechains) {
-        CTransaction wtx = CreateWTPrimePayout(s.nSidechain);
-        if (wtx.vout.size() && wtx.vin.size())
-            pblock->vtx.push_back(MakeTransactionRef(std::move(wtx)));
+    bool drivechainsEnabled = IsDrivechainEnabled(pindexPrev, chainparams.GetConsensus());
+
+    if (drivechainsEnabled) {
+        // Add WT^(s) which have been validated
+        for (const Sidechain& s : ValidSidechains) {
+            CTransaction wtx = CreateWTPrimePayout(s.nSidechain);
+            if (wtx.vout.size() && wtx.vin.size())
+                pblock->vtx.push_back(MakeTransactionRef(std::move(wtx)));
+        }
     }
 
     coinbaseTx.vout[0].nValue = nFees + GetBlockSubsidy(nHeight, chainparams.GetConsensus());
     coinbaseTx.vin[0].scriptSig = CScript() << nHeight << OP_0;
     pblock->vtx[0] = MakeTransactionRef(std::move(coinbaseTx));
 
-    GenerateSCDBHashMerkleRootCommitment(*pblock, chainparams.GetConsensus());
-    GenerateBMMHashMerkleRootCommitment(*pblock, chainparams.GetConsensus());
-    GenerateCriticalHashCommitment(*pblock, chainparams.GetConsensus());
+    if (drivechainsEnabled) {
+        GenerateSCDBHashMerkleRootCommitment(*pblock, chainparams.GetConsensus());
+        GenerateBMMHashMerkleRootCommitment(*pblock, chainparams.GetConsensus());
+        GenerateCriticalHashCommitment(*pblock, chainparams.GetConsensus());
+    }
 
     pblocktemplate->vchCoinbaseCommitment = GenerateCoinbaseCommitment(*pblock, pindexPrev, chainparams.GetConsensus());
     pblocktemplate->vTxFees[0] = -nFees;
@@ -299,6 +305,9 @@ CTransaction BlockAssembler::CreateWTPrimePayout(uint8_t nSidechain)
 {
     // The WT^ that will be created
     CMutableTransaction mtx;
+
+    if (!IsDrivechainEnabled(chainActive.Tip(), chainparams.GetConsensus()))
+        return mtx;
 
 #ifdef ENABLE_WALLET
     if (!scdb.HasState())

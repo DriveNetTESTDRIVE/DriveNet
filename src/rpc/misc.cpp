@@ -727,6 +727,7 @@ UniValue listsidechaindeposits(const JSONRPCRequest& request)
     std::set<uint256> setTxids;
     setTxids.insert(txid);
 
+    // TODO needed?
     LOCK(cs_main);
 
     // Get deposit output
