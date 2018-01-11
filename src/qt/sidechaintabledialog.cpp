@@ -18,7 +18,12 @@ SidechainTableDialog::SidechainTableDialog(QWidget *parent) :
     sidechainTableModel = new SidechainEscrowTableModel(this);
 
     ui->tableViewD1->setModel(sidechainTableModel);
-    ui->tableViewD1->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    
+    #if QT_VERSION < 0x050000
+        ui->tableViewD1->horizontalHeader()->setResizeMode(QHeaderView::ResizeToContents);
+    #else
+        ui->tableViewD1->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    #endif
 
     bool drivechainsEnabled = IsDrivechainEnabled(chainActive.Tip(), Params().GetConsensus());
     if (!drivechainsEnabled) {
