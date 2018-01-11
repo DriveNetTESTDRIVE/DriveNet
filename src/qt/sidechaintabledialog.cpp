@@ -3,6 +3,8 @@
 #include <qt/sidechainescrowtablemodel.h>
 #include <qt/forms/ui_sidechaintabledialog.h>
 
+#include <QHeaderView>
+
 #include <chain.h>
 #include <chainparams.h>
 #include <validation.h>
