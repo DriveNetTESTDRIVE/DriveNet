@@ -27,6 +27,7 @@ SidechainDepositDialog::SidechainDepositDialog(QWidget *parent) :
 {
     ui->setupUi(this);
 
+#ifdef ENABLE_WALLET
     if (IsDrivechainEnabled(chainActive.Tip(), Params().GetConsensus())) {
         for (const Sidechain& s : ValidSidechains) {
             ui->comboBoxSidechains->addItem(QString::fromStdString(s.GetSidechainName()));
@@ -34,6 +35,7 @@ SidechainDepositDialog::SidechainDepositDialog(QWidget *parent) :
     } else {
         ui->pushButtonDeposit->setEnabled(false);
     }
+#endif
 
 }
 
@@ -46,6 +48,7 @@ void SidechainDepositDialog::on_pushButtonDeposit_clicked()
 {
     QMessageBox messageBox;
 
+#ifdef ENABLE_WALLET
     if (vpwallets.empty()) {
         messageBox.setWindowTitle("Wallet Error!");
         messageBox.setText("No active wallets to create the deposit.");
@@ -60,6 +63,7 @@ void SidechainDepositDialog::on_pushButtonDeposit_clicked()
         messageBox.exec();
         return;
     }
+#endif
 
     if (!validateDepositAmount()) {
         // Invalid deposit amount message box

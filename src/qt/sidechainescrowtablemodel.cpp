@@ -138,6 +138,8 @@ QVariant SidechainEscrowTableModel::headerData(int section, Qt::Orientation orie
 
 void SidechainEscrowTableModel::updateModel()
 {
+
+#ifdef ENABLE_WALLET
     // Check for active wallet
     if (vpwallets.empty())
         return;
@@ -151,6 +153,7 @@ void SidechainEscrowTableModel::updateModel()
     TRY_LOCK(vpwallets[0]->cs_wallet, lockWallet);
     if(!lockWallet)
         return;
+#endif
 
     // Clear old data
     beginResetModel();
@@ -182,8 +185,8 @@ void SidechainEscrowTableModel::updateModel()
                 object.CTIPIndex = vSidechainCoins.front().i;
                 object.CTIPTxID = QString::fromStdString(vSidechainCoins.front().tx->GetHash().ToString());
             } else {
-                object.CTIPIndex = "None";
-                object.CTIPTxID = "None";
+                object.CTIPIndex = "None / wallet disabled";
+                object.CTIPTxID = "None / wallet disabled";
             }
         }
         model.append(QVariant::fromValue(object));

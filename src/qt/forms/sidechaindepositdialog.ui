@@ -6,31 +6,14 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>579</width>
-    <height>178</height>
+    <width>594</width>
+    <height>149</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Dialog</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="2" column="1" rowspan="2">
-    <widget class="QPushButton" name="pushButtonDeposit">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
-     </property>
-     <property name="text">
-      <string>Deposit</string>
-     </property>
-     <property name="icon">
-      <iconset resource="../bitcoin.qrc">
-       <normaloff>:/icons/send</normaloff>:/icons/send</iconset>
-     </property>
-    </widget>
-   </item>
    <item row="3" column="0">
     <layout class="QHBoxLayout" name="horizontalLayoutAmount" stretch="0">
      <item>
@@ -38,17 +21,20 @@
      </item>
     </layout>
    </item>
-   <item row="0" column="0" colspan="2">
+   <item row="0" column="0" colspan="3">
     <widget class="QComboBox" name="comboBoxSidechains">
      <property name="maxCount">
       <number>2147483647</number>
      </property>
     </widget>
    </item>
-   <item row="4" column="0" colspan="2">
+   <item row="4" column="0" colspan="3">
     <spacer name="verticalSpacer">
      <property name="orientation">
       <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeType">
+      <enum>QSizePolicy::Expanding</enum>
      </property>
      <property name="sizeHint" stdset="0">
       <size>
@@ -72,7 +58,7 @@
         <string/>
        </property>
        <property name="placeholderText">
-        <string>Sidechain Address</string>
+        <string>Sidechain address (deposit recipient)</string>
        </property>
        <property name="clearButtonEnabled">
         <bool>false</bool>
@@ -80,49 +66,48 @@
       </widget>
      </item>
      <item>
-      <widget class="QToolButton" name="pushButtonPaste">
-       <property name="toolTip">
-        <string>Paste address from clipboard</string>
-       </property>
+      <widget class="QPushButton" name="pushButtonPaste">
        <property name="text">
-        <string/>
+        <string>Paste</string>
        </property>
        <property name="icon">
         <iconset resource="../bitcoin.qrc">
          <normaloff>:/icons/editpaste</normaloff>:/icons/editpaste</iconset>
        </property>
-       <property name="iconSize">
-        <size>
-         <width>22</width>
-         <height>22</height>
-        </size>
-       </property>
-       <property name="shortcut">
-        <string>Alt+P</string>
-       </property>
       </widget>
      </item>
      <item>
-      <widget class="QToolButton" name="pushButtonClear">
-       <property name="toolTip">
-        <string>Remove this entry</string>
-       </property>
+      <widget class="QPushButton" name="pushButtonClear">
        <property name="text">
-        <string/>
+        <string>Clear</string>
        </property>
        <property name="icon">
         <iconset resource="../bitcoin.qrc">
          <normaloff>:/icons/remove</normaloff>:/icons/remove</iconset>
        </property>
-       <property name="iconSize">
-        <size>
-         <width>22</width>
-         <height>22</height>
-        </size>
-       </property>
       </widget>
      </item>
     </layout>
+   </item>
+   <item row="2" column="1" rowspan="2">
+    <widget class="QPushButton" name="pushButtonDeposit">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="text">
+      <string>Deposit</string>
+     </property>
+     <property name="icon">
+      <iconset resource="../bitcoin.qrc">
+       <normaloff>:/icons/send</normaloff>:/icons/send</iconset>
+     </property>
+     <property name="default">
+      <bool>true</bool>
+     </property>
+    </widget>
    </item>
   </layout>
  </widget>
