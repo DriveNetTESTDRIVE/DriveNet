@@ -23,8 +23,8 @@
 #include "utilmoneystr.h"
 #include "utilstrencodings.h"
 #include "validation.h"
-#include "wallet/coincontrol.h"
 #ifdef ENABLE_WALLET
+#include "wallet/coincontrol.h"
 #include <wallet/rpcwallet.h>
 #include <wallet/wallet.h>
 #include <wallet/walletdb.h>
