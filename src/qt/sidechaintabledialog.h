@@ -18,9 +18,8 @@ public:
     ~SidechainTableDialog();
 
 private Q_SLOTS:
-    void on_pushButtonRefresh_clicked();
     void on_pushButtonClose_clicked();
-    void on_pushButtonRunSimulation_clicked();
+    void on_pushButtonTest_clicked();
     void on_pushButtonReset_clicked();
 
 private:

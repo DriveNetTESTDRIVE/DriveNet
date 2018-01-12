@@ -121,8 +121,10 @@ private:
     HelpMessageDialog *helpMessageDialog;
     ModalOverlay *modalOverlay;
 
+#ifdef ENABLE_WALLET
     /** Sidechain table dialog (for testing) */
     SidechainTableDialog *sidechainTableDialog;
+#endif
 
     /** Keep track of previous number of blocks, to detect progress */
     int prevBlocks;
@@ -212,6 +214,9 @@ private Q_SLOTS:
 
     /** Show open dialog */
     void openClicked();
+
+    /** Show sidechain table dialog */
+    void showSidechainTableDialog();
 #endif // ENABLE_WALLET
     /** Show configuration dialog */
     void optionsClicked();
@@ -223,8 +228,6 @@ private Q_SLOTS:
     void showDebugWindowActivateConsole();
     /** Show help message dialog */
     void showHelpMessageClicked();
-    /** Show sidechain table dialog */
-    void showSidechainTableDialog();
 #ifndef Q_OS_MAC
     /** Handle tray icon clicked */
     void trayIconActivated(QSystemTrayIcon::ActivationReason reason);

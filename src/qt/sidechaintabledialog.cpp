@@ -18,7 +18,7 @@ SidechainTableDialog::SidechainTableDialog(QWidget *parent) :
     sidechainTableModel = new SidechainEscrowTableModel(this);
 
     ui->tableViewD1->setModel(sidechainTableModel);
-    
+
     #if QT_VERSION < 0x050000
         ui->tableViewD1->horizontalHeader()->setResizeMode(QHeaderView::ResizeToContents);
     #else
@@ -27,9 +27,8 @@ SidechainTableDialog::SidechainTableDialog(QWidget *parent) :
 
     bool drivechainsEnabled = IsDrivechainEnabled(chainActive.Tip(), Params().GetConsensus());
     if (!drivechainsEnabled) {
-        ui->pushButtonRefresh->setEnabled(false);
         ui->pushButtonReset->setEnabled(false);
-        ui->pushButtonRunSimulation->setEnabled(false);
+        ui->pushButtonTest->setEnabled(false);
     }
 }
 
@@ -38,17 +37,12 @@ SidechainTableDialog::~SidechainTableDialog()
     delete ui;
 }
 
-void SidechainTableDialog::on_pushButtonRefresh_clicked()
-{
-    sidechainTableModel->updateModel();
-}
-
 void SidechainTableDialog::on_pushButtonClose_clicked()
 {
     this->close();
 }
 
-void SidechainTableDialog::on_pushButtonRunSimulation_clicked()
+void SidechainTableDialog::on_pushButtonTest_clicked()
 {
     // TODO
     // Only enable this button in regest mode
