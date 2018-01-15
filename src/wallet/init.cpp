@@ -289,26 +289,6 @@ bool OpenWallets()
 void StartWallets(CScheduler& scheduler) {
     for (CWalletRef pwallet : vpwallets) {
         pwallet->postInitProcess(scheduler);
-
-        bool drivechainsEnabled = IsDrivechainEnabled(chainActive.Tip(), Params().GetConsensus());
-        if (drivechainsEnabled) {
-            LOCK(pwallet->cs_wallet);
-            pwallet->MarkDirty();
-
-            // Watch sidechain deposit addresses
-            for (const Sidechain& sidechain : ValidSidechains) {
-                std::vector<unsigned char> data(ParseHex(std::string(sidechain.sidechainHex)));
-                CScript script(data.begin(), data.end());
-                if (!pwallet->HaveWatchOnly(script)) {
-                    pwallet->AddWatchOnly(script, 0 /* nCreateTime */);
-                }
-
-                CTxDestination destination;
-                if (ExtractDestination(script, destination)) {
-                    pwallet->SetAddressBook(destination, sidechain.GetSidechainName(), "receive");
-                }
-            }
-        }
     }
 }
 
