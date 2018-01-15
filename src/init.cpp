@@ -1563,8 +1563,10 @@ bool AppInitMain(boost::thread_group& threadGroup, CScheduler& scheduler)
         }
     }
 
+    bool drivechainsEnabled = IsDrivechainEnabled(chainActive.Tip(), chainparams.GetConsensus());
+
     // Synchronize SCDB
-    if (chainActive.Tip() && chainActive.Tip()->GetBlockHash() != scdb.GetHashBlockLastSeen())
+    if (drivechainsEnabled && chainActive.Tip() && (chainActive.Tip()->GetBlockHash() != scdb.GetHashBlockLastSeen()))
     {
         // Find out how many blocks we need to update SCDB
         const int nHeight = chainActive.Height();

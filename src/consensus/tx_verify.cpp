@@ -231,12 +231,15 @@ bool Consensus::CheckTxInputs(const CTransaction& tx, CValidationState& state, c
             }
 
             // If prev is critical data tx, check that it's matured
+            if (coin.IsCriticalData() && nSpendHeight - coin.nHeight < CRITICAL_DATA_MATURITY) {
+                return state.Invalid(false,
+                    REJECT_INVALID, "bad-txns-premature-spend-of-critical-data",
+                    strprintf("tried to spend critical data at depth %d", nSpendHeight - coin.nHeight));
+            }
+            // TODO should we check blocks_atop here?
+            /*
             if (coin.fCriticalData && !coin.criticalData.IsNull()) {
                 if (nSpendHeight - coin.nHeight < CRITICAL_DATA_MATURITY)
-                    return state.Invalid(false,
-                        REJECT_INVALID, "bad-txns-premature-spend-of-critical-data",
-                        strprintf("tried to spend critical data at depth %d", nSpendHeight - coin.nHeight));
-                // TODO should we check this here?
                 //if (coins->criticalData.IsBMMRequest()) {
                 //    if (scdb.CountBlocksAtop(coins->criticalData) < BMM_REQUEST_MATURITY)
                 //        return state.Invalid(false,
@@ -244,6 +247,7 @@ bool Consensus::CheckTxInputs(const CTransaction& tx, CValidationState& state, c
                 //            strprintf("tried to spend critical data bmm request at depth %d", nSpendHeight - coins->nHeight));
                 //}
             }
+            */
 
         // Check for negative or overflow input values
         nValueIn += coin.out.nValue;

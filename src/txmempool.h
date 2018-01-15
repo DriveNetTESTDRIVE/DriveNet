@@ -71,7 +71,7 @@ private:
     int64_t nTime;             //!< Local time when entering the mempool
     unsigned int entryHeight;  //!< Chain height when entering the mempool
     bool spendsCoinbase;       //!< keep track of transactions that spend a coinbase
-    bool spendsBMMRequest;       //!< keep track of transactions that spend a BMM h* request
+    bool spendsCriticalData;   //!< keep track of transactions that spend a critical data request
     int64_t sigOpCost;         //!< Total sigop cost
     int64_t feeDelta;          //!< Used for determining the priority of the transaction for mining in a block
     LockPoints lockPoints;     //!< Track the height and time at which tx was final
@@ -93,7 +93,7 @@ public:
     CTxMemPoolEntry(const CTransactionRef& _tx, const CAmount& _nFee,
                     int64_t _nTime, unsigned int _entryHeight,
                     bool spendsCoinbase,
-                    bool spendsBMMRequest,
+                    bool spendsCriticalData,
                     int64_t nSigOpsCost, LockPoints lp);
 
     const CTransaction& GetTx() const { return *this->tx; }
@@ -123,7 +123,7 @@ public:
     CAmount GetModFeesWithDescendants() const { return nModFeesWithDescendants; }
 
     bool GetSpendsCoinbase() const { return spendsCoinbase; }
-    bool GetSpendsBMMRequest() const { return spendsBMMRequest; }
+    bool GetSpendsCriticalData() const { return spendsCriticalData; }
 
     uint64_t GetCountWithAncestors() const { return nCountWithAncestors; }
     uint64_t GetSizeWithAncestors() const { return nSizeWithAncestors; }

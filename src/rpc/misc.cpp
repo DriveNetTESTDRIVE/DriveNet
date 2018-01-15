@@ -23,8 +23,8 @@
 #include "utilmoneystr.h"
 #include "utilstrencodings.h"
 #include "validation.h"
-#include "wallet/coincontrol.h"
 #ifdef ENABLE_WALLET
+#include "wallet/coincontrol.h"
 #include <wallet/rpcwallet.h>
 #include <wallet/wallet.h>
 #include <wallet/walletdb.h>
@@ -703,12 +703,14 @@ UniValue listsidechaindeposits(const JSONRPCRequest& request)
             + HelpExampleRpc("listsidechaindeposits", "\"nsidechain\"")
             );
 
+#ifdef ENABLE_WALLET
     // Check for active wallet
     std::string strError;
     if (vpwallets.empty()) {
         strError = "Error: no wallets are available";
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
+#endif
 
     // Is nSidechain valid?
     uint8_t nSidechain = std::stoi(request.params[0].getValStr());
@@ -727,6 +729,7 @@ UniValue listsidechaindeposits(const JSONRPCRequest& request)
     std::set<uint256> setTxids;
     setTxids.insert(txid);
 
+    // TODO needed?
     LOCK(cs_main);
 
     // Get deposit output

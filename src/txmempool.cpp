@@ -5,6 +5,8 @@
 
 #include "txmempool.h"
 
+#include "chain.h"
+#include "chainparams.h"
 #include "consensus/consensus.h"
 #include "consensus/tx_verify.h"
 #include "consensus/validation.h"
@@ -21,9 +23,9 @@
 
 CTxMemPoolEntry::CTxMemPoolEntry(const CTransactionRef& _tx, const CAmount& _nFee,
                                  int64_t _nTime, unsigned int _entryHeight,
-                                 bool _spendsCoinbase, bool _spendsBMMRequest, int64_t _sigOpsCost, LockPoints lp):
+                                 bool _spendsCoinbase, bool _spendsCriticalData, int64_t _sigOpsCost, LockPoints lp):
     tx(_tx), nFee(_nFee), nTime(_nTime), entryHeight(_entryHeight),
-    spendsCoinbase(_spendsCoinbase), spendsBMMRequest(_spendsBMMRequest), sigOpCost(_sigOpsCost), lockPoints(lp)
+    spendsCoinbase(_spendsCoinbase), spendsCriticalData(_spendsCriticalData), sigOpCost(_sigOpsCost), lockPoints(lp)
 {
     nTxWeight = GetTransactionWeight(*tx);
     nUsageSize = RecursiveDynamicUsage(tx);
@@ -512,6 +514,7 @@ void CTxMemPool::removeForReorg(const CCoinsViewCache *pcoins, unsigned int nMem
         const CTransaction& tx = it->GetTx();
         LockPoints lp = it->GetLockPoints();
         bool validLP =  TestLockPointValidity(&lp);
+        bool drivechainsEnabled = IsDrivechainEnabled(chainActive.Tip(), Params().GetConsensus());
         if (!CheckFinalTx(tx, flags) || !CheckSequenceLocks(tx, flags, &lp, validLP)) {
             // Note if CheckSequenceLocks fails the LockPoints may still be invalid
             // So it's critical that we remove the tx and not depend on the LockPoints.
@@ -528,17 +531,23 @@ void CTxMemPool::removeForReorg(const CCoinsViewCache *pcoins, unsigned int nMem
                     break;
                 }
             }
-        } else if (it->GetSpendsBMMRequest()) {
+        } else if (drivechainsEnabled && it->GetSpendsCriticalData()) {
             for (const CTxIn& txin : tx.vin) {
                 indexed_transaction_set::const_iterator it2 = mapTx.find(txin.prevout.hash);
                 if (it2 != mapTx.end())
                     continue;
                 const Coin &coin = pcoins->AccessCoin(txin.prevout);
                 if (nCheckFrequency != 0) assert(!coin.IsSpent());
-                if (coin.IsSpent() || (coin.fCriticalData && (scdb.CountBlocksAtop(coin.criticalData) < BMM_REQUEST_MATURITY))) {
+                if (coin.IsSpent() || (coin.IsCriticalData() && ((signed long)nMemPoolHeight) - coin.nHeight < CRITICAL_DATA_MATURITY)) {
                     txToRemove.insert(it);
                     break;
                 }
+
+                // TODO BMM ratchet blocks_atop check
+                //if (coin->fCriticalData && (scdb.CountBlocksAtop(coins->criticalData) < BMM_REQUEST_MATURITY)))) {
+                //    txToRemove.insert(it);
+                //    break;
+                //}
             }
         }
         if (!validLP) {
@@ -908,7 +917,7 @@ bool CCoinsViewMemPool::GetCoin(const COutPoint &outpoint, Coin &coin) const {
     CTransactionRef ptx = mempool.get(outpoint.hash);
     if (ptx) {
         if (outpoint.n < ptx->vout.size()) {
-            coin = Coin(ptx->vout[outpoint.n], MEMPOOL_HEIGHT, false);
+            coin = Coin(ptx->vout[outpoint.n], MEMPOOL_HEIGHT, false, !ptx->criticalData.IsNull());
             return true;
         } else {
             return false;
