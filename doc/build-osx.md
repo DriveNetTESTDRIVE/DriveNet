@@ -16,7 +16,7 @@ Then install [Homebrew](https://brew.sh).
 Dependencies
 ----------------------
 
-    brew install automake berkeley-db4 libtool boost --c++11 miniupnpc openssl pkg-config protobuf python3 qt libevent
+    brew install automake berkeley-db4 libtool boost miniupnpc openssl pkg-config protobuf python3 qt libevent
 
 See [dependencies.md](dependencies.md) for a complete overview.
 
@@ -29,7 +29,7 @@ NOTE: Building with Qt4 is still supported, however, could result in a broken UI
 Berkeley DB
 -----------
 It is recommended to use Berkeley DB 4.8. If you have to build it yourself,
-you can use [the installation script included in contrib/](contrib/install_db4.sh)
+you can use [the installation script included in contrib/](/contrib/install_db4.sh)
 like so
 
 ```shell

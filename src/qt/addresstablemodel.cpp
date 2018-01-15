@@ -1,4 +1,4 @@
-// Copyright (c) 2011-2016 The Bitcoin Core developers
+// Copyright (c) 2011-2017 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -384,7 +384,8 @@ QString AddressTableModel::addRow(const QString &type, const QString &label, con
                 return QString();
             }
         }
-        strAddress = EncodeDestination(newKey.GetID());
+        wallet->LearnRelatedScripts(newKey, g_address_type);
+        strAddress = EncodeDestination(GetDestinationForKey(newKey, g_address_type));
     }
     else
     {
