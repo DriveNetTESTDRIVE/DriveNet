@@ -59,11 +59,11 @@ BASE_SCRIPTS= [
     'walletbackup.py',
     # vv Tests less than 5m vv
     'p2p-fullblocktest.py',
-    #TODO 'fundrawtransaction.py',
+    'fundrawtransaction.py',
     'p2p-compactblocks.py',
     'segwit.py',
     # vv Tests less than 2m vv
-    #TODO 'wallet.py',
+    'wallet.py',
     'wallet-accounts.py',
     'p2p-segwit.py',
     'wallet-dump.py',
@@ -75,7 +75,7 @@ BASE_SCRIPTS= [
     'mempool_limit.py',
     'merkle_blocks.py',
     'receivedby.py',
-    #TODO 'abandonconflict.py',
+    'abandonconflict.py',
     'bip68-112-113-p2p.py',
     'rawtransactions.py',
     'address_types.py',
@@ -101,7 +101,7 @@ BASE_SCRIPTS= [
     'signrawtransactions.py',
     'disconnect_ban.py',
     'decodescript.py',
-    #TODO 'blockchain.py',
+    'blockchain.py',
     'deprecated_rpc.py',
     'disablewallet.py',
     'net.py',
@@ -109,8 +109,8 @@ BASE_SCRIPTS= [
     'p2p-mempool.py',
     'prioritise_transaction.py',
     'invalidblockrequest.py',
-    #TODO 'invalidtxrequest.py',
-    #TODO 'p2p-versionbits-warning.py',
+    'invalidtxrequest.py',
+    'p2p-versionbits-warning.py',
     'preciousblock.py',
     'importprunedfunds.py',
     'signmessages.py',
@@ -130,7 +130,7 @@ BASE_SCRIPTS= [
     'p2p-fingerprint.py',
     'uacomment.py',
     'p2p-acceptblock.py',
-    #TODO 'feature_logging.py',
+    'feature_logging.py',
     'node_network_limited.py',
     'conf_args.py',
     # Don't append tests at the end to avoid merge conflicts
@@ -480,10 +480,9 @@ def check_script_list(src_dir):
     missed_tests = list(python_files - set(map(lambda x: x.split()[0], ALL_SCRIPTS + NON_SCRIPTS)))
     if len(missed_tests) != 0:
         print("%sWARNING!%s The following scripts are not being run: %s. Check the test lists in test_runner.py." % (BOLD[1], BOLD[0], str(missed_tests)))
-        # TODO
-        #if os.getenv('TRAVIS') == 'true':
-        #    # On travis this warning is an error to prevent merging incomplete commits into master
-        #    sys.exit(1)
+        if os.getenv('TRAVIS') == 'true':
+            # On travis this warning is an error to prevent merging incomplete commits into master
+            sys.exit(1)
 
 class RPCCoverage():
     """

@@ -1772,7 +1772,7 @@ bool AppInitMain(boost::thread_group& threadGroup, CScheduler& scheduler)
 
     if (drivechainsEnabled) {
         for (CWalletRef pwallet : vpwallets) {
-            LOCK(pwallet->cs_wallet);
+            LOCK2(cs_main, pwallet->cs_wallet);
             pwallet->MarkDirty();
 
             // Watch sidechain deposit addresses
