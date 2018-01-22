@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2015-2016 The Bitcoin Core developers
+# Copyright (c) 2015-2017 The Bitcoin Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Test block processing.
@@ -36,12 +36,15 @@ class CBrokenBlock(CBlock):
         self.vtx = copy.deepcopy(base_block.vtx)
         self.hashMerkleRoot = self.calc_merkle_root()
 
-    def serialize(self):
+    def serialize(self, with_witness=False):
         r = b""
         r += super(CBlock, self).serialize()
         r += struct.pack("<BQ", 255, len(self.vtx))
         for tx in self.vtx:
-            r += tx.serialize()
+            if with_witness:
+                r += tx.serialize_with_witness()
+            else:
+                r += tx.serialize_without_witness()
         return r
 
     def normal_serialize(self):

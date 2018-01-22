@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2014-2016 The Bitcoin Core developers
+# Copyright (c) 2014-2017 The Bitcoin Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Run regression test suite.
@@ -59,11 +59,11 @@ BASE_SCRIPTS= [
     'walletbackup.py',
     # vv Tests less than 5m vv
     'p2p-fullblocktest.py',
-    #TODO 'fundrawtransaction.py',
+    'fundrawtransaction.py',
     'p2p-compactblocks.py',
     'segwit.py',
     # vv Tests less than 2m vv
-    #TODO 'wallet.py',
+    'wallet.py',
     'wallet-accounts.py',
     'p2p-segwit.py',
     'wallet-dump.py',
@@ -75,9 +75,10 @@ BASE_SCRIPTS= [
     'mempool_limit.py',
     'merkle_blocks.py',
     'receivedby.py',
-    #TODO 'abandonconflict.py',
+    'abandonconflict.py',
     'bip68-112-113-p2p.py',
     'rawtransactions.py',
+    'address_types.py',
     'reindex.py',
     # vv Tests less than 30s vv
     'keypool-topup.py',
@@ -86,19 +87,21 @@ BASE_SCRIPTS= [
     'mempool_resurrect_test.py',
     'txn_doublespend.py --mineblock',
     'txn_clone.py',
+    'txn_clone.py --segwit',
     'getchaintips.py',
     'rest.py',
     'mempool_spendcoinbase.py',
     'mempool_reorg.py',
     'mempool_persist.py',
     'multiwallet.py',
+    'multiwallet.py --usecli',
     'httpbasics.py',
     'multi_rpc.py',
     'proxy_test.py',
     'signrawtransactions.py',
     'disconnect_ban.py',
     'decodescript.py',
-    #TODO 'blockchain.py',
+    'blockchain.py',
     'deprecated_rpc.py',
     'disablewallet.py',
     'net.py',
@@ -106,8 +109,8 @@ BASE_SCRIPTS= [
     'p2p-mempool.py',
     'prioritise_transaction.py',
     'invalidblockrequest.py',
-    #TODO 'invalidtxrequest.py',
-    #TODO 'p2p-versionbits-warning.py',
+    'invalidtxrequest.py',
+    'p2p-versionbits-warning.py',
     'preciousblock.py',
     'importprunedfunds.py',
     'signmessages.py',
@@ -127,8 +130,11 @@ BASE_SCRIPTS= [
     'p2p-fingerprint.py',
     'uacomment.py',
     'p2p-acceptblock.py',
-    #TODO 'feature_logging.py',
+    'feature_logging.py',
     'node_network_limited.py',
+    'conf_args.py',
+    # Don't append tests at the end to avoid merge conflicts
+    # Put them in a random line within the section that fits their approximate run-time
 ]
 
 EXTENDED_SCRIPTS = [
@@ -266,6 +272,7 @@ def main():
         sys.exit(0)
 
     check_script_list(config["environment"]["SRCDIR"])
+    check_script_prefixes()
 
     if not args.keepcache:
         shutil.rmtree("%s/test/cache" % config["environment"]["BUILDDIR"], ignore_errors=True)
@@ -464,6 +471,28 @@ class TestResult():
         return self.status != "Failed"
 
 
+def check_script_prefixes():
+    """Check that no more than `EXPECTED_VIOLATION_COUNT` of the
+       test scripts don't start with one of the allowed name prefixes."""
+    EXPECTED_VIOLATION_COUNT = 77
+
+    # LEEWAY is provided as a transition measure, so that pull-requests
+    # that introduce new tests that don't conform with the naming
+    # convention don't immediately cause the tests to fail.
+    LEEWAY = 10
+
+    good_prefixes_re = re.compile("(example|feature|interface|mempool|mining|p2p|rpc|wallet)_")
+    bad_script_names = [script for script in ALL_SCRIPTS if good_prefixes_re.match(script) is None]
+
+    if len(bad_script_names) < EXPECTED_VIOLATION_COUNT:
+        print("{}HURRAY!{} Number of functional tests violating naming convention reduced!".format(BOLD[1], BOLD[0]))
+        print("Consider reducing EXPECTED_VIOLATION_COUNT from %d to %d" % (EXPECTED_VIOLATION_COUNT, len(bad_script_names)))
+    elif len(bad_script_names) > EXPECTED_VIOLATION_COUNT:
+        print("INFO: %d tests not meeting naming conventions (expected %d):" % (len(bad_script_names), EXPECTED_VIOLATION_COUNT))
+        print("  %s" % ("\n  ".join(sorted(bad_script_names))))
+        assert len(bad_script_names) <= EXPECTED_VIOLATION_COUNT + LEEWAY, "Too many tests not following naming convention! (%d found, expected: <= %d)" % (len(bad_script_names), EXPECTED_VIOLATION_COUNT)
+
+
 def check_script_list(src_dir):
     """Check scripts directory.
 
@@ -474,10 +503,9 @@ def check_script_list(src_dir):
     missed_tests = list(python_files - set(map(lambda x: x.split()[0], ALL_SCRIPTS + NON_SCRIPTS)))
     if len(missed_tests) != 0:
         print("%sWARNING!%s The following scripts are not being run: %s. Check the test lists in test_runner.py." % (BOLD[1], BOLD[0], str(missed_tests)))
-        # TODO
-        #if os.getenv('TRAVIS') == 'true':
-        #    # On travis this warning is an error to prevent merging incomplete commits into master
-        #    sys.exit(1)
+        if os.getenv('TRAVIS') == 'true':
+            # On travis this warning is an error to prevent merging incomplete commits into master
+            sys.exit(1)
 
 class RPCCoverage():
     """

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2014-2016 The Bitcoin Core developers
+# Copyright (c) 2014-2017 The Bitcoin Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Test the zapwallettxes functionality.
@@ -10,7 +10,7 @@
   transactions are still available.
 - restart node 0 with zapwallettxes and persistmempool, and verify that both
   the confirmed and the unconfirmed transactions are still available.
-- restart node 0 with just zapwallettxed and verify that the confirmed
+- restart node 0 with just zapwallettxes and verify that the confirmed
   transactions are still available, but that the unconfirmed transaction has
   been zapped.
 """

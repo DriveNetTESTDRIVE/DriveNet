@@ -1,4 +1,4 @@
-// Copyright (c) 2011-2016 The Bitcoin Core developers
+// Copyright (c) 2011-2017 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -14,6 +14,8 @@
 #include <vector>
 
 #include <QObject>
+
+enum OutputType : int;
 
 class AddressTableModel;
 class OptionsModel;
@@ -214,9 +216,9 @@ public:
 
     bool hdEnabled() const;
 
-    int getDefaultConfirmTarget() const;
+    OutputType getDefaultAddressType() const;
 
-    bool getDefaultWalletRbf() const;
+    int getDefaultConfirmTarget() const;
 
 private:
     CWallet *wallet;
