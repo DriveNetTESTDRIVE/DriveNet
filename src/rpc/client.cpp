@@ -130,8 +130,6 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "logging", 1, "exclude" },
     { "disconnectnode", 1, "nodeid" },
     { "addwitnessaddress", 1, "p2sh" },
-    { "createbribe", 0, "amount" },
-    { "createbribe", 1, "height" },
     { "createcriticaldatatx", 0, "amount" },
     { "createcriticaldatatx", 1, "height" },
     { "listsidechaindeposits", 0, "nsidechain" },

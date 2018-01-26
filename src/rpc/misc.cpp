@@ -1060,7 +1060,7 @@ static const CRPCCommand commands[] =
     { "hidden",             "getinfo",                &getinfo_deprecated,     {}},
 
     /* Used by sidechain (not shown in help) */
-    { "hidden",             "createcriticaldatatx",     &createcriticaldatatx,      {"amount", "crticalhash", "address"}},
+    { "hidden",             "createcriticaldatatx",     &createcriticaldatatx,      {"amount", "height", "criticalhash"}},
     { "hidden",             "listsidechaindeposits",    &listsidechaindeposits,     {"nsidechain"}},
     { "hidden",             "receivewtprime",           &receivewtprime,            {"nsidechain","rawtx"}},
     { "hidden",             "receivewtprimeupdate",     &receivewtprimeupdate,      {"height","update"}},
