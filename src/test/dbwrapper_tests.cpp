@@ -1,14 +1,12 @@
-// Copyright (c) 2012-2016 The Bitcoin Core developers
+// Copyright (c) 2012-2017 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "dbwrapper.h"
-#include "uint256.h"
-#include "random.h"
-#include "test/test_bitcoin.h"
+#include <dbwrapper.h>
+#include <uint256.h>
+#include <random.h>
+#include <test/test_bitcoin.h>
 
-#include <boost/assign/std/vector.hpp> // for 'operator+=()'
-#include <boost/assert.hpp>
 #include <boost/test/unit_test.hpp>
 
 // Test if a string consists entirely of null characters
@@ -26,12 +24,11 @@ BOOST_FIXTURE_TEST_SUITE(dbwrapper_tests, BasicTestingSetup)
 BOOST_AUTO_TEST_CASE(dbwrapper)
 {
     // Perform tests both obfuscated and non-obfuscated.
-    for (int i = 0; i < 2; i++) {
-        bool obfuscate = (bool)i;
+    for (bool obfuscate : {false, true}) {
         fs::path ph = fs::temp_directory_path() / fs::unique_path();
         CDBWrapper dbw(ph, (1 << 20), true, false, obfuscate);
         char key = 'k';
-        uint256 in = GetRandHash();
+        uint256 in = InsecureRand256();
         uint256 res;
 
         // Ensure that we're doing real obfuscation when obfuscate=true
@@ -47,17 +44,16 @@ BOOST_AUTO_TEST_CASE(dbwrapper)
 BOOST_AUTO_TEST_CASE(dbwrapper_batch)
 {
     // Perform tests both obfuscated and non-obfuscated.
-    for (int i = 0; i < 2; i++) {
-        bool obfuscate = (bool)i;
+    for (bool obfuscate : {false, true}) {
         fs::path ph = fs::temp_directory_path() / fs::unique_path();
         CDBWrapper dbw(ph, (1 << 20), true, false, obfuscate);
 
         char key = 'i';
-        uint256 in = GetRandHash();
+        uint256 in = InsecureRand256();
         char key2 = 'j';
-        uint256 in2 = GetRandHash();
+        uint256 in2 = InsecureRand256();
         char key3 = 'k';
-        uint256 in3 = GetRandHash();
+        uint256 in3 = InsecureRand256();
 
         uint256 res;
         CDBBatch batch(dbw);
@@ -84,20 +80,19 @@ BOOST_AUTO_TEST_CASE(dbwrapper_batch)
 BOOST_AUTO_TEST_CASE(dbwrapper_iterator)
 {
     // Perform tests both obfuscated and non-obfuscated.
-    for (int i = 0; i < 2; i++) {
-        bool obfuscate = (bool)i;
+    for (bool obfuscate : {false, true}) {
         fs::path ph = fs::temp_directory_path() / fs::unique_path();
         CDBWrapper dbw(ph, (1 << 20), true, false, obfuscate);
 
         // The two keys are intentionally chosen for ordering
         char key = 'j';
-        uint256 in = GetRandHash();
+        uint256 in = InsecureRand256();
         BOOST_CHECK(dbw.Write(key, in));
         char key2 = 'k';
-        uint256 in2 = GetRandHash();
+        uint256 in2 = InsecureRand256();
         BOOST_CHECK(dbw.Write(key2, in2));
 
-        std::unique_ptr<CDBIterator> it(const_cast<CDBWrapper*>(&dbw)->NewIterator());
+        std::unique_ptr<CDBIterator> it(const_cast<CDBWrapper&>(dbw).NewIterator());
 
         // Be sure to seek past the obfuscation key (if it exists)
         it->Seek(key);
@@ -130,9 +125,9 @@ BOOST_AUTO_TEST_CASE(existing_data_no_obfuscate)
     create_directories(ph);
 
     // Set up a non-obfuscated wrapper to write some initial data.
-    CDBWrapper* dbw = new CDBWrapper(ph, (1 << 10), false, false, false);
+    std::unique_ptr<CDBWrapper> dbw = MakeUnique<CDBWrapper>(ph, (1 << 10), false, false, false);
     char key = 'k';
-    uint256 in = GetRandHash();
+    uint256 in = InsecureRand256();
     uint256 res;
 
     BOOST_CHECK(dbw->Write(key, in));
@@ -140,8 +135,7 @@ BOOST_AUTO_TEST_CASE(existing_data_no_obfuscate)
     BOOST_CHECK_EQUAL(res.ToString(), in.ToString());
 
     // Call the destructor to free leveldb LOCK
-    delete dbw;
-    dbw = nullptr;
+    dbw.reset();
 
     // Now, set up another wrapper that wants to obfuscate the same directory
     CDBWrapper odbw(ph, (1 << 10), false, false, true);
@@ -155,7 +149,7 @@ BOOST_AUTO_TEST_CASE(existing_data_no_obfuscate)
     BOOST_CHECK(!odbw.IsEmpty()); // There should be existing data
     BOOST_CHECK(is_null_key(dbwrapper_private::GetObfuscateKey(odbw))); // The key should be an empty string
 
-    uint256 in2 = GetRandHash();
+    uint256 in2 = InsecureRand256();
     uint256 res3;
  
     // Check that we can write successfully
@@ -172,9 +166,9 @@ BOOST_AUTO_TEST_CASE(existing_data_reindex)
     create_directories(ph);
 
     // Set up a non-obfuscated wrapper to write some initial data.
-    CDBWrapper* dbw = new CDBWrapper(ph, (1 << 10), false, false, false);
+    std::unique_ptr<CDBWrapper> dbw = MakeUnique<CDBWrapper>(ph, (1 << 10), false, false, false);
     char key = 'k';
-    uint256 in = GetRandHash();
+    uint256 in = InsecureRand256();
     uint256 res;
 
     BOOST_CHECK(dbw->Write(key, in));
@@ -182,8 +176,7 @@ BOOST_AUTO_TEST_CASE(existing_data_reindex)
     BOOST_CHECK_EQUAL(res.ToString(), in.ToString());
 
     // Call the destructor to free leveldb LOCK
-    delete dbw;
-    dbw = nullptr;
+    dbw.reset();
 
     // Simulate a -reindex by wiping the existing data store
     CDBWrapper odbw(ph, (1 << 10), false, true, true);
@@ -193,7 +186,7 @@ BOOST_AUTO_TEST_CASE(existing_data_reindex)
     BOOST_CHECK(!odbw.Read(key, res2));
     BOOST_CHECK(!is_null_key(dbwrapper_private::GetObfuscateKey(odbw)));
 
-    uint256 in2 = GetRandHash();
+    uint256 in2 = InsecureRand256();
     uint256 res3;
  
     // Check that we can write successfully
@@ -209,24 +202,31 @@ BOOST_AUTO_TEST_CASE(iterator_ordering)
     for (int x=0x00; x<256; ++x) {
         uint8_t key = x;
         uint32_t value = x*x;
-        BOOST_CHECK(dbw.Write(key, value));
+        if (!(x & 1)) BOOST_CHECK(dbw.Write(key, value));
     }
 
-    std::unique_ptr<CDBIterator> it(const_cast<CDBWrapper*>(&dbw)->NewIterator());
-    for (int c=0; c<2; ++c) {
-        int seek_start;
-        if (c == 0)
-            seek_start = 0x00;
-        else
-            seek_start = 0x80;
+    // Check that creating an iterator creates a snapshot
+    std::unique_ptr<CDBIterator> it(const_cast<CDBWrapper&>(dbw).NewIterator());
+
+    for (int x=0x00; x<256; ++x) {
+        uint8_t key = x;
+        uint32_t value = x*x;
+        if (x & 1) BOOST_CHECK(dbw.Write(key, value));
+    }
+
+    for (int seek_start : {0x00, 0x80}) {
         it->Seek((uint8_t)seek_start);
-        for (int x=seek_start; x<256; ++x) {
+        for (int x=seek_start; x<255; ++x) {
             uint8_t key;
             uint32_t value;
             BOOST_CHECK(it->Valid());
             if (!it->Valid()) // Avoid spurious errors about invalid iterator's key and value in case of failure
                 break;
             BOOST_CHECK(it->GetKey(key));
+            if (x & 1) {
+                BOOST_CHECK_EQUAL(key, x + 1);
+                continue;
+            }
             BOOST_CHECK(it->GetValue(value));
             BOOST_CHECK_EQUAL(key, x);
             BOOST_CHECK_EQUAL(value, x*x);
@@ -241,7 +241,7 @@ struct StringContentsSerializer {
     // This is a terrible idea
     std::string str;
     StringContentsSerializer() {}
-    StringContentsSerializer(const std::string& inp) : str(inp) {}
+    explicit StringContentsSerializer(const std::string& inp) : str(inp) {}
 
     StringContentsSerializer& operator+=(const std::string& s) {
         str += s;
@@ -288,13 +288,8 @@ BOOST_AUTO_TEST_CASE(iterator_string_ordering)
         }
     }
 
-    std::unique_ptr<CDBIterator> it(const_cast<CDBWrapper*>(&dbw)->NewIterator());
-    for (int c=0; c<2; ++c) {
-        int seek_start;
-        if (c == 0)
-            seek_start = 0;
-        else
-            seek_start = 5;
+    std::unique_ptr<CDBIterator> it(const_cast<CDBWrapper&>(dbw).NewIterator());
+    for (int seek_start : {0, 5}) {
         snprintf(buf, sizeof(buf), "%d", seek_start);
         StringContentsSerializer seek_key(buf);
         it->Seek(seek_key);

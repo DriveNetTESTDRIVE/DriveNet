@@ -2,20 +2,20 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "sidechaindb.h"
+#include <sidechaindb.h>
 
-#include "consensus/consensus.h"
-#include "consensus/merkle.h"
-#include "primitives/transaction.h"
-#include "script/script.h"
-#include "sidechain.h"
-#include "uint256.h"
-#include "utilstrencodings.h"
+#include <consensus/consensus.h>
+#include <consensus/merkle.h>
+#include <primitives/transaction.h>
+#include <script/script.h>
+#include <sidechain.h>
+#include <uint256.h>
+#include <utilstrencodings.h>
 
 SidechainDB::SidechainDB()
 {
     size_t nSidechains = ValidSidechains.size();
-    SCDB.resize(nSidechains );
+    SCDB.resize(nSidechains);
     ratchet.resize(nSidechains);
 }
 
@@ -98,59 +98,34 @@ bool SidechainDB::AddWTPrime(uint8_t nSidechain, const CTransaction& tx)
     return false;
 }
 
-int SidechainDB::CountBlocksAtop(const CCriticalData& data) const
+unsigned int SidechainDB::CountBlocksAtop(const CCriticalData& data) const
 {
+    uint8_t nSidechain;
+    uint16_t nPrevBlockRef;
+    if (!data.IsBMMRequest(nSidechain, nPrevBlockRef))
+        return -1;
+
     // Translate critical data into LD
     SidechainLD ld;
+    ld.nSidechain = nSidechain;
+    ld.nPrevBlockRef = nPrevBlockRef;
     ld.hashCritical = data.hashCritical;
-
-    // Convert bytes to script for easy parsing
-    CScript bytes(data.bytes.begin(), data.bytes.end());
-
-    // Get nSidechain
-    CScript::const_iterator psidechain = bytes.begin() + 3;
-    opcodetype opcode;
-    std::vector<unsigned char> vchSidechain;
-    if (!bytes.GetOp(psidechain, opcode, vchSidechain))
-        return -1;
-
-    ld.nSidechain = CScriptNum(vchSidechain, true).getint();
-
-    if (!IsSidechainNumberValid(ld.nSidechain))
-        return -1;
-
-    // Get prevBlockRef
-    CScript::const_iterator pprevblock = bytes.begin() + 3 + vchSidechain.size();
-    std::vector<unsigned char> vchPrevBlockRef;
-    if (!bytes.GetOp(pprevblock, opcode, vchPrevBlockRef))
-        return -1;
-
-    ld.nPrevBlockRef = CScriptNum(vchPrevBlockRef, true).getint();
-
-    if (ld.nPrevBlockRef > BMM_MAX_PREVBLOCK)
-        return -1;
 
     return CountBlocksAtop(ld);
 }
 
-int SidechainDB::CountBlocksAtop(const SidechainLD& ld) const
+unsigned int SidechainDB::CountBlocksAtop(const SidechainLD& ld) const
 {
     if (!IsSidechainNumberValid(ld.nSidechain))
-        return -1;
+        return 0;
 
-    // Nothing could have matured
-    if (ratchet[ld.nSidechain].size() < BMM_REQUEST_MATURITY) {
-        return -1;
-    }
-
-    // Check that LD has matured
+    // Count blocks atop (side:block confirmations in ratchet)
     for (size_t i = 0; i < ratchet[ld.nSidechain].size(); i++) {
         if (ratchet[ld.nSidechain][i] == ld) {
             return ratchet[ld.nSidechain].size() - i;
         }
     }
-
-    return -1;
+    return 0;
 }
 
 bool SidechainDB::CheckWorkScore(uint8_t nSidechain, const uint256& hashWTPrime) const
@@ -368,53 +343,33 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const std::vecto
      * scanned this latest block.
      */
 
-    // Scan for h*(s)
+    // Scan for bmm h*(s)
     for (const CTxOut& out : vout) {
         const CScript& scriptPubKey = out.scriptPubKey;
 
         if (!scriptPubKey.IsCriticalHashCommit())
             continue;
 
-        uint256 hashCritical(std::vector<unsigned char>(scriptPubKey.begin() + 6, scriptPubKey.begin() + 38));
-
-        CCriticalData criticalData;
-        criticalData.hashCritical = hashCritical;
-
         // Read critical data bytes if there are any
         if (scriptPubKey.size() > 38) {
-            criticalData.bytes = std::vector<unsigned char>(scriptPubKey.begin() + 38, scriptPubKey.end());
+            CCriticalData criticalData;
+            criticalData.hashCritical = uint256(std::vector<unsigned char>(scriptPubKey.begin() + 6, scriptPubKey.begin() + 38));
 
-            // Do the bytes indicate that this is a sidechain h*?
-            if (!criticalData.IsBMMRequest())
+
+            // Do the bytes indicate that this is a bmm h*?
+            uint8_t nSidechain;
+            uint16_t nPrevBlockRef;
+            if (!criticalData.IsBMMRequest(nSidechain, nPrevBlockRef))
                 continue;
 
-            // Read sidechain number
-            CScript::const_iterator psidechain = scriptPubKey.begin() + 41;
-            opcodetype opcode;
-            std::vector<unsigned char> vchSidechain;
-            if (!scriptPubKey.GetOp(psidechain, opcode, vchSidechain))
-                continue;
 
-            uint8_t nSidechain = CScriptNum(vchSidechain, true).getint();
-            if (!IsSidechainNumberValid(nSidechain))
-                continue;
-
-            // Read prev block ref
-            CScript::const_iterator pprevblockref = psidechain + vchSidechain.size();
-            std::vector<unsigned char> vchPrevBlock;
-            if (!scriptPubKey.GetOp(pprevblockref, opcode, vchPrevBlock))
-                continue;
-
-            CScriptNum nPrevBlockRef(vchPrevBlock, true);
-            if (nPrevBlockRef.getint() > BMM_MAX_PREVBLOCK)
-                continue;
-            if (nPrevBlockRef.getint() > ratchet[nSidechain].size())
+            if (nPrevBlockRef > ratchet[nSidechain].size())
                 continue;
 
             SidechainLD ld;
             ld.nSidechain = nSidechain;
-            ld.hashCritical = hashCritical;
-            ld.nPrevBlockRef = nPrevBlockRef.getint();
+            ld.hashCritical = criticalData.hashCritical;
+            ld.nPrevBlockRef = nPrevBlockRef;
 
             ratchet[nSidechain].push_back(ld);
 

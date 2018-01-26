@@ -1,4 +1,4 @@
-// Copyright (c) 2011-2016 The Bitcoin Core developers
+// Copyright (c) 2011-2017 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -1439,3 +1439,4 @@ BOOST_AUTO_TEST_CASE(script_FindAndDelete)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
