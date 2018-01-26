@@ -2,10 +2,10 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "sidechain.h"
+#include <sidechain.h>
 
-#include "hash.h"
-#include "utilstrencodings.h"
+#include <hash.h>
+#include <utilstrencodings.h>
 
 #include <sstream>
 

@@ -1,17 +1,14 @@
 // Copyright (c) 2010 Satoshi Nakamoto
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2017 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "rpc/client.h"
-#include "rpc/protocol.h"
-#include "util.h"
+#include <rpc/client.h>
+#include <rpc/protocol.h>
+#include <util.h>
 
 #include <set>
 #include <stdint.h>
-
-#include <boost/algorithm/string/case_conv.hpp> // for to_lower()
-#include <univalue.h>
 
 class CRPCConvertParam
 {
@@ -38,6 +35,8 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "getnetworkhashps", 1, "height" },
     { "sendtoaddress", 1, "amount" },
     { "sendtoaddress", 4, "subtractfeefromamount" },
+    { "sendtoaddress", 5 , "replaceable" },
+    { "sendtoaddress", 6 , "conf_target" },
     { "settxfee", 0, "amount" },
     { "getreceivedbyaddress", 1, "minconf" },
     { "getreceivedbyaccount", 1, "minconf" },
@@ -67,9 +66,12 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "getblocktemplate", 0, "template_request" },
     { "listsinceblock", 1, "target_confirmations" },
     { "listsinceblock", 2, "include_watchonly" },
+    { "listsinceblock", 3, "include_removed" },
     { "sendmany", 1, "amounts" },
     { "sendmany", 2, "minconf" },
     { "sendmany", 4, "subtractfeefrom" },
+    { "sendmany", 5 , "replaceable" },
+    { "sendmany", 6 , "conf_target" },
     { "addmultisigaddress", 0, "nrequired" },
     { "addmultisigaddress", 1, "keys" },
     { "createmultisig", 0, "nrequired" },
@@ -77,8 +79,10 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "listunspent", 0, "minconf" },
     { "listunspent", 1, "maxconf" },
     { "listunspent", 2, "addresses" },
+    { "listunspent", 3, "include_unsafe" },
     { "listunspent", 4, "query_options" },
     { "getblock", 1, "verbosity" },
+    { "getblock", 1, "verbose" },
     { "getblockheader", 1, "verbose" },
     { "getchaintxstats", 0, "nblocks" },
     { "gettransaction", 1, "include_watchonly" },
@@ -86,10 +90,14 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "createrawtransaction", 0, "inputs" },
     { "createrawtransaction", 1, "outputs" },
     { "createrawtransaction", 2, "locktime" },
+    { "createrawtransaction", 3, "replaceable" },
+    { "decoderawtransaction", 1, "iswitness" },
     { "signrawtransaction", 1, "prevtxs" },
     { "signrawtransaction", 2, "privkeys" },
     { "sendrawtransaction", 1, "allowhighfees" },
+    { "combinerawtransaction", 0, "txs" },
     { "fundrawtransaction", 1, "options" },
+    { "fundrawtransaction", 2, "iswitness" },
     { "gettxout", 1, "n" },
     { "gettxout", 2, "include_mempool" },
     { "gettxoutproof", 0, "txids" },
@@ -107,12 +115,11 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "keypoolrefill", 0, "newsize" },
     { "getrawmempool", 0, "verbose" },
     { "estimatefee", 0, "nblocks" },
-    { "estimatesmartfee", 0, "nblocks" },
-    { "estimatesmartfee", 1, "conservative" },
-    { "estimaterawfee", 0, "nblocks" },
+    { "estimatesmartfee", 0, "conf_target" },
+    { "estimaterawfee", 0, "conf_target" },
     { "estimaterawfee", 1, "threshold" },
-    { "estimaterawfee", 2, "horizon" },
-    { "prioritisetransaction", 1, "fee_delta" },
+    { "prioritisetransaction", 1, "dummy" },
+    { "prioritisetransaction", 2, "fee_delta" },
     { "setban", 2, "bantime" },
     { "setban", 3, "absolute" },
     { "setnetworkactive", 0, "state" },
@@ -122,6 +129,9 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "logging", 0, "include" },
     { "logging", 1, "exclude" },
     { "disconnectnode", 1, "nodeid" },
+    { "addwitnessaddress", 1, "p2sh" },
+    { "createbribe", 0, "amount" },
+    { "createbribe", 1, "height" },
     { "createcriticaldatatx", 0, "amount" },
     { "createcriticaldatatx", 1, "height" },
     { "listsidechaindeposits", 0, "nsidechain" },
@@ -139,6 +149,8 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "echojson", 7, "arg7" },
     { "echojson", 8, "arg8" },
     { "echojson", 9, "arg9" },
+    { "rescanblockchain", 0, "start_height"},
+    { "rescanblockchain", 1, "stop_height"},
 };
 
 class CRPCConvertTable

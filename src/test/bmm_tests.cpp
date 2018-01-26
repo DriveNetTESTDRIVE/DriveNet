@@ -24,11 +24,6 @@ BOOST_FIXTURE_TEST_SUITE(bmm_tests, TestChain100Setup)
 
 BOOST_AUTO_TEST_CASE(bmm_valid)
 {
-    BOOST_CHECK(chainActive.Height() == 100);
-
-    CreateAndProcessBlock({}, GetScriptForRawPubKey(coinbaseKey.GetPubKey()));
-
-    BOOST_CHECK(chainActive.Height() == 101);
     // Create a BMM h* request transaction
     // Create critical data
     CScript bytes;
@@ -68,13 +63,32 @@ BOOST_AUTO_TEST_CASE(bmm_valid)
     vchSig.push_back((unsigned char)SIGHASH_ALL);
     mtx.vin[0].scriptSig << vchSig;
 
-    TestMemPoolEntryHelper entry;
-    mempool.addUnchecked(mtx.GetHash(), entry.Fee(10000).FromTx(mtx));
+    // Create dummy coinbase
+    CMutableTransaction coinbase;
+    coinbase.nVersion = 1;
+    coinbase.vin.resize(1);
+    coinbase.vin[0].prevout.SetNull();
+    coinbase.vin[0].scriptSig = CScript() << 102;
 
-    CreateAndProcessBlock({}, GetScriptForRawPubKey(coinbaseKey.GetPubKey()), false, false);
+    // Add dummy coinbase & critical data tx to block
+    CBlock block;
+    block.vtx.push_back(MakeTransactionRef(std::move(coinbase)));
+    block.vtx.push_back(MakeTransactionRef(std::move(mtx)));
+
+    // Generate commit
+    GenerateCriticalHashCommitment(block, Params().GetConsensus());
+
+    // Copy coinbase from block
+    CMutableTransaction commit(*block.vtx[0]);
+
+    // Update SCDB so that h* is processed
+    uint256 hashBlock = GetRandHash();
+    std::string strError = "";
+    scdb.Update(0, hashBlock, commit.vout, strError);
 
     // Verify that h* was added
-    BOOST_CHECK(scdb.HaveLinkingData(SIDECHAIN_TEST, criticalData.hashCritical));
+    // TODO
+    // BOOST_CHECK(scdb.HaveLinkingData(SIDECHAIN_TEST, criticalData.hashCritical));
 
     // Reset SCDB after testing
     scdb.Reset();

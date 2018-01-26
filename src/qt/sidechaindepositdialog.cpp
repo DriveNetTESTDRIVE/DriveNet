@@ -3,16 +3,18 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "sidechaindepositdialog.h"
-#include "ui_sidechaindepositdialog.h"
+#include "forms/ui_sidechaindepositdialog.h"
 
-#include "base58.h"
+
+#include <base58.h>
 #include "bitcoinunits.h"
-#include "consensus/validation.h"
+#include "chain.h"
 #include "guiutil.h"
 #include "net.h"
 #include "primitives/transaction.h"
 #include "sidechain.h"
 #include "txdb.h"
+#include "validation.h"
 #include "wallet/wallet.h"
 
 #include <QClipboard>
@@ -25,9 +27,16 @@ SidechainDepositDialog::SidechainDepositDialog(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    for (const Sidechain& s : ValidSidechains) {
-        ui->comboBoxSidechains->addItem(QString::fromStdString(s.GetSidechainName()));
+#ifdef ENABLE_WALLET
+    if (IsDrivechainEnabled(chainActive.Tip(), Params().GetConsensus())) {
+        for (const Sidechain& s : ValidSidechains) {
+            ui->comboBoxSidechains->addItem(QString::fromStdString(s.GetSidechainName()));
+        }
+    } else {
+        ui->pushButtonDeposit->setEnabled(false);
     }
+#endif
+
 }
 
 SidechainDepositDialog::~SidechainDepositDialog()
@@ -39,13 +48,22 @@ void SidechainDepositDialog::on_pushButtonDeposit_clicked()
 {
     QMessageBox messageBox;
 
-    if (pwalletMain->IsLocked()) {
+#ifdef ENABLE_WALLET
+    if (vpwallets.empty()) {
+        messageBox.setWindowTitle("Wallet Error!");
+        messageBox.setText("No active wallets to create the deposit.");
+        messageBox.exec();
+        return;
+    }
+
+    if (vpwallets[0]->IsLocked()) {
         // Locked wallet message box
         messageBox.setWindowTitle("Wallet locked!");
         messageBox.setText("Wallet must be unlocked to create sidechain deposit.");
         messageBox.exec();
         return;
     }
+#endif
 
     if (!validateDepositAmount()) {
         // Invalid deposit amount message box
@@ -80,14 +98,16 @@ void SidechainDepositDialog::on_pushButtonDeposit_clicked()
     const CAmount& nValue = ui->payAmount->value();
     CTransactionRef tx;
     std::string strFail = "";
-    if (!pwalletMain->CreateSidechainDeposit(tx, strFail, nSidechain, nValue, keyID)) {
-        // Create transaction error message box
-        messageBox.setWindowTitle("Creating deposit transaction failed!");
-        QString createError = "Error creating transaction!\n\n";
-        createError += QString::fromStdString(strFail);
-        messageBox.setText(createError);
-        messageBox.exec();
-        return;
+    if (!vpwallets.empty()) {
+        if (!vpwallets[0]->CreateSidechainDeposit(tx, strFail, nSidechain, nValue, keyID)) {
+            // Create transaction error message box
+            messageBox.setWindowTitle("Creating deposit transaction failed!");
+            QString createError = "Error creating transaction!\n\n";
+            createError += QString::fromStdString(strFail);
+            messageBox.setText(createError);
+            messageBox.exec();
+            return;
+        }
     }
 
     // Successful deposit message box

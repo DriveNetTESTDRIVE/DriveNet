@@ -1,9 +1,19 @@
-Drivechain project mainchain branch
-=====================================
+Drivechain Project
+------------------
 
-[![Build Status](https://travis-ci.org/drivechain-project/bitcoin.svg?branch=mainchainBMM)](https://travis-ci.org/drivechain-project/bitcoin)
+Build status:
 
+Mainchain:
+[![Mainchain Build Status](https://travis-ci.org/drivechain-project/bitcoin.svg?branch=mainchainBMM)](https://travis-ci.org/drivechain-project/bitcoin)
+
+Sidechain:
+[![Sidechain Build Status](https://travis-ci.org/drivechain-project/bitcoin.svg?branch=sidechainBMM)](https://travis-ci.org/drivechain-project/bitcoin)
+
+Learn more about Drivechains here:
 http://drivechain.info
+
+Start helping here:
+https://github.com/drivechain-project/bitcoin/issues
 
 For an example sidechain implementation, see: https://github.com/drivechain-project/bitcoin/tree/sidechainBMM
 

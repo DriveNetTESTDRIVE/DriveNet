@@ -1,15 +1,15 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2017 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #ifndef BITCOIN_WALLET_WALLETDB_H
 #define BITCOIN_WALLET_WALLETDB_H
 
-#include "amount.h"
-#include "primitives/transaction.h"
-#include "wallet/db.h"
-#include "key.h"
+#include <amount.h>
+#include <primitives/transaction.h>
+#include <wallet/db.h>
+#include <key.h>
 
 #include <list>
 #include <stdint.h>
@@ -105,7 +105,7 @@ public:
     {
         SetNull();
     }
-    CKeyMetadata(int64_t nCreateTime_)
+    explicit CKeyMetadata(int64_t nCreateTime_)
     {
         SetNull();
         nCreateTime = nCreateTime_;
@@ -140,11 +140,35 @@ public:
  */
 class CWalletDB
 {
+private:
+    template <typename K, typename T>
+    bool WriteIC(const K& key, const T& value, bool fOverwrite = true)
+    {
+        if (!batch.Write(key, value, fOverwrite)) {
+            return false;
+        }
+        m_dbw.IncrementUpdateCounter();
+        return true;
+    }
+
+    template <typename K>
+    bool EraseIC(const K& key)
+    {
+        if (!batch.Erase(key)) {
+            return false;
+        }
+        m_dbw.IncrementUpdateCounter();
+        return true;
+    }
+
 public:
-    CWalletDB(CWalletDBWrapper& dbw, const char* pszMode = "r+", bool _fFlushOnClose = true) :
-        batch(dbw, pszMode, _fFlushOnClose)
+    explicit CWalletDB(CWalletDBWrapper& dbw, const char* pszMode = "r+", bool _fFlushOnClose = true) :
+        batch(dbw, pszMode, _fFlushOnClose),
+        m_dbw(dbw)
     {
     }
+    CWalletDB(const CWalletDB&) = delete;
+    CWalletDB& operator=(const CWalletDB&) = delete;
 
     bool WriteName(const std::string& strAddress, const std::string& strName);
     bool EraseName(const std::string& strAddress);
@@ -169,8 +193,6 @@ public:
 
     bool WriteOrderPosNext(int64_t nOrderPosNext);
 
-    bool WriteDefaultKey(const CPubKey& vchPubKey);
-
     bool ReadPool(int64_t nPool, CKeyPool& keypool);
     bool WritePool(int64_t nPool, const CKeyPool& keypool);
     bool ErasePool(int64_t nPool);
@@ -180,7 +202,6 @@ public:
     /// This writes directly to the database, and will not update the CWallet's cached accounting entries!
     /// Use wallet.AddAccountingEntry instead, to write *and* update its caches.
     bool WriteAccountingEntry(const uint64_t nAccEntryNum, const CAccountingEntry& acentry);
-    bool WriteAccountingEntry_Backend(const CAccountingEntry& acentry);
     bool ReadAccount(const std::string& strAccount, CAccount& account);
     bool WriteAccount(const std::string& strAccount, const CAccount& account);
 
@@ -197,23 +218,20 @@ public:
     DBErrors ZapWalletTx(std::vector<CWalletTx>& vWtx);
     DBErrors ZapSelectTx(std::vector<uint256>& vHashIn, std::vector<uint256>& vHashOut);
     /* Try to (very carefully!) recover wallet database (with a possible key type filter) */
-    static bool Recover(const std::string& filename, void *callbackDataIn, bool (*recoverKVcallback)(void* callbackData, CDataStream ssKey, CDataStream ssValue));
+    static bool Recover(const std::string& filename, void *callbackDataIn, bool (*recoverKVcallback)(void* callbackData, CDataStream ssKey, CDataStream ssValue), std::string& out_backup_filename);
     /* Recover convenience-function to bypass the key filter callback, called when verify fails, recovers everything */
-    static bool Recover(const std::string& filename);
+    static bool Recover(const std::string& filename, std::string& out_backup_filename);
     /* Recover filter (used as callback), will only let keys (cryptographical keys) as KV/key-type pass through */
     static bool RecoverKeysOnlyFilter(void *callbackData, CDataStream ssKey, CDataStream ssValue);
     /* Function to determine if a certain KV/key-type is a key (cryptographical key) type */
     static bool IsKeyType(const std::string& strType);
     /* verifies the database environment */
-    static bool VerifyEnvironment(const std::string& walletFile, const fs::path& dataDir, std::string& errorStr);
+    static bool VerifyEnvironment(const std::string& walletFile, const fs::path& walletDir, std::string& errorStr);
     /* verifies the database file */
-    static bool VerifyDatabaseFile(const std::string& walletFile, const fs::path& dataDir, std::string& warningStr, std::string& errorStr);
+    static bool VerifyDatabaseFile(const std::string& walletFile, const fs::path& walletDir, std::string& warningStr, std::string& errorStr);
 
     //! write the hdchain model (external chain child index counter)
     bool WriteHDChain(const CHDChain& chain);
-
-    static void IncrementUpdateCounter();
-    static unsigned int GetUpdateCounter();
 
     //! Begin a new transaction
     bool TxnBegin();
@@ -227,9 +245,7 @@ public:
     bool WriteVersion(int nVersion);
 private:
     CDB batch;
-
-    CWalletDB(const CWalletDB&);
-    void operator=(const CWalletDB&);
+    CWalletDBWrapper& m_dbw;
 };
 
 //! Compacts BDB state so that wallet.dat is self-contained (if there are changes)

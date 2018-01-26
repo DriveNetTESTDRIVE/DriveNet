@@ -1,13 +1,14 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2017 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "primitives/transaction.h"
+#include <primitives/transaction.h>
 
-#include "hash.h"
-#include "tinyformat.h"
-#include "utilstrencodings.h"
+#include <hash.h>
+#include <sidechain.h>
+#include <tinyformat.h>
+#include <utilstrencodings.h>
 
 std::string COutPoint::ToString() const
 {
@@ -101,10 +102,9 @@ CTransaction::CTransaction(CMutableTransaction &&tx) : vin(std::move(tx.vin)), v
 CAmount CTransaction::GetValueOut() const
 {
     CAmount nValueOut = 0;
-    for (std::vector<CTxOut>::const_iterator it(vout.begin()); it != vout.end(); ++it)
-    {
-        nValueOut += it->nValue;
-        if (!MoneyRange(it->nValue) || !MoneyRange(nValueOut))
+    for (const auto& tx_out : vout) {
+        nValueOut += tx_out.nValue;
+        if (!MoneyRange(tx_out.nValue) || !MoneyRange(nValueOut))
             throw std::runtime_error(std::string(__func__) + ": value out of range");
     }
     return nValueOut;
@@ -138,7 +138,47 @@ std::string CTransaction::ToString() const
     return str;
 }
 
-int64_t GetTransactionWeight(const CTransaction& tx)
+bool CCriticalData::IsBMMRequest() const
 {
-    return ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) * (WITNESS_SCALE_FACTOR -1) + ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
+    uint8_t nSidechain;
+    uint16_t nPrevBlockRef;
+
+    return IsBMMRequest(nSidechain, nPrevBlockRef);
+}
+
+bool CCriticalData::IsBMMRequest(uint8_t& nSidechain, uint16_t& nPrevBlockRef) const
+{
+    // Check for h* commit flag in critical data bytes
+    if (IsNull())
+        return false;
+    if (bytes.size() < 4)
+        return false;
+
+    if (bytes[0] != 0x00 || bytes[1] != 0xbf || bytes[2] != 0x00)
+        return false;
+
+    // Convert bytes to script for easy parsing
+    CScript script(bytes.begin(), bytes.end());
+
+    // Get nSidechain
+    CScript::const_iterator psidechain = script.begin() + 3;
+    opcodetype opcode;
+    std::vector<unsigned char> vchSidechain;
+    if (!script.GetOp(psidechain, opcode, vchSidechain))
+        return false;
+
+    // Is nSidechain valid?
+    nSidechain = CScriptNum(vchSidechain, true).getint();
+    if (!IsSidechainNumberValid(nSidechain))
+        return false;
+
+    // Get prevBlockRef
+    CScript::const_iterator pprevblock = psidechain + vchSidechain.size() + 1;
+    std::vector<unsigned char> vchPrevBlockRef;
+    if (!script.GetOp(pprevblock, opcode, vchPrevBlockRef))
+        return false;
+
+    nPrevBlockRef = CScriptNum(vchPrevBlockRef, true).getint();
+
+    return true;
 }

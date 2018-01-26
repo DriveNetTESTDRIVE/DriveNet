@@ -5,8 +5,8 @@
 #ifndef BITCOIN_SIDECHAIN_H
 #define BITCOIN_SIDECHAIN_H
 
-#include "primitives/transaction.h"
-#include "pubkey.h"
+#include <primitives/transaction.h>
+#include <pubkey.h>
 
 #include <array>
 
@@ -47,8 +47,8 @@ struct SidechainDeposit {
 };
 
 struct SidechainLD {
-    int8_t nSidechain;
-    int8_t nPrevBlockRef;
+    uint8_t nSidechain;
+    uint16_t nPrevBlockRef;
     uint256 hashCritical;
 
     bool operator==(const SidechainLD& a) const;
