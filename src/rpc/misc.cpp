@@ -3,28 +3,29 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "base58.h"
-#include "chain.h"
-#include "clientversion.h"
-#include "consensus/validation.h"
-#include "core_io.h"
-#include "init.h"
-#include "validation.h"
-#include "merkleblock.h"
-#include "httpserver.h"
-#include "net.h"
-#include "netbase.h"
-#include "rpc/blockchain.h"
-#include "rpc/server.h"
-#include "sidechain.h"
-#include "sidechaindb.h"
-#include "timedata.h"
-#include "util.h"
-#include "utilmoneystr.h"
-#include "utilstrencodings.h"
-#include "validation.h"
+#include <base58.h>
+#include <chain.h>
+#include <clientversion.h>
+#include <consensus/validation.h>
+#include <core_io.h>
+#include <crypto/ripemd160.h>
+#include <httpserver.h>
+#include <init.h>
+#include <merkleblock.h>
+#include <net.h>
+#include <netbase.h>
+#include <rpc/blockchain.h>
+#include <rpc/server.h>
+#include <rpc/util.h>
+#include <sidechain.h>
+#include <sidechaindb.h>
+#include <timedata.h>
+#include <util.h>
+#include <utilmoneystr.h>
+#include <utilstrencodings.h>
+#include <validation.h>
 #ifdef ENABLE_WALLET
-#include "wallet/coincontrol.h"
+#include <wallet/coincontrol.h>
 #include <wallet/rpcwallet.h>
 #include <wallet/wallet.h>
 #include <wallet/walletdb.h>
@@ -260,88 +261,18 @@ UniValue validateaddress(const JSONRPCRequest& request)
 // Needed even with !ENABLE_WALLET, to pass (ignored) pointers around
 class CWallet;
 
-/**
- * Used by addmultisigaddress / createmultisig:
- */
-CScript _createmultisig_redeemScript(CWallet * const pwallet, const UniValue& params)
-{
-    int nRequired = params[0].get_int();
-    const UniValue& keys = params[1].get_array();
-
-    // Gather public keys
-    if (nRequired < 1)
-        throw std::runtime_error("a multisignature address must require at least one key to redeem");
-    if ((int)keys.size() < nRequired)
-        throw std::runtime_error(
-            strprintf("not enough keys supplied "
-                      "(got %u keys, but need at least %d to redeem)", keys.size(), nRequired));
-    if (keys.size() > 16)
-        throw std::runtime_error("Number of addresses involved in the multisignature address creation > 16\nReduce the number");
-    std::vector<CPubKey> pubkeys;
-    pubkeys.resize(keys.size());
-    for (unsigned int i = 0; i < keys.size(); i++)
-    {
-        const std::string& ks = keys[i].get_str();
-#ifdef ENABLE_WALLET
-        // Case 1: Bitcoin address and we have full public key:
-        CTxDestination dest = DecodeDestination(ks);
-        if (pwallet && IsValidDestination(dest)) {
-            CKeyID key = GetKeyForDestination(*pwallet, dest);
-            if (key.IsNull()) {
-                throw std::runtime_error(strprintf("%s does not refer to a key", ks));
-            }
-            CPubKey vchPubKey;
-            if (!pwallet->GetPubKey(key, vchPubKey)) {
-                throw std::runtime_error(strprintf("no full public key for address %s", ks));
-            }
-            if (!vchPubKey.IsFullyValid())
-                throw std::runtime_error(" Invalid public key: "+ks);
-            pubkeys[i] = vchPubKey;
-        }
-
-        // Case 2: hex public key
-        else
-#endif
-        if (IsHex(ks))
-        {
-            CPubKey vchPubKey(ParseHex(ks));
-            if (!vchPubKey.IsFullyValid())
-                throw std::runtime_error(" Invalid public key: "+ks);
-            pubkeys[i] = vchPubKey;
-        }
-        else
-        {
-            throw std::runtime_error(" Invalid public key: "+ks);
-        }
-    }
-    CScript result = GetScriptForMultisig(nRequired, pubkeys);
-
-    if (result.size() > MAX_SCRIPT_ELEMENT_SIZE)
-        throw std::runtime_error(
-                strprintf("redeemScript exceeds size limit: %d > %d", result.size(), MAX_SCRIPT_ELEMENT_SIZE));
-
-    return result;
-}
-
 UniValue createmultisig(const JSONRPCRequest& request)
 {
-#ifdef ENABLE_WALLET
-    CWallet * const pwallet = GetWalletForJSONRPCRequest(request);
-#else
-    CWallet * const pwallet = nullptr;
-#endif
-
     if (request.fHelp || request.params.size() < 2 || request.params.size() > 2)
     {
         std::string msg = "createmultisig nrequired [\"key\",...]\n"
             "\nCreates a multi-signature address with n signature of m keys required.\n"
             "It returns a json object with the address and redeemScript.\n"
-
             "\nArguments:\n"
-            "1. nrequired      (numeric, required) The number of required signatures out of the n keys or addresses.\n"
-            "2. \"keys\"       (string, required) A json array of keys which are bitcoin addresses or hex-encoded public keys\n"
+            "1. nrequired                    (numeric, required) The number of required signatures out of the n keys or addresses.\n"
+            "2. \"keys\"                       (string, required) A json array of hex-encoded public keys\n"
             "     [\n"
-            "       \"key\"    (string) bitcoin address or hex-encoded public key\n"
+            "       \"key\"                    (string) The hex-encoded public key\n"
             "       ,...\n"
             "     ]\n"
 
@@ -352,16 +283,30 @@ UniValue createmultisig(const JSONRPCRequest& request)
             "}\n"
 
             "\nExamples:\n"
-            "\nCreate a multisig address from 2 addresses\n"
-            + HelpExampleCli("createmultisig", "2 \"[\\\"16sSauSf5pF2UkUwvKGq4qjNRzBZYqgEL5\\\",\\\"171sgjn4YtPu27adkKGrdDwzRTxnRkBfKV\\\"]\"") +
+            "\nCreate a multisig address from 2 public keys\n"
+            + HelpExampleCli("createmultisig", "2 \"[\\\"03789ed0bb717d88f7d321a368d905e7430207ebbd82bd342cf11ae157a7ace5fd\\\",\\\"03dbc6764b8884a92e871274b87583e6d5c2a58819473e17e107ef3f6aa5a61626\\\"]\"") +
             "\nAs a json rpc call\n"
-            + HelpExampleRpc("createmultisig", "2, \"[\\\"16sSauSf5pF2UkUwvKGq4qjNRzBZYqgEL5\\\",\\\"171sgjn4YtPu27adkKGrdDwzRTxnRkBfKV\\\"]\"")
+            + HelpExampleRpc("createmultisig", "2, \"[\\\"03789ed0bb717d88f7d321a368d905e7430207ebbd82bd342cf11ae157a7ace5fd\\\",\\\"03dbc6764b8884a92e871274b87583e6d5c2a58819473e17e107ef3f6aa5a61626\\\"]\"")
         ;
         throw std::runtime_error(msg);
     }
 
+    int required = request.params[0].get_int();
+
+    // Get the public keys
+    const UniValue& keys = request.params[1].get_array();
+    std::vector<CPubKey> pubkeys;
+    for (unsigned int i = 0; i < keys.size(); ++i) {
+        if (IsHex(keys[i].get_str()) && (keys[i].get_str().length() == 66 || keys[i].get_str().length() == 130)) {
+            pubkeys.push_back(HexToPubKey(keys[i].get_str()));
+        } else {
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, strprintf("Invalid public key: %s\nNote that from v0.16, createmultisig no longer accepts addresses."
+            " Users must use addmultisigaddress to create multisig addresses with addresses known to the wallet.", keys[i].get_str()));
+        }
+    }
+
     // Construct using pay-to-script-hash:
-    CScript inner = _createmultisig_redeemScript(pwallet, request.params);
+    CScript inner = CreateMultisigRedeemscript(required, pubkeys);
     CScriptID innerID(inner);
 
     UniValue result(UniValue::VOBJ);
