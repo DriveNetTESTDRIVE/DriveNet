@@ -8,6 +8,7 @@
 #include <policy/policy.h>
 
 #include <consensus/validation.h>
+#include <chainparams.h>
 #include <validation.h>
 #include <coins.h>
 #include <tinyformat.h>
@@ -134,8 +135,9 @@ bool IsStandardTx(const CTransaction& tx, std::string& reason, const bool witnes
         }
     }
 
-    // only one OP_RETURN txout is permitted
-    if (nDataOut > 1) {
+    bool fDrivechainsEnabled = IsDrivechainEnabled(chainActive.Tip(), Params().GetConsensus());
+
+    if (!(fDrivechainsEnabled && tx.IsCoinBase()) && nDataOut > 1) {
         reason = "multi-op-return";
         return false;
     }
