@@ -12,12 +12,14 @@
 
 //! Max number of WT^(s) per sidechain during tau
 static const int SIDECHAIN_MAX_WT = 3; // TODO remove
-static const size_t VALID_SIDECHAINS_COUNT = 3;
+static const size_t VALID_SIDECHAINS_COUNT = 5;
 
 enum SidechainNumber {
     SIDECHAIN_TEST = 0,
     SIDECHAIN_HIVEMIND = 1,
-    SIDECHAIN_WIMBLE = 2
+    SIDECHAIN_WIMBLE = 2,
+    SIDECHAIN_CASH = 3,
+    SIDECHAIN_ROOTSTOCK = 4
 };
 
 struct Sidechain {
@@ -112,17 +114,22 @@ struct SCDBIndex {
 
 static const std::array<Sidechain, VALID_SIDECHAINS_COUNT> ValidSidechains =
 {{
+    // TODO remove nWaitPeriod, nVerificationPeriod & nMinWorkScore
     // {nSidechain, nWaitPeriod, nVerificationPeriod, nMinWorkScore, sidechainKey, sidechainPriv, sidechainHex}
-    {SIDECHAIN_TEST, 100, 200, 100, "690571d5b3b11768bedce16b332e3099f1737534", "L22kLvHXmmtwLkhSVVyAus8HR6sD3meTuB1zNkFUJ43mMTAW642m", "76a914347573f199302e336be1dcbe6817b1b3d571056988ac"},
-    {SIDECHAIN_HIVEMIND, 100, 200, 100, "7fdcbdadc76f01b474b7cf9ce1d253f0fb9adbcb", "L2dkgnU2tWtSm4teY95xjFrDENWLLZqG8NDfr3u6nkPE8KFAm5yZ", "76a914cbdb9afbf053d2e19ccfb774b4016fc7adbddc7f88ac"},
-    {SIDECHAIN_WIMBLE, 100, 200, 100, "92cdebd5167167297d2b5293447e60c195162fc0", "L54Xj1NokdPBsaV8L5KEkx5nUUFvix8TcxNk6ZX5a5BoYhzMUGML", "76a914c02f1695c1607e4493522b7d29677116d5ebcd9288ac"}
+    {SIDECHAIN_TEST,        0, 26298, 13140, "690571d5b3b11768bedce16b332e3099f1737534", "L22kLvHXmmtwLkhSVVyAus8HR6sD3meTuB1zNkFUJ43mMTAW642m", "76a914347573f199302e336be1dcbe6817b1b3d571056988ac"},
+    {SIDECHAIN_HIVEMIND,    0, 26298, 13140, "7fdcbdadc76f01b474b7cf9ce1d253f0fb9adbcb", "L2dkgnU2tWtSm4teY95xjFrDENWLLZqG8NDfr3u6nkPE8KFAm5yZ", "76a914cbdb9afbf053d2e19ccfb774b4016fc7adbddc7f88ac"},
+    {SIDECHAIN_WIMBLE,      0, 26298, 13140, "92cdebd5167167297d2b5293447e60c195162fc0", "L54Xj1NokdPBsaV8L5KEkx5nUUFvix8TcxNk6ZX5a5BoYhzMUGML", "76a914c02f1695c1607e4493522b7d29677116d5ebcd9288ac"},
+    {SIDECHAIN_CASH,        0, 26298, 13140, "3b98766912b27100f13574a3ee6e1c7bcb53e782", "KwqwwiX8pbEN5FCDr9ho4NW1anX19hEv3omezS9sPgasLftsgBzR", "76a91482e753cb7b1c6eeea37435f10071b2126976983b88ac"},
+    {SIDECHAIN_ROOTSTOCK,   0, 26298, 13140, "47a38ea92c81bb39d6aa128b81ba1c9621cda471", "L5Ads4cJ61b9YvHJWoa4mHYijWos9g4XyZoADrGuJrLAcaqXXeM6", "76a91471a4cd21961cba818b12aad639bb812ca98ea34788ac"}
 }};
 
 static const std::map<std::string, int> ValidSidechainField =
 {
     {"76a914497f7d6b59281591c50b5e82fb4730adf0fbc10988ac", SIDECHAIN_TEST},
     {"76a914cbdb9afbf053d2e19ccfb774b4016fc7adbddc7f88ac", SIDECHAIN_HIVEMIND},
-    {"76a914c02f1695c1607e4493522b7d29677116d5ebcd9288ac", SIDECHAIN_WIMBLE}
+    {"76a914c02f1695c1607e4493522b7d29677116d5ebcd9288ac", SIDECHAIN_WIMBLE},
+    {"76a91482e753cb7b1c6eeea37435f10071b2126976983b88ac", SIDECHAIN_CASH},
+    {"76a91471a4cd21961cba818b12aad639bb812ca98ea34788ac", SIDECHAIN_ROOTSTOCK}
 };
 
 

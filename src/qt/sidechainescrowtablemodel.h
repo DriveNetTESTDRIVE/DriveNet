@@ -1,4 +1,4 @@
-#ifndef SIDECHAINESCROWTABLEMODEL_H
+﻿#ifndef SIDECHAINESCROWTABLEMODEL_H
 #define SIDECHAINESCROWTABLEMODEL_H
 
 #include <QAbstractTableModel>
@@ -11,14 +11,10 @@ QT_END_NAMESPACE
 struct SidechainEscrowTableObject
 {
     uint8_t nSidechain;
-    uint16_t nWaitPeriod;
-    uint16_t nVerificationPeriod;
-    uint16_t nMinWorkScore;
+    bool fActive;
     QString name;
     QString privKey;
     QString address;
-    unsigned int thresholdGiven;
-    unsigned int thresholdCalc;
     QString CTIPTxID;
     QString CTIPIndex;
 };
@@ -33,6 +29,9 @@ public:
     int columnCount(const QModelIndex &parent = QModelIndex()) const;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const;
     QVariant headerData(int section, Qt::Orientation orientation, int role) const;
+
+    // Populate the model with demo data
+    void AddDemoData();
 
 public Q_SLOTS:
     void updateModel();

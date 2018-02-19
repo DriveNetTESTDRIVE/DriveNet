@@ -1,7 +1,7 @@
 #ifndef SIDECHAINWITHDRAWALTABLEMODEL_H
 #define SIDECHAINWITHDRAWALTABLEMODEL_H
 
-#include "uint256.h"
+#include <uint256.h>
 
 #include <QAbstractTableModel>
 #include <QList>
@@ -16,9 +16,7 @@ struct SidechainWithdrawalTableObject
     QString hashWTPrime;
     uint16_t nAcks;
     uint32_t nAge;
-    uint16_t nWaitPeriod;
     uint32_t nMaxAge;
-    uint16_t nThreshold;
     bool fApproved;
 };
 
@@ -32,6 +30,9 @@ public:
     int columnCount(const QModelIndex &parent = QModelIndex()) const;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const;
     QVariant headerData(int section, Qt::Orientation orientation, int role) const;
+
+    // Populate the model with demo data
+    void AddDemoData();
 
 public Q_SLOTS:
     void updateModel();

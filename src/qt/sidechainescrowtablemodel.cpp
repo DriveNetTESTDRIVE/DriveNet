@@ -2,6 +2,9 @@
 
 #include <qt/guiconstants.h>
 
+#include <base58.h>
+#include <pubkey.h>
+#include <random.h>
 #include <sidechain.h>
 #include <validation.h>
 
@@ -24,17 +27,17 @@ SidechainEscrowTableModel::SidechainEscrowTableModel(QObject *parent) :
     // This timer will be fired repeatedly to update the model
     pollTimer = new QTimer(this);
     connect(pollTimer, SIGNAL(timeout()), this, SLOT(updateModel()));
-    pollTimer->start(MODEL_UPDATE_DELAY * 4);
+    pollTimer->start(MODEL_UPDATE_DELAY);
 }
 
 int SidechainEscrowTableModel::rowCount(const QModelIndex & /*parent*/) const
 {
-    return 11;
+    return model.size();
 }
 
 int SidechainEscrowTableModel::columnCount(const QModelIndex & /*parent*/) const
 {
-    return model.size();
+    return 7;
 }
 
 QVariant SidechainEscrowTableModel::data(const QModelIndex &index, int role) const
@@ -43,60 +46,44 @@ QVariant SidechainEscrowTableModel::data(const QModelIndex &index, int role) con
         return false;
     }
 
-    int row = index.row();
     int col = index.column();
+    int row = index.row();
 
-    if (!model.at(col).canConvert<SidechainEscrowTableObject>())
+    if (!model.at(row).canConvert<SidechainEscrowTableObject>())
         return QVariant();
 
-    SidechainEscrowTableObject object = model.at(col).value<SidechainEscrowTableObject>();
+    SidechainEscrowTableObject object = model.at(row).value<SidechainEscrowTableObject>();
 
     switch (role) {
     case Qt::DisplayRole:
     {
         // Escrow Number
-        if (row == 0) {
+        if (col == 0) {
             return object.nSidechain;
         }
         // Active
-        if (row == 1) {
-            return true;
+        if (col == 1) {
+            return object.fActive;
         }
         // Escrow Name
-        if (row == 2) {
+        if (col == 2) {
             return object.name;
         }
-        // Private key
-        if (row == 3) {
-            return object.privKey;
-        }
         // Address
-        if (row == 4) {
+        if (col == 3) {
             return object.address;
         }
-        // Waiting Period
-        if (row == 5) {
-            return object.nWaitPeriod;
-        }
-        // Voting Period
-        if (row == 6) {
-            return object.nVerificationPeriod;
-        }
-        // Threshold given
-        if (row == 7) {
-            return object.thresholdGiven;
-        }
-        // Threshold calc
-        if (row == 8) {
-            return object.thresholdCalc;
-        }
         // CTIP - TxID
-        if (row == 9) {
+        if (col == 4) {
             return object.CTIPTxID;
         }
         // CTIP - Index
-        if (row == 10) {
+        if (col == 5) {
             return object.CTIPIndex;
+        }
+        // Private key
+        if (col == 6) {
+            return object.privKey;
         }
     }
     }
@@ -106,30 +93,22 @@ QVariant SidechainEscrowTableModel::data(const QModelIndex &index, int role) con
 QVariant SidechainEscrowTableModel::headerData(int section, Qt::Orientation orientation, int role) const
 {
     if (role == Qt::DisplayRole) {
-        if (orientation == Qt::Vertical) {
+        if (orientation == Qt::Horizontal) {
             switch (section) {
             case 0:
-                return QString("Escrow Number");
+                return QString("#");
             case 1:
                 return QString("Active");
             case 2:
-                return QString("Escrow Name");
+                return QString("Name");
             case 3:
-                return QString("Private Key");
-            case 4:
                 return QString("Address");
+            case 4:
+                return QString("CTIP TxID");
             case 5:
-                return QString("Waiting Period");
+                return QString("CTIP Index");
             case 6:
-                return QString("Voting Period");
-            case 7:
-                return QString("Threshold Given");
-            case 8:
-                return QString("Threshold Calc");
-            case 9:
-                return QString("CTIP - TxID");
-            case 10:
-                return QString("CTIP - Index");
+                return QString("Private Key");
             }
         }
     }
@@ -138,7 +117,6 @@ QVariant SidechainEscrowTableModel::headerData(int section, Qt::Orientation orie
 
 void SidechainEscrowTableModel::updateModel()
 {
-
 #ifdef ENABLE_WALLET
     // Check for active wallet
     if (vpwallets.empty())
@@ -155,42 +133,85 @@ void SidechainEscrowTableModel::updateModel()
         return;
 #endif
 
+    // TODO this is functional but not great
+
     // Clear old data
     beginResetModel();
     model.clear();
     endResetModel();
 
     int nSidechains = ValidSidechains.size();
-    beginInsertColumns(QModelIndex(), model.size(), model.size() + nSidechains);
+    beginInsertRows(QModelIndex(), 0, nSidechains - 1);
 
     for (const Sidechain& s : ValidSidechains) {
         SidechainEscrowTableObject object;
         object.nSidechain = s.nSidechain;
-        object.nVerificationPeriod = s.nVerificationPeriod;
-        object.nWaitPeriod = s.nWaitPeriod;
+        object.fActive = true; // TODO
         object.name = QString::fromStdString(s.GetSidechainName());
-        object.address = "";
-        object.privKey = "";
-        object.thresholdGiven = ceil(object.nVerificationPeriod / 256);
-        object.thresholdCalc = ceil(object.nWaitPeriod * (object.nVerificationPeriod / 256));
 
+        // Sidechain deposit address
+        CKeyID sidechainKey;
+        sidechainKey.SetHex(s.sidechainKey);
+        CSidechainAddress address;
+        address.Set(sidechainKey);
 
-        // Get the CTIP info
+        object.address = QString::fromStdString(address.ToString());
+        object.privKey = s.sidechainPriv;
+
+        // Get the sidechain CTIP info
         {
             std::vector<COutput> vSidechainCoins;
 #ifdef ENABLE_WALLET
             vpwallets[0]->AvailableSidechainCoins(vSidechainCoins, 0);
 #endif
             if (vSidechainCoins.size()) {
-                object.CTIPIndex = vSidechainCoins.front().i;
+                object.CTIPIndex = QString::number(vSidechainCoins.front().i);
                 object.CTIPTxID = QString::fromStdString(vSidechainCoins.front().tx->GetHash().ToString());
             } else {
-                object.CTIPIndex = "None / wallet disabled";
-                object.CTIPTxID = "None / wallet disabled";
+                object.CTIPIndex = "NA";
+                object.CTIPTxID = "NA";
             }
         }
         model.append(QVariant::fromValue(object));
     }
 
-    endInsertColumns();
+    endInsertRows();
+}
+
+void SidechainEscrowTableModel::AddDemoData()
+{
+    // Stop updating the model with real data
+    pollTimer->stop();
+
+    // Clear old data
+    beginResetModel();
+    model.clear();
+    endResetModel();
+
+    int nSidechains = ValidSidechains.size();
+    beginInsertRows(QModelIndex(), 0, nSidechains - 1);
+
+    for (const Sidechain& s : ValidSidechains) {
+        SidechainEscrowTableObject object;
+        object.nSidechain = s.nSidechain;
+        object.fActive = true; // TODO
+        object.name = QString::fromStdString(s.GetSidechainName());
+
+        // Sidechain deposit address
+        CKeyID sidechainKey;
+        sidechainKey.SetHex(s.sidechainKey);
+        CSidechainAddress address;
+        address.Set(sidechainKey);
+
+        object.address = QString::fromStdString(address.ToString());
+        object.privKey = s.sidechainPriv;
+
+        // Add demo CTIP data
+        object.CTIPIndex = QString::number(s.nSidechain % 2 == 0 ? 0 : 1);
+        object.CTIPTxID = QString::fromStdString(GetRandHash().ToString());
+
+        model.append(QVariant::fromValue(object));
+    }
+
+    endInsertRows();
 }
