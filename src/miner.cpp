@@ -317,10 +317,10 @@ CTransaction BlockAssembler::CreateWTPrimePayout(uint8_t nSidechain)
 
     const Sidechain& sidechain = ValidSidechains[nSidechain];
 
-    if (nHeight % sidechain.GetTau() != 0)
+    if (nHeight % SIDECHAIN_VERIFICATION_PERIOD != 0)
         return mtx;
 
-    // Select the highest scoring B-WT^ for sidechain this tau
+    // Select the highest scoring B-WT^ for sidechain during verification period
     uint256 hashBest = uint256();
     uint16_t scoreBest = 0;
     std::vector<SidechainWTPrimeState> vState = scdb.GetState(nSidechain);
@@ -334,7 +334,7 @@ CTransaction BlockAssembler::CreateWTPrimePayout(uint8_t nSidechain)
         return mtx;
 
     // Is the selected B-WT^ verified?
-    if (scoreBest < sidechain.nMinWorkScore)
+    if (scoreBest < SIDECHAIN_MIN_WORKSCORE)
         return mtx;
 
     // Copy outputs from B-WT^

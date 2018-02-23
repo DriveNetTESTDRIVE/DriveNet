@@ -14,9 +14,8 @@
 
 SidechainDB::SidechainDB()
 {
-    size_t nSidechains = ValidSidechains.size();
-    SCDB.resize(nSidechains);
-    ratchet.resize(nSidechains);
+    SCDB.resize(VALID_SIDECHAINS_COUNT);
+    ratchet.resize(VALID_SIDECHAINS_COUNT);
 }
 
 void SidechainDB::AddDeposits(const std::vector<CTransaction>& vtx)
@@ -79,13 +78,11 @@ bool SidechainDB::AddWTPrime(uint8_t nSidechain, const CTransaction& tx)
     if (HaveWTPrimeCached(tx.GetHash()))
         return false;
 
-    const Sidechain& s = ValidSidechains[nSidechain];
-
     std::vector<SidechainWTPrimeState> vWT;
 
     SidechainWTPrimeState wt;
     wt.nSidechain = nSidechain;
-    wt.nBlocksLeft = s.GetTau();
+    wt.nBlocksLeft = SIDECHAIN_VERIFICATION_PERIOD;
     wt.nWorkScore = 1;
     wt.hashWTPrime = tx.GetHash();
 
@@ -136,7 +133,7 @@ bool SidechainDB::CheckWorkScore(uint8_t nSidechain, const uint256& hashWTPrime)
     std::vector<SidechainWTPrimeState> vState = GetState(nSidechain);
     for (const SidechainWTPrimeState& state : vState) {
         if (state.hashWTPrime == hashWTPrime) {
-            if (state.nWorkScore >= ValidSidechains[nSidechain].nMinWorkScore)
+            if (state.nWorkScore >= SIDECHAIN_MIN_WORKSCORE)
                 return true;
             else
                 return false;
@@ -225,7 +222,7 @@ std::vector<CTransaction> SidechainDB::GetWTPrimeCache() const
 bool SidechainDB::HasState() const
 {
     // Make sure that SCDB is actually initialized
-    if (SCDB.size() != ValidSidechains.size())
+    if (SCDB.size() != VALID_SIDECHAINS_COUNT)
         return false;
 
     // Check if any SCDBIndex(s) are populated
@@ -274,14 +271,13 @@ bool SidechainDB::HaveWTPrimeCached(const uint256& hashWTPrime) const
 void SidechainDB::Reset()
 {
     // Clear out SCDB
+    SCDB.clear();
+    SCDB.resize(VALID_SIDECHAINS_COUNT);
     for (const Sidechain& s : ValidSidechains)
         SCDB[s.nSidechain].ClearMembers();
 
-    // Clear out LD
+    // Clear out BMM LD
     ratchet.clear();
-    //mapBMMLD.clear();
-    //std::queue<uint256> queueEmpty;
-    //std::swap(queueBMMLD, queueEmpty);
 
     // Clear out Deposit data
     vDepositCache.clear();
@@ -319,10 +315,10 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const std::vecto
 
     // TODO skip if nHeight < drivechains activation block height
 
-    // If a sidechain's tau period ended, reset WT^ verification status
-    for (const Sidechain& s : ValidSidechains) {
-        if (nHeight > 0 && (nHeight % s.GetTau()) == 0)
-            SCDB[s.nSidechain].ClearMembers();
+    // If the verification period ended, reset sidechain WT^ verification status
+    if (nHeight > 0 && (nHeight % SIDECHAIN_VERIFICATION_PERIOD) == 0) {
+        SCDB.clear();
+        SCDB.resize(VALID_SIDECHAINS_COUNT);
     }
     // TODO clear out cached WT^(s) that belong to the Sidechain
     // that was just reset.
@@ -407,12 +403,12 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const std::vecto
             if (!IsSidechainNumberValid(nSidechain.getint()))
                 continue;
 
-            // Create WT object
+            // Create WT^ object
             std::vector<SidechainWTPrimeState> vWT;
 
             SidechainWTPrimeState wt;
             wt.nSidechain = nSidechain.getint();
-            wt.nBlocksLeft = ValidSidechains[nSidechain.getint()].GetTau();
+            wt.nBlocksLeft = SIDECHAIN_VERIFICATION_PERIOD;
             wt.nWorkScore = 1;
             wt.hashWTPrime = hashWT;
 
@@ -501,7 +497,7 @@ bool SidechainDB::UpdateSCDBIndex(const std::vector<SidechainWTPrimeState>& vNew
             // Add a new WT^
             if (s.nWorkScore != 1)
                 continue;
-            if (s.nBlocksLeft != ValidSidechains[s.nSidechain].GetTau())
+            if (s.nBlocksLeft != SIDECHAIN_VERIFICATION_PERIOD)
                 continue;
             index.InsertMember(s);
         }
@@ -535,7 +531,7 @@ bool SidechainDB::UpdateSCDBMatchMT(int nHeight, const uint256& hashMerkleRoot)
             wt.nSidechain = msg.nSidechain;
             wt.hashWTPrime = msg.hashWTPrime;
             wt.nWorkScore = msg.nWorkScore;
-            wt.nBlocksLeft = ValidSidechains[wt.nSidechain].GetTau();
+            wt.nBlocksLeft = SIDECHAIN_VERIFICATION_PERIOD;
 
             // Lookup the old state (for nBlocksLeft) TODO do this better
             std::vector<SidechainWTPrimeState> vOld = GetState(wt.nSidechain);

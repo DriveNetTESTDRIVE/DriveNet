@@ -215,3 +215,14 @@ void SidechainEscrowTableModel::AddDemoData()
 
     endInsertRows();
 }
+
+void SidechainEscrowTableModel::ClearDemoData()
+{
+    // Clear demo data
+    beginResetModel();
+    model.clear();
+    endResetModel();
+
+    // Start updating the model with real data again
+    pollTimer->start();
+}

@@ -21,6 +21,7 @@ public:
 private Q_SLOTS:
     void on_pushButtonClose_clicked();
     void on_pushButtonTest_clicked();
+    void on_pushButtonClear_clicked();
 
 private:
     Ui::SidechainTableDialog *ui;

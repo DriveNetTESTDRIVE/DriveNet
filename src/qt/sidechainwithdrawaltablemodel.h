@@ -12,7 +12,7 @@ QT_END_NAMESPACE
 
 struct SidechainWithdrawalTableObject
 {
-    uint8_t nSidechain;
+    QString sidechain;
     QString hashWTPrime;
     uint16_t nAcks;
     uint32_t nAge;
@@ -33,6 +33,9 @@ public:
 
     // Populate the model with demo data
     void AddDemoData();
+
+    // Clear demo data and start syncing with real data again
+    void ClearDemoData();
 
 public Q_SLOTS:
     void updateModel();

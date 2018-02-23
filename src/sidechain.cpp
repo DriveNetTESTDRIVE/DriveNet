@@ -37,18 +37,13 @@ std::string Sidechain::GetSidechainName() const
     return "SIDECHAIN_UNKNOWN";
 }
 
-uint16_t Sidechain::GetTau() const
+int Sidechain::GetLastVerificationPeriod(int nHeight) const
 {
-    return nWaitPeriod + nVerificationPeriod;
-}
-
-int Sidechain::GetLastTauHeight(int nHeight) const
-{
-    uint16_t nTau = GetTau();
+    // TODO more efficient
     for (;;) {
         if (nHeight < 0)
             return -1;
-        if (nHeight % nTau == 0 || nHeight == 0)
+        if (nHeight % SIDECHAIN_VERIFICATION_PERIOD == 0 || nHeight == 0)
             break;
         nHeight--;
     }
@@ -64,9 +59,6 @@ std::string Sidechain::ToString() const
 {
     std::stringstream ss;
     ss << "nSidechain=" << (unsigned int)nSidechain << std::endl;
-    ss << "nWaitPeriod=" << nWaitPeriod << std::endl;
-    ss << "nVerificationPeriod=" << nVerificationPeriod << std::endl;
-    ss << "nMinWorkScore=" << nMinWorkScore << std::endl;
     return ss.str();
 }
 

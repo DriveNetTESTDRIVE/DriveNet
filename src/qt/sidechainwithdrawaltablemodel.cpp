@@ -73,9 +73,9 @@ QVariant SidechainWithdrawalTableModel::data(const QModelIndex &index, int role)
     switch (role) {
     case Qt::DisplayRole:
     {
-        // Escrow Number
+        // Sidechain name
         if (col == 0) {
-            return object.nSidechain;
+            return object.sidechain;
         }
         // Age
         if (col == 1) {
@@ -108,7 +108,7 @@ QVariant SidechainWithdrawalTableModel::headerData(int section, Qt::Orientation 
         if (orientation == Qt::Horizontal) {
             switch (section) {
             case 0:
-                return QString("Escrow #");
+                return QString("Sidechain");
             case 1:
                 return QString("Age");
             case 2:
@@ -141,11 +141,11 @@ void SidechainWithdrawalTableModel::updateModel()
         std::vector<SidechainWTPrimeState> vState = scdb.GetState(s.nSidechain);
         for (const SidechainWTPrimeState& wt : vState) {
             SidechainWithdrawalTableObject object;
-            object.nSidechain = wt.nSidechain;
+            object.sidechain = QString::fromStdString(s.GetSidechainName());
             object.hashWTPrime = QString::fromStdString(wt.hashWTPrime.ToString());
             object.nAcks = wt.nWorkScore;
-            object.nAge = abs(wt.nBlocksLeft - s.nWaitPeriod);
-            object.nMaxAge = s.GetTau();
+            object.nAge = abs(wt.nBlocksLeft - SIDECHAIN_VERIFICATION_PERIOD);
+            object.nMaxAge = SIDECHAIN_VERIFICATION_PERIOD;
             object.fApproved = scdb.CheckWorkScore(wt.nSidechain, wt.hashWTPrime);
 
             model.append(QVariant::fromValue(object));
@@ -168,48 +168,75 @@ void SidechainWithdrawalTableModel::AddDemoData()
 
     // WT^ 1
     SidechainWithdrawalTableObject object1;
-    object1.nSidechain = SIDECHAIN_TEST;
+    object1.sidechain = QString::fromStdString(GetSidechainName(SIDECHAIN_TEST));
     object1.hashWTPrime = QString::fromStdString(GetRandHash().ToString());
     object1.nAcks = 42;
     object1.nAge = 50;
-    object1.nMaxAge = 26298;
+    object1.nMaxAge = SIDECHAIN_VERIFICATION_PERIOD;
     object1.fApproved = false;
 
     // WT^ 2
     SidechainWithdrawalTableObject object2;
-    object2.nSidechain = SIDECHAIN_HIVEMIND;
+    object2.sidechain = QString::fromStdString(GetSidechainName(SIDECHAIN_HIVEMIND));
     object2.hashWTPrime = QString::fromStdString(GetRandHash().ToString());
     object2.nAcks = 13141;
     object2.nAge = 21358;
-    object2.nMaxAge = 26298;
+    object2.nMaxAge = SIDECHAIN_VERIFICATION_PERIOD;
     object2.fApproved = true;
 
     // WT^ 3
     SidechainWithdrawalTableObject object3;
-    object3.nSidechain = SIDECHAIN_WIMBLE;
+    object3.sidechain = QString::fromStdString(GetSidechainName(SIDECHAIN_HIVEMIND));
     object3.hashWTPrime = QString::fromStdString(GetRandHash().ToString());
-    object3.nAcks = 1337;
+    object3.nAcks = 1637;
     object3.nAge = 2000;
-    object3.nMaxAge = 26298;
+    object3.nMaxAge = SIDECHAIN_VERIFICATION_PERIOD;
     object3.fApproved = false;
 
     // WT^ 4
     SidechainWithdrawalTableObject object4;
-    object4.nSidechain = SIDECHAIN_CASH;
+    object4.sidechain = QString::fromStdString(GetSidechainName(SIDECHAIN_CASH));
     object4.hashWTPrime = QString::fromStdString(GetRandHash().ToString());
-    object4.nAcks = 0;
+    object4.nAcks = 705;
     object4.nAge = 26215;
-    object4.nMaxAge = 26298;
+    object4.nMaxAge = SIDECHAIN_VERIFICATION_PERIOD;
     object4.fApproved = false;
 
     // WT^ 5
     SidechainWithdrawalTableObject object5;
-    object5.nSidechain = SIDECHAIN_ROOTSTOCK;
+    object5.sidechain = QString::fromStdString(GetSidechainName(SIDECHAIN_ROOTSTOCK));
     object5.hashWTPrime = QString::fromStdString(GetRandHash().ToString());
     object5.nAcks = 10;
     object5.nAge = 10;
-    object5.nMaxAge = 26298;
+    object5.nMaxAge = SIDECHAIN_VERIFICATION_PERIOD;
     object5.fApproved = false;
+
+    // WT^ 6
+    SidechainWithdrawalTableObject object6;
+    object6.sidechain = QString::fromStdString(GetSidechainName(SIDECHAIN_TEST));
+    object6.hashWTPrime = QString::fromStdString(GetRandHash().ToString());
+    object6.nAcks = 1256;
+    object6.nAge = 1378;
+    object6.nMaxAge = SIDECHAIN_VERIFICATION_PERIOD;
+    object6.fApproved = false;
+
+    // WT^ 7
+    SidechainWithdrawalTableObject object7;
+    object7.sidechain = QString::fromStdString(GetSidechainName(SIDECHAIN_CASH));
+    object7.hashWTPrime = QString::fromStdString(GetRandHash().ToString());
+    object7.nAcks = SIDECHAIN_MIN_WORKSCORE + 10;
+    object7.nAge = SIDECHAIN_MIN_WORKSCORE + 11;
+    object7.nMaxAge = SIDECHAIN_VERIFICATION_PERIOD;
+    object7.fApproved = true;
+
+    // WT^ 8
+    SidechainWithdrawalTableObject object8;
+    object8.sidechain = QString::fromStdString(GetSidechainName(SIDECHAIN_HIVEMIND));
+    object8.hashWTPrime = QString::fromStdString(GetRandHash().ToString());
+    object8.nAcks = 1;
+    object8.nAge = 26142;
+    object8.nMaxAge = SIDECHAIN_VERIFICATION_PERIOD;
+    object8.fApproved = false;
 
     // Add demo objects to model
     model.append(QVariant::fromValue(object1));
@@ -217,6 +244,20 @@ void SidechainWithdrawalTableModel::AddDemoData()
     model.append(QVariant::fromValue(object3));
     model.append(QVariant::fromValue(object4));
     model.append(QVariant::fromValue(object5));
+    model.append(QVariant::fromValue(object6));
+    model.append(QVariant::fromValue(object7));
+    model.append(QVariant::fromValue(object8));
 
     endInsertRows();
+}
+
+void SidechainWithdrawalTableModel::ClearDemoData()
+{
+    // Clear demo data
+    beginResetModel();
+    model.clear();
+    endResetModel();
+
+    // Start updating the model with real data again
+    pollTimer->start();
 }

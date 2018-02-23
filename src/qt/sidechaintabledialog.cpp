@@ -72,3 +72,9 @@ void SidechainTableDialog::on_pushButtonTest_clicked()
     escrowModel->AddDemoData();
     withdrawalModel->AddDemoData();
 }
+
+void SidechainTableDialog::on_pushButtonClear_clicked()
+{
+    escrowModel->ClearDemoData();
+    withdrawalModel->ClearDemoData();
+}

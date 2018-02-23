@@ -10,6 +10,7 @@
 #include <primitives/block.h>
 #include <primitives/transaction.h>
 #include <pow.h>
+#include <sidechain.h>
 #include <tinyformat.h>
 #include <uint256.h>
 
@@ -19,10 +20,10 @@
 extern int nCoinbaseCached;
 
 /** Target size limit of coinbase cache */
-static const int COINBASE_CACHE_TARGET = 2600;
+static const int COINBASE_CACHE_TARGET = SIDECHAIN_VERIFICATION_PERIOD;
 
-/** How many blocks to wait between cleaning cache */
-static const int COINBASE_CACHE_CLEANUP_DELAY = 50;
+/** How many blocks to wait between pruning cache */
+static const int COINBASE_CACHE_PRUNE_INTERVAL = 50;
 
 /**
  * Maximum amount of time that a block timestamp is allowed to exceed the

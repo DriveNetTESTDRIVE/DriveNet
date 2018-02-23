@@ -27,17 +27,13 @@ BOOST_AUTO_TEST_CASE(sidechaindb_isolated)
     uint256 hashWTHivemind = GetRandHash();
     uint256 hashWTWimble = GetRandHash();
 
-    const Sidechain& test = ValidSidechains[SIDECHAIN_TEST];
-    const Sidechain& hivemind = ValidSidechains[SIDECHAIN_HIVEMIND];
-    const Sidechain& wimble = ValidSidechains[SIDECHAIN_WIMBLE];
-
     // SIDECHAIN_TEST
     SidechainWTPrimeState wtTest;
     wtTest.hashWTPrime = hashWTTest;
     // Start at +1 because we decrement in the loop
-    wtTest.nBlocksLeft = test.GetTau() + 1;
+    wtTest.nBlocksLeft = SIDECHAIN_VERIFICATION_PERIOD + 1;
     wtTest.nSidechain = SIDECHAIN_TEST;
-    for (int i = 1; i <= test.nMinWorkScore; i++) {
+    for (int i = 1; i <= SIDECHAIN_MIN_WORKSCORE; i++) {
         std::vector<SidechainWTPrimeState> vWT;
         wtTest.nWorkScore = i;
         wtTest.nBlocksLeft--;
@@ -49,9 +45,9 @@ BOOST_AUTO_TEST_CASE(sidechaindb_isolated)
     SidechainWTPrimeState wtHivemind;
     wtHivemind.hashWTPrime = hashWTHivemind;
     // Start at +1 because we decrement in the loop
-    wtHivemind.nBlocksLeft = hivemind.GetTau() + 1;
+    wtHivemind.nBlocksLeft = SIDECHAIN_VERIFICATION_PERIOD + 1;
     wtHivemind.nSidechain = SIDECHAIN_HIVEMIND;
-    for (int i = 1; i <= (hivemind.nMinWorkScore / 2); i++) {
+    for (int i = 1; i <= (SIDECHAIN_MIN_WORKSCORE / 2); i++) {
         std::vector<SidechainWTPrimeState> vWT;
         wtHivemind.nWorkScore = i;
         wtHivemind.nBlocksLeft--;
@@ -63,7 +59,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_isolated)
     SidechainWTPrimeState wtWimble;
     wtWimble.hashWTPrime = hashWTWimble;
     // Start at +1 because we decrement in the loop
-    wtWimble.nBlocksLeft = wimble.GetTau() + 1;
+    wtWimble.nBlocksLeft = SIDECHAIN_VERIFICATION_PERIOD + 1;
     wtWimble.nSidechain = SIDECHAIN_WIMBLE;
     wtWimble.nWorkScore = 1;
 
@@ -82,11 +78,10 @@ BOOST_AUTO_TEST_CASE(sidechaindb_isolated)
     scdb.Reset();
 }
 
-BOOST_AUTO_TEST_CASE(sidechaindb_MultipleTauPeriods)
+BOOST_AUTO_TEST_CASE(sidechaindb_MultipleVerificationPeriods)
 {
-    // Test SCDB with multiple tau periods,
+    // Test SCDB with multiple verification periods,
     // approve multiple WT^s on the same sidechain.
-    const Sidechain& test = ValidSidechains[SIDECHAIN_TEST];
 
     // WT^ hash for first period
     uint256 hashWTTest1 = GetRandHash();
@@ -95,9 +90,9 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MultipleTauPeriods)
     SidechainWTPrimeState wt1;
     wt1.hashWTPrime = hashWTTest1;
     // Start at +1 because we decrement in the loop
-    wt1.nBlocksLeft = test.GetTau() + 1;
+    wt1.nBlocksLeft = SIDECHAIN_VERIFICATION_PERIOD + 1;
     wt1.nSidechain = SIDECHAIN_TEST;
-    for (int i = 1; i <= test.nMinWorkScore; i++) {
+    for (int i = 1; i <= SIDECHAIN_MIN_WORKSCORE; i++) {
         std::vector<SidechainWTPrimeState> vWT;
         wt1.nWorkScore = i;
         wt1.nBlocksLeft--;
@@ -118,7 +113,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MultipleTauPeriods)
 
     // Update SCDB (will clear out old data from first period)
     std::string strError = "";
-    scdb.Update(test.GetTau(), hashBlock, mtx.vout, strError);
+    scdb.Update(SIDECHAIN_VERIFICATION_PERIOD, hashBlock, mtx.vout, strError);
 
     // WT^ hash for second period
     uint256 hashWTTest2 = GetRandHash();
@@ -127,7 +122,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MultipleTauPeriods)
     std::vector<SidechainWTPrimeState> vWT;
     SidechainWTPrimeState wt2;
     wt2.hashWTPrime = hashWTTest2;
-    wt2.nBlocksLeft = test.GetTau();
+    wt2.nBlocksLeft = SIDECHAIN_VERIFICATION_PERIOD;
     wt2.nSidechain = SIDECHAIN_TEST;
     wt2.nWorkScore = 1;
     vWT.push_back(wt2);
@@ -139,7 +134,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MultipleTauPeriods)
     BOOST_CHECK(vState.size() == 1 && vState[0].hashWTPrime == hashWTTest2);
 
     // Give second transaction sufficient workscore and check work score
-    for (int i = 1; i <= test.nMinWorkScore; i++) {
+    for (int i = 1; i <= SIDECHAIN_MIN_WORKSCORE; i++) {
         std::vector<SidechainWTPrimeState> vWT;
         wt2.nWorkScore = i;
         wt2.nBlocksLeft--;
@@ -163,7 +158,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MT_single)
 
     SidechainWTPrimeState wt;
     wt.hashWTPrime = GetRandHash();
-    wt.nBlocksLeft = ValidSidechains[SIDECHAIN_TEST].GetTau();
+    wt.nBlocksLeft = SIDECHAIN_VERIFICATION_PERIOD;
     wt.nWorkScore = 1;
     wt.nSidechain = SIDECHAIN_TEST;
 
@@ -209,19 +204,19 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MT_multipleSC)
     // Add initial WT^s to SCDB
     SidechainWTPrimeState wtTest;
     wtTest.hashWTPrime = GetRandHash();
-    wtTest.nBlocksLeft = ValidSidechains[SIDECHAIN_TEST].GetTau();
+    wtTest.nBlocksLeft = SIDECHAIN_VERIFICATION_PERIOD;
     wtTest.nSidechain = SIDECHAIN_TEST;
     wtTest.nWorkScore = 1;
 
     SidechainWTPrimeState wtHivemind;
     wtHivemind.hashWTPrime = GetRandHash();
-    wtHivemind.nBlocksLeft = ValidSidechains[SIDECHAIN_HIVEMIND].GetTau();
+    wtHivemind.nBlocksLeft = SIDECHAIN_VERIFICATION_PERIOD;
     wtHivemind.nSidechain = SIDECHAIN_HIVEMIND;
     wtHivemind.nWorkScore = 1;
 
     SidechainWTPrimeState wtWimble;
     wtWimble.hashWTPrime = GetRandHash();
-    wtWimble.nBlocksLeft = ValidSidechains[SIDECHAIN_WIMBLE].GetTau();
+    wtWimble.nBlocksLeft = SIDECHAIN_VERIFICATION_PERIOD;
     wtWimble.nSidechain = SIDECHAIN_WIMBLE;
     wtWimble.nWorkScore = 1;
 
@@ -276,19 +271,19 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MT_multipleWT)
     // Add initial WT^s to SCDB
     SidechainWTPrimeState wtTest;
     wtTest.hashWTPrime = GetRandHash();
-    wtTest.nBlocksLeft = ValidSidechains[SIDECHAIN_TEST].GetTau();
+    wtTest.nBlocksLeft = SIDECHAIN_VERIFICATION_PERIOD;
     wtTest.nSidechain = SIDECHAIN_TEST;
     wtTest.nWorkScore = 1;
 
     SidechainWTPrimeState wtHivemind;
     wtHivemind.hashWTPrime = GetRandHash();
-    wtHivemind.nBlocksLeft = ValidSidechains[SIDECHAIN_HIVEMIND].GetTau();
+    wtHivemind.nBlocksLeft = SIDECHAIN_VERIFICATION_PERIOD;
     wtHivemind.nSidechain = SIDECHAIN_HIVEMIND;
     wtHivemind.nWorkScore = 1;
 
     SidechainWTPrimeState wtWimble;
     wtWimble.hashWTPrime = GetRandHash();
-    wtWimble.nBlocksLeft = ValidSidechains[SIDECHAIN_WIMBLE].GetTau();
+    wtWimble.nBlocksLeft = SIDECHAIN_VERIFICATION_PERIOD;
     wtWimble.nSidechain = SIDECHAIN_WIMBLE;
     wtWimble.nWorkScore = 1;
 

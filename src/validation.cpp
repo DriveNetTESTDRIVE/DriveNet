@@ -3012,7 +3012,7 @@ bool CChainState::ReceivedBlockTransactions(const CBlock &block, CValidationStat
         pindexNew->coinbase = block.vtx[0];
         nCoinbaseCached++;
 
-        if (nCoinbaseCached >= COINBASE_CACHE_TARGET + COINBASE_CACHE_CLEANUP_DELAY)
+        if (nCoinbaseCached >= COINBASE_CACHE_TARGET + COINBASE_CACHE_PRUNE_INTERVAL)
             PruneCoinbaseCache();
 
         // Update / synchronize SCDB
