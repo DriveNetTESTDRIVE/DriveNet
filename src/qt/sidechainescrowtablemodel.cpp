@@ -179,7 +179,7 @@ void SidechainEscrowTableModel::updateModel()
         {
             std::vector<COutput> vSidechainCoins;
 #ifdef ENABLE_WALLET
-            vpwallets[0]->AvailableSidechainCoins(vSidechainCoins, 0);
+            vpwallets[0]->AvailableSidechainCoins(vSidechainCoins, s.nSidechain);
 #endif
             if (vSidechainCoins.size()) {
                 object.CTIPIndex = vSidechainCoins.front().i;
