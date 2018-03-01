@@ -1583,9 +1583,9 @@ bool AppInitMain()
         const int nHeight = chainActive.Height();
         int nTail = nHeight;
         for (const Sidechain& s : ValidSidechains) {
-            int nLastTau = s.GetLastTauHeight(nHeight);
-            if (nLastTau < nTail)
-                nTail = nLastTau;
+            int nLastPeriod = s.GetLastVerificationPeriod(nHeight);
+            if (nLastPeriod < nTail)
+                nTail = nLastPeriod;
         }
 
         // Update SCDB

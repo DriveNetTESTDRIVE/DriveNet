@@ -1,12 +1,14 @@
-#include "sidechainwithdrawaltablemodel.h"
+#include <qt/sidechainwithdrawaltablemodel.h>
 
-#include "guiconstants.h"
-#include "sidechain.h"
-#include "sidechaindb.h"
-#include "validation.h"
+#include <qt/guiconstants.h>
+
+#include <random.h>
+#include <sidechain.h>
+#include <sidechaindb.h>
+#include <validation.h>
 
 #ifdef ENABLE_WALLET
-#include "wallet/wallet.h"
+#include <wallet/wallet.h>
 #endif
 
 #include <math.h>
@@ -16,6 +18,23 @@
 #include <QTimer>
 #include <QVariant>
 
+#include <base58.h>
+#include <script/standard.h>
+#include <qt/guiutil.h>
+
+#include <qt/bitcoinaddressvalidator.h>
+#include <qt/bitcoinunits.h>
+#include <qt/qvalidatedlineedit.h>
+#include <qt/walletmodel.h>
+
+#include <primitives/transaction.h>
+#include <init.h>
+#include <policy/policy.h>
+#include <protocol.h>
+#include <script/script.h>
+#include <script/standard.h>
+#include <util.h>
+
 Q_DECLARE_METATYPE(SidechainWithdrawalTableObject)
 
 SidechainWithdrawalTableModel::SidechainWithdrawalTableModel(QObject *parent) :
@@ -24,7 +43,7 @@ SidechainWithdrawalTableModel::SidechainWithdrawalTableModel(QObject *parent) :
     // This timer will be fired repeatedly to update the model
     pollTimer = new QTimer(this);
     connect(pollTimer, SIGNAL(timeout()), this, SLOT(updateModel()));
-    pollTimer->start(MODEL_UPDATE_DELAY * 4);
+    pollTimer->start(MODEL_UPDATE_DELAY);
 }
 
 int SidechainWithdrawalTableModel::rowCount(const QModelIndex & /*parent*/) const
@@ -34,7 +53,7 @@ int SidechainWithdrawalTableModel::rowCount(const QModelIndex & /*parent*/) cons
 
 int SidechainWithdrawalTableModel::columnCount(const QModelIndex & /*parent*/) const
 {
-    return 8;
+    return 6;
 }
 
 QVariant SidechainWithdrawalTableModel::data(const QModelIndex &index, int role) const
@@ -46,45 +65,37 @@ QVariant SidechainWithdrawalTableModel::data(const QModelIndex &index, int role)
     int row = index.row();
     int col = index.column();
 
-    if (!model.at(col).canConvert<SidechainWithdrawalTableObject>())
+    if (!model.at(row).canConvert<SidechainWithdrawalTableObject>())
         return QVariant();
 
-    SidechainWithdrawalTableObject object = model.at(col).value<SidechainWithdrawalTableObject>();
+    SidechainWithdrawalTableObject object = model.at(row).value<SidechainWithdrawalTableObject>();
 
     switch (role) {
     case Qt::DisplayRole:
     {
-        // Escrow Number
+        // Sidechain name
         if (col == 0) {
-            return object.nSidechain;
-        }
-        // WT^ hash
-        if (col == 1) {
-            return object.hashWTPrime;
-        }
-        // Acks
-        if (row == 2) {
-            return object.nAcks;
+            return object.sidechain;
         }
         // Age
-        if (row == 3) {
+        if (col == 1) {
             return object.nAge;
         }
-        // Wait period
-        if (row == 4) {
-            return object.nWaitPeriod;
-        }
         // Max age
-        if (row == 5) {
+        if (col == 2) {
             return object.nMaxAge;
         }
-        // Threshold
-        if (row == 6) {
-            return object.nThreshold;
+        // Acks
+        if (col == 3) {
+            return object.nAcks;
         }
         // Approved
-        if (row == 7) {
+        if (col == 4) {
             return object.fApproved;
+        }
+        // WT^ hash
+        if (col == 5) {
+            return object.hashWTPrime;
         }
     }
     }
@@ -94,24 +105,20 @@ QVariant SidechainWithdrawalTableModel::data(const QModelIndex &index, int role)
 QVariant SidechainWithdrawalTableModel::headerData(int section, Qt::Orientation orientation, int role) const
 {
     if (role == Qt::DisplayRole) {
-        if (orientation == Qt::Vertical) {
+        if (orientation == Qt::Horizontal) {
             switch (section) {
             case 0:
-                return QString("Escrow Number");
+                return QString("Sidechain");
             case 1:
-                return QString("WT^");
-            case 2:
-                return QString("Acks");
-            case 3:
                 return QString("Age");
-            case 4:
-                return QString("Waiting Period");
-            case 5:
+            case 2:
                 return QString("Max Age");
-            case 6:
-                return QString("Threshold");
-            case 7:
+            case 3:
+                return QString("Acks");
+            case 4:
                 return QString("Approved");
+            case 5:
+                return QString("WT^ hash");
             }
         }
     }
@@ -134,17 +141,123 @@ void SidechainWithdrawalTableModel::updateModel()
         std::vector<SidechainWTPrimeState> vState = scdb.GetState(s.nSidechain);
         for (const SidechainWTPrimeState& wt : vState) {
             SidechainWithdrawalTableObject object;
-            object.nSidechain = wt.nSidechain;
+            object.sidechain = QString::fromStdString(s.GetSidechainName());
             object.hashWTPrime = QString::fromStdString(wt.hashWTPrime.ToString());
             object.nAcks = wt.nWorkScore;
-            object.nAge = abs(wt.nBlocksLeft - s.nWaitPeriod);
-            object.nWaitPeriod = s.nWaitPeriod;
-            object.nMaxAge = s.GetTau();
-            object.nThreshold = s.nMinWorkScore - object.nAcks;
+            object.nAge = abs(wt.nBlocksLeft - SIDECHAIN_VERIFICATION_PERIOD);
+            object.nMaxAge = SIDECHAIN_VERIFICATION_PERIOD;
             object.fApproved = scdb.CheckWorkScore(wt.nSidechain, wt.hashWTPrime);
 
             model.append(QVariant::fromValue(object));
         }
     }
     endInsertColumns();
+}
+
+void SidechainWithdrawalTableModel::AddDemoData()
+{
+    // Stop updating the model with real data
+    pollTimer->stop();
+
+    // Clear old data
+    beginResetModel();
+    model.clear();
+    endResetModel();
+
+    beginInsertRows(QModelIndex(), 0, 5);
+
+    // WT^ 1
+    SidechainWithdrawalTableObject object1;
+    object1.sidechain = QString::fromStdString(GetSidechainName(SIDECHAIN_TEST));
+    object1.hashWTPrime = QString::fromStdString(GetRandHash().ToString());
+    object1.nAcks = 42;
+    object1.nAge = 50;
+    object1.nMaxAge = SIDECHAIN_VERIFICATION_PERIOD;
+    object1.fApproved = false;
+
+    // WT^ 2
+    SidechainWithdrawalTableObject object2;
+    object2.sidechain = QString::fromStdString(GetSidechainName(SIDECHAIN_HIVEMIND));
+    object2.hashWTPrime = QString::fromStdString(GetRandHash().ToString());
+    object2.nAcks = 13141;
+    object2.nAge = 21358;
+    object2.nMaxAge = SIDECHAIN_VERIFICATION_PERIOD;
+    object2.fApproved = true;
+
+    // WT^ 3
+    SidechainWithdrawalTableObject object3;
+    object3.sidechain = QString::fromStdString(GetSidechainName(SIDECHAIN_HIVEMIND));
+    object3.hashWTPrime = QString::fromStdString(GetRandHash().ToString());
+    object3.nAcks = 1637;
+    object3.nAge = 2000;
+    object3.nMaxAge = SIDECHAIN_VERIFICATION_PERIOD;
+    object3.fApproved = false;
+
+    // WT^ 4
+    SidechainWithdrawalTableObject object4;
+    object4.sidechain = QString::fromStdString(GetSidechainName(SIDECHAIN_CASH));
+    object4.hashWTPrime = QString::fromStdString(GetRandHash().ToString());
+    object4.nAcks = 705;
+    object4.nAge = 26215;
+    object4.nMaxAge = SIDECHAIN_VERIFICATION_PERIOD;
+    object4.fApproved = false;
+
+    // WT^ 5
+    SidechainWithdrawalTableObject object5;
+    object5.sidechain = QString::fromStdString(GetSidechainName(SIDECHAIN_ROOTSTOCK));
+    object5.hashWTPrime = QString::fromStdString(GetRandHash().ToString());
+    object5.nAcks = 10;
+    object5.nAge = 10;
+    object5.nMaxAge = SIDECHAIN_VERIFICATION_PERIOD;
+    object5.fApproved = false;
+
+    // WT^ 6
+    SidechainWithdrawalTableObject object6;
+    object6.sidechain = QString::fromStdString(GetSidechainName(SIDECHAIN_TEST));
+    object6.hashWTPrime = QString::fromStdString(GetRandHash().ToString());
+    object6.nAcks = 1256;
+    object6.nAge = 1378;
+    object6.nMaxAge = SIDECHAIN_VERIFICATION_PERIOD;
+    object6.fApproved = false;
+
+    // WT^ 7
+    SidechainWithdrawalTableObject object7;
+    object7.sidechain = QString::fromStdString(GetSidechainName(SIDECHAIN_CASH));
+    object7.hashWTPrime = QString::fromStdString(GetRandHash().ToString());
+    object7.nAcks = SIDECHAIN_MIN_WORKSCORE + 10;
+    object7.nAge = SIDECHAIN_MIN_WORKSCORE + 11;
+    object7.nMaxAge = SIDECHAIN_VERIFICATION_PERIOD;
+    object7.fApproved = true;
+
+    // WT^ 8
+    SidechainWithdrawalTableObject object8;
+    object8.sidechain = QString::fromStdString(GetSidechainName(SIDECHAIN_HIVEMIND));
+    object8.hashWTPrime = QString::fromStdString(GetRandHash().ToString());
+    object8.nAcks = 1;
+    object8.nAge = 26142;
+    object8.nMaxAge = SIDECHAIN_VERIFICATION_PERIOD;
+    object8.fApproved = false;
+
+    // Add demo objects to model
+    model.append(QVariant::fromValue(object1));
+    model.append(QVariant::fromValue(object2));
+    model.append(QVariant::fromValue(object3));
+    model.append(QVariant::fromValue(object4));
+    model.append(QVariant::fromValue(object5));
+    model.append(QVariant::fromValue(object6));
+    model.append(QVariant::fromValue(object7));
+    model.append(QVariant::fromValue(object8));
+
+    endInsertRows();
+}
+
+void SidechainWithdrawalTableModel::ClearDemoData()
+{
+    // Clear demo data
+    beginResetModel();
+    model.clear();
+    endResetModel();
+
+    // Start updating the model with real data again
+    pollTimer->start();
 }

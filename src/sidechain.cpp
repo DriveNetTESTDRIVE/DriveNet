@@ -22,29 +22,28 @@ std::string Sidechain::GetSidechainName() const
     // Check that number corresponds to a valid sidechain
     switch (nSidechain) {
     case SIDECHAIN_TEST:
-        return "SIDECHAIN_TEST";
+        return "Test";
     case SIDECHAIN_HIVEMIND:
-        return "SIDECHAIN_HIVEMIND";
+        return "Hivemind";
     case SIDECHAIN_WIMBLE:
-        return "SIDECHAIN_WIMBLE";
+        return "Mimble";
+    case SIDECHAIN_CASH:
+        return "Cash";
+    case SIDECHAIN_ROOTSTOCK:
+        return "RSK";
     default:
         break;
     }
     return "SIDECHAIN_UNKNOWN";
 }
 
-uint16_t Sidechain::GetTau() const
+int Sidechain::GetLastVerificationPeriod(int nHeight) const
 {
-    return nWaitPeriod + nVerificationPeriod;
-}
-
-int Sidechain::GetLastTauHeight(int nHeight) const
-{
-    uint16_t nTau = GetTau();
+    // TODO more efficient
     for (;;) {
         if (nHeight < 0)
             return -1;
-        if (nHeight % nTau == 0 || nHeight == 0)
+        if (nHeight % SIDECHAIN_VERIFICATION_PERIOD == 0 || nHeight == 0)
             break;
         nHeight--;
     }
@@ -60,9 +59,6 @@ std::string Sidechain::ToString() const
 {
     std::stringstream ss;
     ss << "nSidechain=" << (unsigned int)nSidechain << std::endl;
-    ss << "nWaitPeriod=" << nWaitPeriod << std::endl;
-    ss << "nVerificationPeriod=" << nVerificationPeriod << std::endl;
-    ss << "nMinWorkScore=" << nMinWorkScore << std::endl;
     return ss.str();
 }
 
@@ -198,6 +194,8 @@ bool IsSidechainNumberValid(uint8_t nSidechain)
     case SIDECHAIN_TEST:
     case SIDECHAIN_HIVEMIND:
     case SIDECHAIN_WIMBLE:
+    case SIDECHAIN_CASH:
+    case SIDECHAIN_ROOTSTOCK:
         return true;
     default:
         return false;

@@ -48,7 +48,7 @@ public:
     /** Check SCDB WT^ verification status */
     bool CheckWorkScore(uint8_t nSidechain, const uint256& hashWTPrime) const;
 
-    /** Return vector of deposits this tau for nSidechain. */
+    /** Return vector of deposits this verification period for nSidechain. */
     std::vector<SidechainDeposit> GetDeposits(uint8_t nSidechain) const;
 
     /** Return serialization hash of BMM ratchet data */
@@ -114,7 +114,7 @@ private:
     /** Cache of potential WT^ transactions */
     std::vector<CTransaction> vWTPrimeCache;
 
-    /** Cache of deposits created during this tau */
+    /** Cache of deposits created during this verification period */
     std::vector<SidechainDeposit> vDepositCache;
 
     /** Cache of WT^ update messages.
