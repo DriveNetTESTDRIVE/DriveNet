@@ -11,24 +11,24 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Dialog</string>
+   <string>Sidechain Deposit</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="3" column="0">
+   <item row="4" column="0">
     <layout class="QHBoxLayout" name="horizontalLayoutAmount" stretch="0">
      <item>
-      <widget class="BitcoinAmountField" name="payAmount"/>
+      <widget class="BitcoinAmountField" name="payAmount">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+      </widget>
      </item>
     </layout>
    </item>
-   <item row="0" column="0" colspan="3">
-    <widget class="QComboBox" name="comboBoxSidechains">
-     <property name="maxCount">
-      <number>2147483647</number>
-     </property>
-    </widget>
-   </item>
-   <item row="4" column="0" colspan="3">
+   <item row="5" column="0" colspan="3">
     <spacer name="verticalSpacer">
      <property name="orientation">
       <enum>Qt::Vertical</enum>
@@ -44,7 +44,7 @@
      </property>
     </spacer>
    </item>
-   <item row="2" column="0">
+   <item row="3" column="0">
     <layout class="QHBoxLayout" name="payToLayout">
      <property name="spacing">
       <number>0</number>
@@ -86,7 +86,21 @@
      </item>
     </layout>
    </item>
-   <item row="2" column="1" rowspan="2">
+   <item row="0" column="0">
+    <widget class="QLabel" name="label">
+     <property name="text">
+      <string>Deposit to sidechain:</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="0" colspan="2">
+    <widget class="QComboBox" name="comboBoxSidechains">
+     <property name="maxCount">
+      <number>2147483647</number>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="1" rowspan="2">
     <widget class="QPushButton" name="pushButtonDeposit">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Minimum" vsizetype="Minimum">

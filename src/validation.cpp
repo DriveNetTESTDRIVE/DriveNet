@@ -3227,7 +3227,7 @@ bool IsWitnessEnabled(const CBlockIndex* pindexPrev, const Consensus::Params& pa
 
 bool IsDrivechainEnabled(const CBlockIndex* pindexPrev, const Consensus::Params& params)
 {
-    LOCK(cs_main); // TODO is this needed?
+    LOCK(cs_main);
     return (VersionBitsState(pindexPrev, params, Consensus::DEPLOYMENT_DRIVECHAINS, versionbitscache) == THRESHOLD_ACTIVE);
 }
 
