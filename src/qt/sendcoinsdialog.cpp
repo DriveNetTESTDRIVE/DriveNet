@@ -13,7 +13,7 @@
 #include <qt/optionsmodel.h>
 #include <qt/platformstyle.h>
 #include <qt/sendcoinsentry.h>
-#include "sidechaindepositdialog.h"
+#include <qt/sidechaindepositdialog.h>
 
 #include <base58.h>
 #include <chainparams.h>
@@ -22,6 +22,7 @@
 #include <ui_interface.h>
 #include <txmempool.h>
 #include <policy/fees.h>
+#include <validation.h>
 #include <wallet/fees.h>
 
 #include <QFontMetrics>
@@ -125,6 +126,11 @@ SendCoinsDialog::SendCoinsDialog(const PlatformStyle *_platformStyle, QWidget *p
     ui->customFee->setValue(settings.value("nTransactionFee").toLongLong());
     ui->checkBoxMinimumFee->setChecked(settings.value("fPayOnlyMinFee").toBool());
     minimizeFeeSection(settings.value("fFeeSectionMinimized").toBool());
+
+    // Disable sidechain deposit button if drivechains aren't activated
+    if (!IsDrivechainEnabled(chainActive.Tip(), Params().GetConsensus())) {
+        ui->sidechainDepositButton->setEnabled(false);
+    }
 }
 
 void SendCoinsDialog::setClientModel(ClientModel *_clientModel)
