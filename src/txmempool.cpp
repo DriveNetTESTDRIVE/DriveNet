@@ -551,7 +551,7 @@ void CTxMemPool::removeForReorg(const CCoinsViewCache *pcoins, unsigned int nMem
                     ld.nPrevBlockRef = coin.nPrevBlockRef;
                     ld.hashCritical = coin.hashCritical;
 
-                    if (scdb.CountBlocksAtop(ld) < BMM_RATCHET_MATURITY) {
+                    if (scdb.CountBlocksAtop(ld) < CRITICAL_DATA_MATURITY) {
                         txToRemove.insert(it);
                         break;
                     }

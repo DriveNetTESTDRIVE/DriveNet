@@ -40,10 +40,10 @@ public:
     bool AddWTPrime(uint8_t nSidechain, const CTransaction& tx);
 
     /** Count ratchet member blocks atop */
-    unsigned int CountBlocksAtop(const CCriticalData& data) const;
+    int CountBlocksAtop(const CCriticalData& data) const;
 
     /** Count ratchet member blocks atop (overload) */
-    unsigned int CountBlocksAtop(const SidechainLD& ld) const;
+    int CountBlocksAtop(const SidechainLD& ld) const;
 
     /** Check SCDB WT^ verification status */
     bool CheckWorkScore(uint8_t nSidechain, const uint256& hashWTPrime) const;

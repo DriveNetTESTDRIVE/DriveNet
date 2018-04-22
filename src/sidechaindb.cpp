@@ -23,11 +23,18 @@ void SidechainDB::AddDeposits(const std::vector<CTransaction>& vtx)
     std::vector<SidechainDeposit> vDeposit;
     for (const CTransaction& tx : vtx) {
         // Create sidechain deposit objects from transaction outputs
-        for (const CTxOut& out : tx.vout) {
-            const CScript &scriptPubKey = out.scriptPubKey;
+        SidechainDeposit deposit;
+        for (size_t i = 0; i < tx.vout.size(); i++) {
+            const CScript &scriptPubKey = tx.vout[i].scriptPubKey;
+
+            if (ValidSidechainField.find(HexStr(scriptPubKey)) != ValidSidechainField.end()) {
+                // Copy output index of deposit burn and move on
+                deposit.n = i;
+                continue;
+            }
 
             // scriptPubKey must contain keyID
-            if (scriptPubKey.size() < sizeof(uint160))
+            if (scriptPubKey.size() < sizeof(uint160) + 2)
                 continue;
             if (scriptPubKey.front() != OP_RETURN)
                 continue;
@@ -48,11 +55,13 @@ void SidechainDB::AddDeposits(const std::vector<CTransaction>& vtx)
             if (keyID.IsNull())
                 continue;
 
-            SidechainDeposit deposit;
             deposit.tx = tx;
             deposit.keyID = keyID;
             deposit.nSidechain = nSidechain;
-
+        }
+        // TODO Confirm that deposit.nSidechain is correct by comparing deposit
+        // output KeyID with sidechain KeyID before adding deposit to cache.
+        if (CTransaction(deposit.tx) == tx) {
             vDeposit.push_back(deposit);
         }
     }
@@ -95,12 +104,12 @@ bool SidechainDB::AddWTPrime(uint8_t nSidechain, const CTransaction& tx)
     return false;
 }
 
-unsigned int SidechainDB::CountBlocksAtop(const CCriticalData& data) const
+int SidechainDB::CountBlocksAtop(const CCriticalData& data) const
 {
     uint8_t nSidechain;
     uint16_t nPrevBlockRef;
     if (!data.IsBMMRequest(nSidechain, nPrevBlockRef))
-        return -1;
+        return 0;
 
     // Translate critical data into LD
     SidechainLD ld;
@@ -111,7 +120,7 @@ unsigned int SidechainDB::CountBlocksAtop(const CCriticalData& data) const
     return CountBlocksAtop(ld);
 }
 
-unsigned int SidechainDB::CountBlocksAtop(const SidechainLD& ld) const
+int SidechainDB::CountBlocksAtop(const SidechainLD& ld) const
 {
     if (!IsSidechainNumberValid(ld.nSidechain))
         return 0;
