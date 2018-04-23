@@ -69,8 +69,11 @@ BOOST_AUTO_TEST_CASE(criticaldata_valid)
     mtx.vout[0].scriptPubKey = CScript() << OP_0;
     mtx.vout[0].nValue = 50 * CENT;
 
-    // Set locktime to the block we would like critical data to be commited in
-    mtx.nLockTime = 102;
+    // We set the lock time to the current height. Critical Data transactions
+    // have a validation rule to confirm the transactions goes into the block
+    // at height tx.nLockTime + 1. We don't want it to be spendable before or
+    // after the locktime.
+    mtx.nLockTime = 101;
 
     // Add critical data
     mtx.criticalData.hashCritical = GetRandHash();

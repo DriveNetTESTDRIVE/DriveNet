@@ -608,6 +608,8 @@ UniValue logging(const JSONRPCRequest& request)
 
 UniValue createcriticaldatatx(const JSONRPCRequest& request)
 {
+    // TODO finish
+    //
     if (request.fHelp || request.params.size() != 4)
         throw std::runtime_error(
             "createcriticaldatatx\n"
@@ -673,6 +675,125 @@ UniValue createcriticaldatatx(const JSONRPCRequest& request)
     return ret;
 }
 
+UniValue createbmmcriticaldatatx(const JSONRPCRequest& request)
+{
+    // TODO handle optional height better
+    if (request.fHelp || request.params.size() != 5)
+        throw std::runtime_error(
+            "createbmmcriticaldatatx\n"
+            "Create a BMM request critical data transaction\n"
+            "\nArguments:\n"
+            "1. \"amount\"         (numeric or string, required) The amount in " + CURRENCY_UNIT + " to be spent.\n"
+            "2. \"height\"         (numeric, required) The block height this transaction must be included in.\n"
+            "Note: If 0 is passed in for height, current block height will be used"
+            "3. \"criticalhash\"   (string, required) h* you want added to a coinbase\n"
+            "4. \"nsidechain\"     (numeric, required) Sidechain requesting BMM\n"
+            "5. \"ndag\"           (numeric, required) DAG number\n"
+            "\nExamples:\n"
+            + HelpExampleCli("createbmmcriticaldatatx", "\"amount\", \"height\", \"criticalhash\", \"nsidechain\", \"ndag\"")
+            + HelpExampleRpc("createbmmcriticaldatatx", "\"amount\", \"height\", \"criticalhash\", \"nsidechain\", \"ndag\"")
+            );
+
+    // Amount
+    CAmount nAmount = AmountFromValue(request.params[0]);
+    if (nAmount <= 0)
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
+
+    // Height
+    int nHeight = request.params[1].get_int();
+    if (nHeight == 0) {
+        LOCK(cs_main);
+        nHeight = chainActive.Height();
+    }
+
+    // Critical hash
+    uint256 hashCritical = uint256S(request.params[2].get_str());
+    if (hashCritical.IsNull())
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid h*");
+
+    // nSidechain
+    int nSidechain = request.params[3].get_int();
+
+    if (!IsSidechainNumberValid(nSidechain))
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid Sidechain number");
+
+    // nDAG
+    int nDAG = request.params[4].get_int();
+
+    // Create critical data
+    CScript bytes;
+    bytes.resize(3);
+    bytes[0] = 0x00;
+    bytes[1] = 0xbf;
+    bytes[2] = 0x00;
+
+    bytes << CScriptNum::serialize(nSidechain);
+    bytes << CScriptNum::serialize(nDAG);
+
+    CCriticalData criticalData;
+    criticalData.bytes = std::vector<unsigned char>(bytes.begin(), bytes.end());
+    criticalData.hashCritical = hashCritical;
+
+    // Create transaction with critical data
+    CMutableTransaction mtx;
+    mtx.nVersion = 1;
+    mtx.vout.resize(1);
+    mtx.vout[0].scriptPubKey = CScript() << OP_TRUE;
+    mtx.vout[0].nValue = nAmount;
+
+    // Set lock time
+    mtx.nLockTime = nHeight;
+
+    // Add critical data
+    mtx.criticalData = criticalData;
+
+#ifdef ENABLE_WALLET
+    // Create and send the transaction
+    std::string strError;
+    if (vpwallets.empty()){
+        strError = "Error: no wallets are available";
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+    }
+
+    CCoinControl coinControl;
+    int nChange = -1;
+    CAmount nFeeOut;
+    std::string strFail;
+    std::set<int> setSubtractFeeFromOutputs;
+    setSubtractFeeFromOutputs.insert(0);
+    if (!vpwallets[0]->FundTransaction(mtx, nFeeOut, nChange, strFail, false, setSubtractFeeFromOutputs, coinControl)) {
+        throw JSONRPCError(RPC_WALLET_ERROR, strFail);
+    }
+
+    if (!vpwallets[0]->SignTransaction(mtx)) {
+        throw JSONRPCError(RPC_WALLET_ERROR, "Failed to sign transaction!");
+    }
+
+    CWalletTx wtx;
+    wtx.fTimeReceivedIsTxTime = true;
+    wtx.fFromMe = true;
+    wtx.BindWallet(vpwallets[0]);
+
+    wtx.SetTx(MakeTransactionRef(std::move(mtx)));
+
+    CReserveKey reserveKey(vpwallets[0]);
+    CValidationState state;
+    if (!vpwallets[0]->CommitTransaction(wtx, reserveKey, g_connman.get(), state)) {
+        throw JSONRPCError(RPC_WALLET_ERROR, state.GetRejectReason());
+    }
+#endif
+
+    UniValue ret(UniValue::VOBJ);
+#ifdef ENABLE_WALLET
+    UniValue obj(UniValue::VOBJ);
+    obj.push_back(Pair("txid", wtx.GetHash().ToString()));
+    ret.push_back(Pair("txid", obj));
+#endif
+
+    return ret;
+}
+
+// TODO rename or change return value
 UniValue listsidechaindeposits(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() != 1)
@@ -712,16 +833,14 @@ UniValue listsidechaindeposits(const JSONRPCRequest& request)
     std::set<uint256> setTxids;
     setTxids.insert(txid);
 
-    // TODO needed?
     LOCK(cs_main);
 
     // Get deposit output
     CBlockIndex* pblockindex = NULL;
-    Coin coins;
-    COutPoint c;
-    c.hash = txid;
-    if (pcoinsTip->GetCoin(c, coins) && coins.nHeight > 0 && coins.nHeight <= chainActive.Height())
-        pblockindex = chainActive[coins.nHeight];
+    Coin coin;
+    COutPoint c(txid, deposit.n);
+    if (pcoinsTip->GetCoin(c, coin) && coin.nHeight > 0 && coin.nHeight <= chainActive.Height())
+        pblockindex = chainActive[coin.nHeight];
 
     if (pblockindex == NULL)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't get coins");
@@ -758,9 +877,6 @@ UniValue listsidechaindeposits(const JSONRPCRequest& request)
     amtSidechainUTXO = 0;
     for (const COutput& output : vSidechainCoins)
         amtSidechainUTXO += output.tx->tx->vout[output.i].nValue;
-
-    // TODO Decide if the mainchain should calculate the user payout using BMM
-    // or if it should be the responsibility of the sidechain.
     CAmount amtUserPayout = amtReturning;
 
 #endif
@@ -770,10 +886,10 @@ UniValue listsidechaindeposits(const JSONRPCRequest& request)
 #ifdef ENABLE_WALLET
     UniValue obj(UniValue::VOBJ);
     obj.push_back(Pair("nsidechain", deposit.nSidechain));
-    obj.push_back(Pair("keyID", deposit.keyID.ToString()));
-    obj.push_back(Pair("amountUserPayout", ValueFromAmount(amtUserPayout)));
-    obj.push_back(Pair("txHex", EncodeHexTx(deposit.tx)));
-    obj.push_back(Pair("proofHex", strProofHex));
+    obj.push_back(Pair("keyid", deposit.keyID.ToString()));
+    obj.push_back(Pair("amountuserpayout", ValueFromAmount(amtUserPayout)));
+    obj.push_back(Pair("txhex", EncodeHexTx(deposit.tx)));
+    obj.push_back(Pair("proofhex", strProofHex));
 
     ret.push_back(Pair("deposit", obj));
 #endif
@@ -928,25 +1044,26 @@ UniValue getbmmproof(const JSONRPCRequest& request)
     for (const CTxOut& out : txCoinbase.vout) {
         const CScript& scriptPubKey = out.scriptPubKey;
 
-        if (scriptPubKey.size() < sizeof(uint256) + 2)
+        if (scriptPubKey.size() < sizeof(uint256) + 6)
             continue;
         if (scriptPubKey[0] != OP_RETURN)
             continue;
 
-        CScript::const_iterator phash = scriptPubKey.begin() + 1;
-        std::vector<unsigned char> vch;
-        opcodetype opcode;
-        if (!scriptPubKey.GetOp(phash, opcode, vch))
-            continue;
-        if (vch.size() != sizeof(uint256))
-            continue;
+        // Get h*
+        std::vector<unsigned char> vch (scriptPubKey.begin() + 6, scriptPubKey.begin() + 38);
+
+        // TODO return the bytes
+        // Get Bytes
+        if (scriptPubKey.size() > 38) {
+            std::vector<unsigned char> vchBytes(scriptPubKey.begin() + 38, scriptPubKey.end());
+        }
 
         if (hashCritical == uint256(vch))
             fCriticalHashFound = true;
     }
 
     if (!fCriticalHashFound)
-        return NullUniValue;
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "H* not found in block");
 
     std::string strProof = "";
     if (!GetTxOutProof(txCoinbase.GetHash(), hashBlock, strProof))
@@ -957,8 +1074,41 @@ UniValue getbmmproof(const JSONRPCRequest& request)
     UniValue ret(UniValue::VOBJ);
     UniValue obj(UniValue::VOBJ);
     obj.push_back(Pair("proof", strProof));
-    obj.push_back(Pair("coinbaserawhex", strCoinbaseHex));
+    obj.push_back(Pair("coinbasehex", strCoinbaseHex));
     ret.push_back(Pair("proof", obj));
+
+    return ret;
+}
+
+UniValue listpreviousblockhashes(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() != 0)
+        throw std::runtime_error(
+            "listpreviousblockhashes\n"
+            "Called by sidechain\n"
+            "\nArguments:\n"
+            "\nExamples:\n"
+            + HelpExampleCli("listpreviousblockhashes", "")
+            + HelpExampleRpc("listpreviousblockhashes", "")
+            );
+
+    int nHeight = chainActive.Height();
+    int nStart = nHeight - 4;
+    if (!(nHeight > 0) || !(nStart > 0))
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Insufficient blocks connected to complete request!");
+
+    std::vector<uint256> vHash;
+    for (int i = nStart; i <= nHeight; i++) {
+        uint256 hashBlock = chainActive[i]->GetBlockHash();
+        vHash.push_back(hashBlock);
+    }
+
+    UniValue ret(UniValue::VARR);
+    for (const uint256& hash : vHash) {
+        UniValue obj(UniValue::VOBJ);
+        obj.push_back(Pair("hash", hash.ToString()));
+        ret.push_back(obj);
+    }
 
     return ret;
 }
@@ -1006,10 +1156,12 @@ static const CRPCCommand commands[] =
 
     /* Used by sidechain (not shown in help) */
     { "hidden",             "createcriticaldatatx",     &createcriticaldatatx,      {"amount", "height", "criticalhash"}},
+    { "hidden",             "createbmmcriticaldatatx",  &createbmmcriticaldatatx,   {"amount", "height", "criticalhash", "nsidechain", "ndag"}},
     { "hidden",             "listsidechaindeposits",    &listsidechaindeposits,     {"nsidechain"}},
     { "hidden",             "receivewtprime",           &receivewtprime,            {"nsidechain","rawtx"}},
     { "hidden",             "receivewtprimeupdate",     &receivewtprimeupdate,      {"height","update"}},
     { "hidden",             "getbmmproof",              &getbmmproof,               {"blockhash", "criticalhash"}},
+    { "hidden",             "listpreviousblockhashes",  &listpreviousblockhashes,   {}},
 };
 
 void RegisterMiscRPCCommands(CRPCTable &t)

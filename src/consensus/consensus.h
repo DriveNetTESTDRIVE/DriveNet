@@ -25,7 +25,6 @@ static const size_t MIN_SERIALIZABLE_TRANSACTION_WEIGHT = WITNESS_SCALE_FACTOR *
 
 static const int BMM_MAX_LD = 4000;
 static const int BMM_MAX_PREVBLOCK = 100;
-static const int BMM_RATCHET_MATURITY = 150;
 static const int CRITICAL_DATA_MATURITY = 100;
 
 /** Flags for nSequence and nLockTime locks */

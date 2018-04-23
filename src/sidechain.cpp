@@ -75,6 +75,7 @@ std::string SidechainDeposit::ToString() const
     ss << "sidechain=" << GetSidechainName(nSidechain) << std::endl;
     ss << "keyID=" << keyID.ToString() << std::endl;
     ss << "hashWTPrime=" << tx.GetHash().ToString() << std::endl;
+    ss << "n=" << n << std::endl;
     return ss.str();
 }
 

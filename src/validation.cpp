@@ -1496,9 +1496,16 @@ bool CheckInputs(const CTransaction& tx, CValidationState &state, const CCoinsVi
                 const Coin& coin = inputs.AccessCoin(prevout);
                 assert(!coin.IsSpent());
 
-                // Check ratchet maturity
+                // Check Critical Data / Ratchet maturity
+                // Critical Data outputs that are non-BMM requests must have
+                // a block depth greater than CRITICAL_DATA_MATURITY.
+                // BMM Critical Data outputs must have ratchet 'blocks_atop'
+                // greater than CRITICAL_DATA_MATURITY.
                 if (fDrivechainsEnabled) {
                     if (coin.IsCriticalData()) {
+                        // When a Critical Data transaction output Coin is
+                        // added to the cache by the mempool, we only set
+                        // coin.hashCritical if it is a BMM request.
                         if (coin.hashCritical.IsNull()) {
                             if ((chainActive.Height() - coin.nHeight) < CRITICAL_DATA_MATURITY)
                                 return state.Invalid(false, REJECT_INVALID, "bad-block-txn-immature-critical-data");
@@ -1508,7 +1515,7 @@ bool CheckInputs(const CTransaction& tx, CValidationState &state, const CCoinsVi
                             ld.nSidechain = coin.nSidechain;
                             ld.nPrevBlockRef = coin.nPrevBlockRef;
                             ld.hashCritical = coin.hashCritical;
-                            if (scdb.CountBlocksAtop(ld) < BMM_RATCHET_MATURITY)
+                            if (scdb.CountBlocksAtop(ld) < CRITICAL_DATA_MATURITY)
                                 return state.Invalid(false, REJECT_INVALID, "bad-block-txn-immature-bmm-request");
                         }
                     }
@@ -3301,9 +3308,6 @@ void GenerateCriticalHashCommitment(CBlock& block, const Consensus::Params& cons
     if (!IsDrivechainEnabled(chainActive.Tip(), Params().GetConsensus()))
         return;
 
-    // TODO
-    // Combine BMM request commits into one output. Other non BMM request
-    // commits could also be combined (in a seperate output).
     std::vector<CCriticalData> vCriticalData = GetCriticalDataRequests(block);
     std::vector<CTxOut> vout;
     for (const CCriticalData& d : vCriticalData) {
@@ -3648,8 +3652,7 @@ static bool ContextualCheckBlock(const CBlock& block, CValidationState& state, c
             // Look for transactions with non-null CCriticalData
             if (!tx->criticalData.IsNull()) {
                 // Check block height
-                // TODO use checker.CheckLockTime()
-                if (nHeight != tx->nLockTime)
+                if (nHeight != ((int64_t)tx->nLockTime + 1))
                     return state.DoS(100, false, REJECT_INVALID, "bad-critical-data-locktime", true, strprintf("%s : critical data transaction locktime does not match block height", __func__));
 
                 // TODO move?
