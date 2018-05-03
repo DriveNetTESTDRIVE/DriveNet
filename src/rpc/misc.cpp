@@ -912,14 +912,15 @@ UniValue receivewtprime(const JSONRPCRequest& request)
      );
 
     // Is nSidechain valid?
-    uint8_t nSidechain = request.params[0].get_int();
+    int nSidechain = request.params[0].get_int();
     if (!IsSidechainNumberValid(nSidechain))
-        throw std::runtime_error("Invalid sidechain number");
+        throw std::runtime_error("Invalid sidechain number!");
 
     // Create CTransaction from hex
     CMutableTransaction mtx;
     std::string hex = request.params[1].get_str();
-    DecodeHexTx(mtx, hex);
+    if (!DecodeHexTx(mtx, hex))
+        throw std::runtime_error("Invalid transaction hex!");
 
     CTransaction wtPrime(mtx);
 

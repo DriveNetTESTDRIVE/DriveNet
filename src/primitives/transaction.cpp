@@ -82,6 +82,7 @@ bool CTransaction::GetBWTHash(uint256& hashRet) const
         return false;
 
     // This is the format the sidechain must use for vin[0]
+    mtx.vin.clear();
     mtx.vin.resize(1);
     mtx.vin[0].scriptSig = CScript() << OP_0;
 

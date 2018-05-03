@@ -112,7 +112,9 @@ void SidechainDepositDialog::on_pushButtonDeposit_clicked()
 
     // Successful deposit message box
     messageBox.setWindowTitle("Deposit transaction created!");
-    QString result = "txid: " + QString::fromStdString(tx->GetHash().ToString());
+    QString result = "Deposited to " + QString::fromStdString(GetSidechainName(nSidechain));
+    result += " Sidechain.\n";
+    result += "txid: " + QString::fromStdString(tx->GetHash().ToString());
     result += "\n";
     result += "Amount deposited: ";
     result += BitcoinUnits::formatWithUnit(BitcoinUnit::BTC, nValue, false, BitcoinUnits::separatorAlways);

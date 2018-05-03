@@ -15,6 +15,8 @@ static const int SIDECHAIN_MAX_WT = 3; // TODO remove
 static const size_t VALID_SIDECHAINS_COUNT = 5;
 static const int SIDECHAIN_VERIFICATION_PERIOD = 26298;
 static const int SIDECHAIN_MIN_WORKSCORE = 13140;
+static const int SIDECHAIN_TEST_MIN_WORKSCORE = 6; // TODO remove
+static const int SIDECHAIN_TEST_VERIFICATION_PERIOD = 35; // TODO remove
 
 enum SidechainNumber {
     SIDECHAIN_TEST = 0,

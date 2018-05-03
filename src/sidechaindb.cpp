@@ -142,10 +142,17 @@ bool SidechainDB::CheckWorkScore(uint8_t nSidechain, const uint256& hashWTPrime)
     std::vector<SidechainWTPrimeState> vState = GetState(nSidechain);
     for (const SidechainWTPrimeState& state : vState) {
         if (state.hashWTPrime == hashWTPrime) {
-            if (state.nWorkScore >= SIDECHAIN_MIN_WORKSCORE)
-                return true;
-            else
-                return false;
+            if (nSidechain == SIDECHAIN_TEST) {
+                if (state.nWorkScore >= SIDECHAIN_TEST_MIN_WORKSCORE)
+                    return true;
+                else
+                    return false;
+            } else {
+                if (state.nWorkScore >= SIDECHAIN_MIN_WORKSCORE)
+                    return true;
+                else
+                    return false;
+            }
         }
     }
     return false;
@@ -322,7 +329,11 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const std::vecto
     if (!vout.size())
         return false;
 
-    // TODO skip if nHeight < drivechains activation block height
+    // TODO remove
+    if (nHeight > 0 && (nHeight % SIDECHAIN_TEST_VERIFICATION_PERIOD == 0)) {
+        SCDB.clear();
+        SCDB.resize(VALID_SIDECHAINS_COUNT);
+    }
 
     // If the verification period ended, reset sidechain WT^ verification status
     if (nHeight > 0 && (nHeight % SIDECHAIN_VERIFICATION_PERIOD) == 0) {
@@ -464,6 +475,9 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const std::vecto
 
 bool SidechainDB::UpdateSCDBIndex(const std::vector<SidechainWTPrimeState>& vNewScores)
 {
+    if (!vNewScores.size())
+        return false;
+
     // First check that sidechain numbers are valid
     for (const SidechainWTPrimeState& s : vNewScores) {
         if (!IsSidechainNumberValid(s.nSidechain))
@@ -520,6 +534,25 @@ bool SidechainDB::UpdateSCDBMatchMT(int nHeight, const uint256& hashMerkleRoot)
     if (GetSCDBHash() == hashMerkleRoot)
         return true;
 
+    // Try testing out most likely updates
+    std::vector<SidechainWTPrimeState> vUpvote = GetUpvotes();
+    if (GetSCDBHashIfUpdate(vUpvote) == hashMerkleRoot) {
+        UpdateSCDBIndex(vUpvote);
+        return (GetSCDBHash() == hashMerkleRoot);
+    }
+
+    std::vector<SidechainWTPrimeState> vAbstain = GetAbstainVotes();
+    if (GetSCDBHashIfUpdate(vAbstain) == hashMerkleRoot) {
+        UpdateSCDBIndex(vAbstain);
+        return (GetSCDBHash() == hashMerkleRoot);
+    }
+
+    std::vector<SidechainWTPrimeState> vDownvote = GetDownvotes();
+    if (GetSCDBHashIfUpdate(vDownvote) == hashMerkleRoot) {
+        UpdateSCDBIndex(vDownvote);
+        return (GetSCDBHash() == hashMerkleRoot);
+    }
+
     // TODO the loop below is functional. It isn't efficient.
     // Changing the container of the update cache might be a good
     // place to start.
@@ -560,6 +593,59 @@ bool SidechainDB::UpdateSCDBMatchMT(int nHeight, const uint256& hashMerkleRoot)
         }
     }
     return false;
+}
+
+std::vector<SidechainWTPrimeState> SidechainDB::GetDownvotes() const
+{
+    std::vector<SidechainWTPrimeState> vNew;
+    for (const Sidechain& s : ValidSidechains) {
+        std::vector<SidechainWTPrimeState> vOld = GetState(s.nSidechain);
+
+        if (!vOld.size())
+            continue;
+
+        SidechainWTPrimeState latest = vOld.back();
+        latest.nBlocksLeft--;
+        latest.nWorkScore--;
+
+        vNew.push_back(latest);
+    }
+    return vNew;
+}
+
+std::vector<SidechainWTPrimeState> SidechainDB::GetAbstainVotes() const
+{
+    std::vector<SidechainWTPrimeState> vNew;
+    for (const Sidechain& s : ValidSidechains) {
+        std::vector<SidechainWTPrimeState> vOld = GetState(s.nSidechain);
+
+        if (!vOld.size())
+            continue;
+
+        SidechainWTPrimeState latest = vOld.back();
+        latest.nBlocksLeft--;
+
+        vNew.push_back(latest);
+    }
+    return vNew;
+}
+
+std::vector<SidechainWTPrimeState> SidechainDB::GetUpvotes() const
+{
+    std::vector<SidechainWTPrimeState> vNew;
+    for (const Sidechain& s : ValidSidechains) {
+        std::vector<SidechainWTPrimeState> vOld = GetState(s.nSidechain);
+
+        if (!vOld.size())
+            continue;
+
+        SidechainWTPrimeState latest = vOld.back();
+        latest.nBlocksLeft--;
+        latest.nWorkScore++;
+
+        vNew.push_back(latest);
+    }
+    return vNew;
 }
 
 bool SidechainDB::ApplyDefaultUpdate()
