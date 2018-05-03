@@ -69,7 +69,7 @@ public:
     /** Get status of nSidechain's WT^(s) (public for unit tests) */
     std::vector<SidechainWTPrimeState> GetState(uint8_t nSidechain) const;
 
-    /** Return the cached WT^ transaction */
+    /** Return the cached WT^ transaction(s) */
     std::vector<CTransaction> GetWTPrimeCache() const;
 
     /** Is there anything being tracked by the SCDB? */
@@ -103,6 +103,15 @@ public:
      *  SCDB matches that of the new block. Return false if no match found.
      */
     bool UpdateSCDBMatchMT(int nHeight, const uint256& hashMerkleRoot);
+
+    /** Get state with upvotes applied to all WT^(s) */
+    std::vector<SidechainWTPrimeState> GetDownvotes() const;
+
+    /** Get state with abstain votes applied to all WT^(s) */
+    std::vector<SidechainWTPrimeState> GetAbstainVotes() const;
+
+    /** Get state with downvotes applied to all WT^(s) */
+    std::vector<SidechainWTPrimeState> GetUpvotes() const;
 
 private:
     /** Sidechain "database" tracks verification status of WT^(s) */

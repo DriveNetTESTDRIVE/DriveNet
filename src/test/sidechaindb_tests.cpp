@@ -187,7 +187,6 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MT_single)
 
     scdb.AddSidechainNetworkUpdatePackage(updatePackage);
 
-
     BOOST_CHECK(scdb.UpdateSCDBMatchMT(2, scdbCopy.GetSCDBHash()));
 
     // Reset SCDB after testing

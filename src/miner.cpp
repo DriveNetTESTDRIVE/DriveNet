@@ -189,6 +189,9 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     pblock->vtx[0] = MakeTransactionRef(std::move(coinbaseTx));
 
     if (drivechainsEnabled) {
+        // We're generating the block, and will upvote the last WT^ by default.
+        if (scdb.HasState())
+            scdb.UpdateSCDBIndex(scdb.GetUpvotes());
         GenerateSCDBHashMerkleRootCommitment(*pblock, chainparams.GetConsensus());
         GenerateBMMHashMerkleRootCommitment(*pblock, chainparams.GetConsensus());
         GenerateCriticalHashCommitment(*pblock, chainparams.GetConsensus());
@@ -317,8 +320,15 @@ CTransaction BlockAssembler::CreateWTPrimePayout(uint8_t nSidechain)
 
     const Sidechain& sidechain = ValidSidechains[nSidechain];
 
-    if (nHeight % SIDECHAIN_VERIFICATION_PERIOD != 0)
-        return mtx;
+    // TODO remove
+    if (nSidechain == SIDECHAIN_TEST) {
+        if (nHeight % SIDECHAIN_TEST_VERIFICATION_PERIOD != 0)
+            return mtx;
+    } else {
+        if (nHeight % SIDECHAIN_VERIFICATION_PERIOD != 0)
+            return mtx;
+    }
+
 
     // Select the highest scoring B-WT^ for sidechain during verification period
     uint256 hashBest = uint256();
@@ -334,10 +344,18 @@ CTransaction BlockAssembler::CreateWTPrimePayout(uint8_t nSidechain)
         return mtx;
 
     // Is the selected B-WT^ verified?
-    if (scoreBest < SIDECHAIN_MIN_WORKSCORE)
-        return mtx;
+    // Different MIN_WORKSCORE requirement for test sidechain (for testing..)
+    if (nSidechain == SIDECHAIN_TEST) {
+        if (scoreBest < SIDECHAIN_TEST_MIN_WORKSCORE)
+            return mtx;
+    } else {
+        if (scoreBest < SIDECHAIN_MIN_WORKSCORE)
+            return mtx;
+    }
 
     // Copy outputs from B-WT^
+    // Note that this shouldn't be changed to be more efficient by just copying
+    // the entire transaction. We should copy the outputs only.
     std::vector<CTransaction> vWTPrime = scdb.GetWTPrimeCache();
     for (const CTransaction& tx : vWTPrime) {
         if (tx.GetHash() == hashBest) {
