@@ -4,8 +4,8 @@ libdir=@libdir@
 includedir=@includedir@
 
 Name: @PACKAGE_NAME@ consensus library
-Description: Library for the Bitcoin consensus protocol.
+Description: Library for the Drivenet consensus protocol.
 Version: @PACKAGE_VERSION@
-Libs: -L${libdir} -lbitcoinconsensus
+Libs: -L${libdir} -ldrivenetconsensus
 Cflags: -I${includedir}
 Requires.private: libcrypto

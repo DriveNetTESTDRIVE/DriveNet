@@ -311,7 +311,7 @@ rm -f %{buildroot}%{_bindir}/test_*
 
 %check
 make check
-srcdir=src test/bitcoin-util-test.py
+srcdir=src test/drivenet-util-test.py
 test/functional/test_runner.py --extended
 
 %post libs -p /sbin/ldconfig

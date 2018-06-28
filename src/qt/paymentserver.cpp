@@ -4,7 +4,7 @@
 
 #include <qt/paymentserver.h>
 
-#include <qt/bitcoinunits.h>
+#include <qt/drivenetunits.h>
 #include <qt/guiutil.h>
 #include <qt/optionsmodel.h>
 

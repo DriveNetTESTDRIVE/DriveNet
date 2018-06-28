@@ -3,10 +3,10 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
-#include <config/bitcoin-config.h>
+#include <config/drivenet-config.h>
 #endif
 
-#include <qt/bitcoingui.h>
+#include <qt/drivenetgui.h>
 
 #include <chainparams.h>
 #include <qt/clientmodel.h>
@@ -91,7 +91,7 @@ static void InitMessage(const std::string &message)
  */
 static std::string Translate(const char* psz)
 {
-    return QCoreApplication::translate("bitcoin-core", psz).toStdString();
+    return QCoreApplication::translate("DriveNet", psz).toStdString();
 }
 
 static QString GetLangTerritory()
@@ -258,7 +258,7 @@ private:
     void startThread();
 };
 
-#include <qt/bitcoin.moc>
+#include <qt/drivenet.moc>
 
 BitcoinCore::BitcoinCore():
     QObject()
@@ -558,8 +558,8 @@ int main(int argc, char *argv[])
     QTextCodec::setCodecForCStrings(QTextCodec::codecForTr());
 #endif
 
-    Q_INIT_RESOURCE(bitcoin);
-    Q_INIT_RESOURCE(bitcoin_locale);
+    Q_INIT_RESOURCE(drivenet);
+    Q_INIT_RESOURCE(drivenet_locale);
 
     BitcoinApplication app(argc, argv);
 #if QT_VERSION > 0x050100

@@ -140,7 +140,7 @@
          <string>Add demo data</string>
         </property>
         <property name="icon">
-         <iconset resource="../bitcoin.qrc">
+         <iconset resource="../drivenet.qrc">
           <normaloff>:/icons/warning</normaloff>:/icons/warning</iconset>
         </property>
        </widget>
@@ -151,7 +151,7 @@
          <string>Clear demo data</string>
         </property>
         <property name="icon">
-         <iconset resource="../bitcoin.qrc">
+         <iconset resource="../drivenet.qrc">
           <normaloff>:/icons/remove</normaloff>:/icons/remove</iconset>
         </property>
        </widget>
@@ -181,7 +181,7 @@
          <string>Close</string>
         </property>
         <property name="icon">
-         <iconset resource="../bitcoin.qrc">
+         <iconset resource="../drivenet.qrc">
           <normaloff>:/icons/quit</normaloff>:/icons/quit</iconset>
         </property>
        </widget>
@@ -192,7 +192,7 @@
   </layout>
  </widget>
  <resources>
-  <include location="../bitcoin.qrc"/>
+  <include location="../drivenet.qrc"/>
  </resources>
  <connections/>
 </ui>

@@ -47,8 +47,8 @@ std::string GetWarnings(const std::string& strFor)
     LOCK(cs_warnings);
 
     if (!CLIENT_VERSION_IS_RELEASE) {
-        strStatusBar = "This is a pre-release test build - use at your own risk - do not use for mining or merchant applications";
-        strGUI = _("This is a pre-release test build - use at your own risk - do not use for mining or merchant applications");
+        strStatusBar = "This is a pre-release test build - use at your own risk - do not use for merchant applications";
+        strGUI = _("This is a pre-release test build - use at your own risk - do not use for merchant applications");
     }
 
     if (gArgs.GetBoolArg("-testsafemode", DEFAULT_TESTSAFEMODE))
@@ -71,6 +71,12 @@ std::string GetWarnings(const std::string& strFor)
         strStatusBar = strRPC = "Warning: We do not appear to fully agree with our peers! You may need to upgrade, or other nodes may need to upgrade.";
         strGUI += (strGUI.empty() ? "" : uiAlertSeperator) + _("Warning: We do not appear to fully agree with our peers! You may need to upgrade, or other nodes may need to upgrade.");
     }
+
+    // Always show this warning:
+    std::string strTestDrive = "This is a \"test drive\" of experimental " \
+            "Sidechain software. - Expires Aug 1 2018 (unofficial)";
+    strStatusBar = strRPC = strTestDrive;
+    strGUI += (strGUI.empty() ? "" : uiAlertSeperator) + _(strTestDrive.c_str());
 
     if (strFor == "gui")
         return strGUI;

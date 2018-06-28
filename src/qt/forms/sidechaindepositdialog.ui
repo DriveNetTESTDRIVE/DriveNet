@@ -52,7 +52,7 @@
      <item>
       <widget class="QValidatedLineEdit" name="payTo">
        <property name="toolTip">
-        <string>The Bitcoin address to send the payment to</string>
+        <string>The DriveNet address to send the payment to</string>
        </property>
        <property name="text">
         <string/>
@@ -68,7 +68,7 @@
         <string>Paste</string>
        </property>
        <property name="icon">
-        <iconset resource="../bitcoin.qrc">
+        <iconset resource="../drivenet.qrc">
          <normaloff>:/icons/editpaste</normaloff>:/icons/editpaste</iconset>
        </property>
       </widget>
@@ -79,7 +79,7 @@
         <string>Clear</string>
        </property>
        <property name="icon">
-        <iconset resource="../bitcoin.qrc">
+        <iconset resource="../drivenet.qrc">
          <normaloff>:/icons/remove</normaloff>:/icons/remove</iconset>
        </property>
       </widget>
@@ -112,7 +112,7 @@
       <string>Deposit</string>
      </property>
      <property name="icon">
-      <iconset resource="../bitcoin.qrc">
+      <iconset resource="../drivenet.qrc">
        <normaloff>:/icons/send</normaloff>:/icons/send</iconset>
      </property>
      <property name="default">
@@ -131,12 +131,12 @@
   <customwidget>
    <class>BitcoinAmountField</class>
    <extends>QLineEdit</extends>
-   <header>qt/bitcoinamountfield.h</header>
+   <header>qt/drivenetamountfield.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="../bitcoin.qrc"/>
+  <include location="../drivenet.qrc"/>
  </resources>
  <connections/>
 </ui>

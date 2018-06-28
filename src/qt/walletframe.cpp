@@ -4,7 +4,7 @@
 
 #include <qt/walletframe.h>
 
-#include <qt/bitcoingui.h>
+#include <qt/drivenetgui.h>
 #include <qt/walletview.h>
 
 #include <cassert>
