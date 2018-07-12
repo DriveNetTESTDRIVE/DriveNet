@@ -361,3 +361,7 @@ CScript GetScriptForWitness(const CScript& redeemscript)
 bool IsValidDestination(const CTxDestination& dest) {
     return dest.which() != 0;
 }
+
+bool IsValidBCHDestination(const CTxBCHDestination& dest) {
+    return dest.which() != 0;
+}

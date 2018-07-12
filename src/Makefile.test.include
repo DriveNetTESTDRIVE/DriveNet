@@ -38,12 +38,15 @@ DRIVENET_TESTS =\
   test/bloom_tests.cpp \
   test/bmm_tests.cpp \
   test/bswap_tests.cpp \
+  test/cashaddr_tests.cpp \
+  test/cashaddrenc_tests.cpp \
   test/checkqueue_tests.cpp \
   test/coins_tests.cpp \
   test/compress_tests.cpp \
   test/crypto_tests.cpp \
   test/cuckoocache_tests.cpp \
   test/DoS_tests.cpp \
+  test/dstencode_tests.cpp \
   test/getarg_tests.cpp \
   test/hash_tests.cpp \
   test/key_tests.cpp \

@@ -188,4 +188,9 @@ CTxDestination DecodeDestination(const std::string& str);
 bool IsValidDestinationString(const std::string& str);
 bool IsValidDestinationString(const std::string& str, const CChainParams& params);
 
+// TODO remove
+CTxBCHDestination DecodeLegacyAddr(const std::string& str, const CChainParams& params);
+
+std::string EncodeLegacyAddr(const CTxBCHDestination &dest, const CChainParams& params);
+
 #endif // BITCOIN_BASE58_H

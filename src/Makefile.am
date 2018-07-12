@@ -81,6 +81,8 @@ DRIVENET_CORE_H = \
   bech32.h \
   bloom.h \
   blockencodings.h \
+  cashaddr.h \
+  cashaddrenc.h \
   chain.h \
   chainparams.h \
   chainparamsbase.h \
@@ -99,6 +101,7 @@ DRIVENET_CORE_H = \
   core_io.h \
   core_memusage.h \
   cuckoocache.h \
+  dstencode.h \
   fs.h \
   httprpc.h \
   httpserver.h \
@@ -325,11 +328,14 @@ libdrivenet_common_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libdrivenet_common_a_SOURCES = \
   base58.cpp \
   bech32.cpp \
+  cashaddr.cpp \
+  cashaddrenc.cpp \
   chainparams.cpp \
   coins.cpp \
   compressor.cpp \
   core_read.cpp \
   core_write.cpp \
+  dstencode.cpp \
   key.cpp \
   keystore.cpp \
   netaddress.cpp \
