@@ -152,8 +152,10 @@ drivenet_test_clean : FORCE
 	rm -f $(CLEAN_DRIVENET_TEST) $(test_test_drivenet_OBJECTS) $(TEST_BINARY)
 
 check-local:
+if BUILD_DRIVENET_UTILS
 	@echo "Running test/util/drivenet-util-test.py..."
 	$(PYTHON) $(top_builddir)/test/util/drivenet-util-test.py
+endif
 	$(AM_V_at)$(MAKE) $(AM_MAKEFLAGS) -C secp256k1 check
 if EMBEDDED_UNIVALUE
 	$(AM_V_at)$(MAKE) $(AM_MAKEFLAGS) -C univalue check

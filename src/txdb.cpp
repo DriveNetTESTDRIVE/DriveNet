@@ -293,8 +293,13 @@ bool CBlockTreeDB::LoadBlockIndexGuts(const Consensus::Params& consensusParams, 
                     nCoinbaseCached++;
                 }
 
-                if (!CheckProofOfWork(pindexNew->GetBlockHash(), pindexNew->nBits, consensusParams))
-                    return error("%s: CheckProofOfWork failed: %s", __func__, pindexNew->ToString());
+                // Copy Litecoin, skip PoW check when reading our own data for
+                // performance reasons. This can be re-enabled but each block on
+                // disk will need to be SHAndwich hashed again when read as we
+                // only use the SHAndwich hash for PoW and then forget about it.
+                //
+                //if (!CheckProofOfWork(pindexNew->GetBlockHash(), pindexNew->nBits, consensusParams))
+                //    return error("%s: CheckProofOfWork failed: %s", __func__, pindexNew->ToString());
 
                 pcursor->Next();
             } else {
