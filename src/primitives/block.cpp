@@ -17,8 +17,6 @@ uint256 CBlockHeader::GetHash() const
 
 uint256 CBlockHeader::GetPoWHash() const
 {
-    uint256 hash = SerializeSHAndwichHash(*this);
-
     return SerializeSHAndwichHash(*this);
 }
 
