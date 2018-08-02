@@ -94,6 +94,9 @@ static CZMQNotificationInterface* pzmqNotificationInterface = nullptr;
 
 static const char* FEE_ESTIMATES_FILENAME="fee_estimates.dat";
 
+static const char* LAST_LOADED_OUTPOINT="000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f";
+static const uint32_t LAST_LOADED_N=1;
+
 //////////////////////////////////////////////////////////////////////////////
 //
 // Shutdown
@@ -175,6 +178,14 @@ void Interrupt()
 
 void Shutdown()
 {
+#ifdef ENABLE_WALLET
+    if (!vpwallets.empty()) {
+        CWalletRef pwallet = vpwallets.front();
+        std::vector<LoadedCoin> vLoadedCoin = pwallet->GetMyLoadedCoins();
+        pcoinsTip->WriteMyLoadedCoins(vLoadedCoin);
+    }
+#endif
+
     LogPrintf("%s: In progress...\n", __func__);
     static CCriticalSection cs_Shutdown;
     TRY_LOCK(cs_Shutdown, lockShutdown);
@@ -1574,6 +1585,8 @@ bool AppInitMain()
         }
     }
 
+    uiInterface.InitMessage(_("Synchronizing sidechain database & coinbase cache..."));
+
     bool drivechainsEnabled = IsDrivechainEnabled(chainActive.Tip(), chainparams.GetConsensus());
 
     // Synchronize SCDB
@@ -1779,14 +1792,53 @@ bool AppInitMain()
         return false;
     }
 
-    // ********************************************************* Step 12: finished
+    // ********************************************************* Step 12: load coins
+    uiInterface.InitMessage(_("Importing Bitcoin Core UTXO set, please wait.... This will take a while."));
 
+    // TODO improve this check... Right now we're just checking if the last
+    // loaded coin that will be written can currently be looked up by pcoinsTip.
+    // That does basically ensure that we have loaded all of the coins, but I'm
+    // sure there's a better way of doing this. The loaded_coins.dat file itself
+    // should be checksum verified by the user after download. However, most
+    // people will not read or follow those instructions so maybe we can just do
+    // our own checksum comparison here.
+    //
+    // Check if we have loaded coins and try to load them if not
+    if (chainparams.NetworkIDString() == "main" &&
+            !pcoinsTip->HaveCoin(COutPoint(uint256S(LAST_LOADED_OUTPOINT), LAST_LOADED_N)))
+    {
+        // Try to read loaded coins
+        if (!pcoinsTip->ReadLoadedCoins()) {
+            // Failed to read loaded coins, abort
+            // TODO add link to website with setup guide
+            std::string strError = "Error reading loading coins!\n\n";
+            strError += "DriveNetTESTDRIVE needs to import loaded coins before starting for the first time.";
+            strError += "\n\n";
+            strError += "You must move loaded_coins.dat to your DriveNet datadir.";
+            strError += "\n\n";
+            strError += "Shutting down.";
+            uiInterface.ThreadSafeMessageBox(_(strError.c_str()), "", CClientUIInterface::MSG_ERROR);
+            LogPrintf("Error reading loaded coins, aborting init");
+            return false;
+        }
+    }
+
+#ifdef ENABLE_WALLET
+    if (!vpwallets.empty()) {
+        CWalletRef pwallet = vpwallets.front();
+        std::vector<LoadedCoin> vLoadedCoin;
+        vLoadedCoin = pcoinsTip->ReadMyLoadedCoins();
+        pwallet->AddLoadedCoins(vLoadedCoin);
+    }
+#endif
+
+    // ********************************************************* Step 13: finished
     SetRPCWarmupFinished();
-    uiInterface.InitMessage(_("Done loading"));
 
 #ifdef ENABLE_WALLET
     StartWallets(scheduler);
 
+    uiInterface.InitMessage(_("Watching sidechain deposit addresses"));
     if (drivechainsEnabled) {
         for (CWalletRef pwallet : vpwallets) {
             LOCK2(cs_main, pwallet->cs_wallet);
@@ -1806,9 +1858,9 @@ bool AppInitMain()
                 }
             }
         }
-
     }
 #endif
+    uiInterface.InitMessage(_("DriveNet ready to TESTDRIVE"));
 
     return !fRequestShutdown;
 }

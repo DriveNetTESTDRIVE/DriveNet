@@ -14,6 +14,12 @@ uint256 CCoinsView::GetBestBlock() const { return uint256(); }
 std::vector<uint256> CCoinsView::GetHeadBlocks() const { return std::vector<uint256>(); }
 bool CCoinsView::BatchWrite(CCoinsMap &mapCoins, const uint256 &hashBlock) { return false; }
 CCoinsViewCursor *CCoinsView::Cursor() const { return nullptr; }
+CCoinsViewLoadedCursor *CCoinsView::LoadedCursor() const { return nullptr; }
+
+// Loaded coins functions
+bool CCoinsView::ReadLoadedCoins() { return false; }
+std::vector<LoadedCoin> CCoinsView::ReadMyLoadedCoins() {return std::vector<LoadedCoin>(); }
+void CCoinsView::WriteMyLoadedCoins(const std::vector<LoadedCoin>& vLoadedCoin) {}
 
 bool CCoinsView::HaveCoin(const COutPoint &outpoint) const
 {
@@ -28,7 +34,13 @@ uint256 CCoinsViewBacked::GetBestBlock() const { return base->GetBestBlock(); }
 std::vector<uint256> CCoinsViewBacked::GetHeadBlocks() const { return base->GetHeadBlocks(); }
 void CCoinsViewBacked::SetBackend(CCoinsView &viewIn) { base = &viewIn; }
 bool CCoinsViewBacked::BatchWrite(CCoinsMap &mapCoins, const uint256 &hashBlock) { return base->BatchWrite(mapCoins, hashBlock); }
+
+bool CCoinsViewBacked::ReadLoadedCoins() { return base->ReadLoadedCoins(); }
+std::vector<LoadedCoin> CCoinsViewBacked::ReadMyLoadedCoins() { return base->ReadMyLoadedCoins(); }
+void CCoinsViewBacked::WriteMyLoadedCoins(const std::vector<LoadedCoin>& vLoadedCoin) { base->WriteMyLoadedCoins(vLoadedCoin); }
+
 CCoinsViewCursor *CCoinsViewBacked::Cursor() const { return base->Cursor(); }
+CCoinsViewLoadedCursor *CCoinsViewBacked::LoadedCursor() const { return base->LoadedCursor(); }
 size_t CCoinsViewBacked::EstimateSize() const { return base->EstimateSize(); }
 
 SaltedOutpointHasher::SaltedOutpointHasher() : k0(GetRand(std::numeric_limits<uint64_t>::max())), k1(GetRand(std::numeric_limits<uint64_t>::max())) {}
@@ -123,6 +135,20 @@ bool CCoinsViewCache::SpendCoin(const COutPoint &outpoint, Coin* moveout) {
     return true;
 }
 
+bool CCoinsViewCache::ReadLoadedCoins()
+{
+    return base->ReadLoadedCoins();
+}
+
+std::vector<LoadedCoin> CCoinsViewCache::ReadMyLoadedCoins()
+{
+    return base->ReadMyLoadedCoins();
+}
+void CCoinsViewCache::WriteMyLoadedCoins(const std::vector<LoadedCoin>& vLoadedCoin)
+{
+    base->WriteMyLoadedCoins(vLoadedCoin);
+}
+
 static const Coin coinEmpty;
 
 const Coin& CCoinsViewCache::AccessCoin(const COutPoint &outpoint) const {
@@ -210,6 +236,11 @@ bool CCoinsViewCache::BatchWrite(CCoinsMap &mapCoins, const uint256 &hashBlockIn
     }
     hashBlock = hashBlockIn;
     return true;
+}
+
+CCoinsViewLoadedCursor* CCoinsViewCache::LoadedCursor() const
+{
+    return base->LoadedCursor();
 }
 
 bool CCoinsViewCache::Flush() {

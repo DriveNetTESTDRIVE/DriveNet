@@ -103,8 +103,34 @@ public:
     size_t DynamicMemoryUsage() const {
         return memusage::DynamicUsage(out.scriptPubKey);
     }
+
+    bool operator==(const Coin& coin) {
+        if (out == coin.out
+                && IsCoinBase() == coin.IsCoinBase()
+                && nHeight == coin.nHeight)
+            return true;
+        return false;
+    }
 };
 
+struct LoadedCoin
+{
+    Coin coin;
+    COutPoint out;
+
+    ADD_SERIALIZE_METHODS;
+
+    std::string ToString() const
+    {
+        return coin.out.ToString();
+    }
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream &s, Operation ser_action) {
+        READWRITE(coin);
+        READWRITE(out);
+    }
+};
 class SaltedOutpointHasher
 {
 private:
@@ -165,6 +191,20 @@ private:
     uint256 hashBlock;
 };
 
+/** Cursor for iterating over CoinsView state (loaded coins) */
+class CCoinsViewLoadedCursor
+{
+public:
+    CCoinsViewLoadedCursor() {}
+    virtual ~CCoinsViewLoadedCursor() {}
+
+    virtual bool GetKey(std::pair<char, uint256>& key) const = 0;
+    virtual bool GetValue(LoadedCoin& coin) const = 0;
+
+    virtual bool Valid() const = 0;
+    virtual void Next() = 0;
+};
+
 /** Abstract view on the open txout dataset. */
 class CCoinsView
 {
@@ -193,12 +233,18 @@ public:
 
     //! Get a cursor to iterate over the whole state
     virtual CCoinsViewCursor *Cursor() const;
+    virtual CCoinsViewLoadedCursor *LoadedCursor() const;
 
     //! As we use CCoinsViews polymorphically, have a virtual destructor
     virtual ~CCoinsView() {}
 
     //! Estimate database size (0 if not implemented)
     virtual size_t EstimateSize() const { return 0; }
+
+    //! Loaded Coin functions
+    virtual bool ReadLoadedCoins();
+    virtual std::vector<LoadedCoin> ReadMyLoadedCoins();
+    virtual void WriteMyLoadedCoins(const std::vector<LoadedCoin>& vLoadedCoin);
 };
 
 
@@ -217,7 +263,12 @@ public:
     void SetBackend(CCoinsView &viewIn);
     bool BatchWrite(CCoinsMap &mapCoins, const uint256 &hashBlock) override;
     CCoinsViewCursor *Cursor() const override;
+    CCoinsViewLoadedCursor *LoadedCursor() const override;
     size_t EstimateSize() const override;
+
+    bool ReadLoadedCoins() override;
+    std::vector<LoadedCoin> ReadMyLoadedCoins() override;
+    void WriteMyLoadedCoins(const std::vector<LoadedCoin>& vLoadedCoin) override;
 };
 
 
@@ -252,6 +303,11 @@ public:
     CCoinsViewCursor* Cursor() const override {
         throw std::logic_error("CCoinsViewCache cursor iteration not supported.");
     }
+    CCoinsViewLoadedCursor* LoadedCursor() const override;
+
+    bool ReadLoadedCoins() override;
+    std::vector<LoadedCoin> ReadMyLoadedCoins() override;
+    void WriteMyLoadedCoins(const std::vector<LoadedCoin>& vLoadedCoin) override;
 
     /**
      * Check if we have the given utxo already loaded in this cache.

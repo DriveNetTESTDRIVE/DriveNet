@@ -4,6 +4,7 @@
 
 #include <base58.h>
 #include <chain.h>
+#include <coins.h>
 #include <rpc/safemode.h>
 #include <rpc/server.h>
 #include <wallet/init.h>
@@ -62,7 +63,7 @@ std::string DecodeDumpString(const std::string &str) {
     for (unsigned int pos = 0; pos < str.length(); pos++) {
         unsigned char c = str[pos];
         if (c == '%' && pos+2 < str.length()) {
-            c = (((str[pos+1]>>6)*9+((str[pos+1]-'0')&15)) << 4) | 
+            c = (((str[pos+1]>>6)*9+((str[pos+1]-'0')&15)) << 4) |
                 ((str[pos+2]>>6)*9+((str[pos+2]-'0')&15));
             pos += 2;
         }
@@ -183,6 +184,38 @@ UniValue importprivkey(const JSONRPCRequest& request)
     if (fRescan) {
         pwallet->RescanFromTime(TIMESTAMP_MIN, reserver, true /* update */);
     }
+
+    // And also rescan loaded coins and start tracking those
+    std::vector<LoadedCoin> vLoadedCoin;
+    {
+        LOCK(cs_main);
+        CCoinsViewLoadedCursor *i = pcoinsTip->LoadedCursor();
+
+        CWallet* const pwallet = GetWalletForJSONRPCRequest(request);
+        if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
+            return NullUniValue;
+        }
+
+        while (i->Valid()) {
+            LoadedCoin coin;
+            i->GetValue(coin);
+
+            if (pwallet->IsSpent(coin.out.hash, coin.out.n))
+                continue;
+
+            isminetype mine = pwallet->IsMine(coin.coin.out);
+            if (mine == ISMINE_NO) {
+                i->Next();
+                continue;
+            }
+
+            vLoadedCoin.push_back(coin);
+
+            i->Next();
+        }
+    }
+    if (vLoadedCoin.size())
+        pwallet->AddLoadedCoins(vLoadedCoin);
 
     return NullUniValue;
 }

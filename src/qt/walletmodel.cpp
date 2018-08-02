@@ -600,6 +600,12 @@ void WalletModel::listCoins(std::map<QString, std::vector<COutput> >& mapCoins) 
     }
 }
 
+std::vector<LoadedCoin> WalletModel::getMyLoadedCoins() const
+{
+    LOCK2(cs_main, wallet->cs_wallet);
+    return wallet->GetMyLoadedCoins();
+}
+
 bool WalletModel::isLockedCoin(uint256 hash, unsigned int n) const
 {
     LOCK2(cs_main, wallet->cs_wallet);

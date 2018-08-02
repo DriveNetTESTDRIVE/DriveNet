@@ -17,12 +17,13 @@
 
 class CBlockIndex;
 class CCoinsViewDBCursor;
+class CCoinsViewLoadedDBCursor;
 class uint256;
 
 //! No need to periodic flush if at least this much space still available.
 static constexpr int MAX_BLOCK_COINSDB_USAGE = 10;
 //! -dbcache default (MiB)
-static const int64_t nDefaultDbCache = 450;
+static const int64_t nDefaultDbCache = 650;
 //! -dbbatchsize default (bytes)
 static const int64_t nDefaultDbBatchSize = 16 << 20;
 //! max. -dbcache (MiB)
@@ -68,6 +69,7 @@ class CCoinsViewDB final : public CCoinsView
 {
 protected:
     CDBWrapper db;
+    CDBWrapper loadedcoindb;
 public:
     explicit CCoinsViewDB(size_t nCacheSize, bool fMemory = false, bool fWipe = false);
 
@@ -77,10 +79,25 @@ public:
     std::vector<uint256> GetHeadBlocks() const override;
     bool BatchWrite(CCoinsMap &mapCoins, const uint256 &hashBlock) override;
     CCoinsViewCursor *Cursor() const override;
+    CCoinsViewLoadedCursor *LoadedCursor() const;
 
     //! Attempt to update from an older database format. Returns whether an error occurred.
     bool Upgrade();
     size_t EstimateSize() const override;
+
+    // Loaded coins functions
+
+    // LDB interaction
+    bool WriteLoadedCoinIndex(const std::vector<LoadedCoin>& vLoadedCoin);
+    bool GetLoadedCoin(const uint256& hashOutPoint, LoadedCoin& coinOut) const;
+    bool HaveLoadedCoin(const uint256& hashOutPoint) const;
+    void RescanLoadedCoins(std::vector<LoadedCoin>& vLoadedCoin) const;
+
+    // .dat file interaction
+    bool ReadLoadedCoins();
+    bool WriteLoadedCoins(); // Note: only used for created loaded_coins.dat
+    std::vector<LoadedCoin> ReadMyLoadedCoins();
+    void WriteMyLoadedCoins(const std::vector<LoadedCoin>& vLoadedCoin);
 };
 
 /** Specialization of CCoinsViewCursor to iterate over a CCoinsViewDB */
@@ -101,6 +118,26 @@ private:
         CCoinsViewCursor(hashBlockIn), pcursor(pcursorIn) {}
     std::unique_ptr<CDBIterator> pcursor;
     std::pair<char, COutPoint> keyTmp;
+
+    friend class CCoinsViewDB;
+};
+
+/** Specialization of CCoinsViewLoadedCursor to iterate over a CCoinsViewDB */
+class CCoinsViewLoadedDBCursor: public CCoinsViewLoadedCursor
+{
+public:
+    ~CCoinsViewLoadedDBCursor() {}
+
+    bool GetKey(std::pair<char, uint256>& key) const override;
+    bool GetValue(LoadedCoin& coin) const override;
+
+    bool Valid() const override;
+    void Next() override;
+
+private:
+    CCoinsViewLoadedDBCursor(CDBIterator* pcursorIn):
+        CCoinsViewLoadedCursor(), pcursor(pcursorIn) {}
+    std::unique_ptr<CDBIterator> pcursor;
 
     friend class CCoinsViewDB;
 };

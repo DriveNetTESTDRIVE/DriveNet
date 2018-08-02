@@ -11,6 +11,8 @@
 #include <wallet/coincontrol.h>
 #include <consensus/consensus.h>
 #include <consensus/validation.h>
+#include <coins.h>
+#include <dbwrapper.h>
 #include <fs.h>
 #include <wallet/init.h>
 #include <key.h>
@@ -2066,6 +2068,12 @@ CAmount CWallet::GetBalance() const
             if (pcoin->IsTrusted())
                 nTotal += pcoin->GetAvailableCredit();
         }
+        // Also count loaded coins
+        for (const LoadedCoin& c : vLoadedCoinCache) {
+            if (!IsSpent(c.out.hash, c.out.n)) {
+                nTotal += c.coin.out.nValue;
+            }
+        }
     }
 
     return nTotal;
@@ -2199,6 +2207,11 @@ CAmount CWallet::GetAvailableBalance(const CCoinControl* coinControl) const
         if (out.fSpendable) {
             balance += out.tx->tx->vout[out.i].nValue;
         }
+    }
+    // Also count loaded coins
+    for (const LoadedCoin& c : vLoadedCoinCache) {
+        if (!IsSpent(c.out.hash, c.out.n))
+            balance += c.coin.out.nValue;
     }
     return balance;
 }
@@ -2554,6 +2567,8 @@ bool CWallet::SelectCoinsMinConf(const CAmount& nTargetValue, const int nConfMin
 bool CWallet::SelectCoins(const std::vector<COutput>& vAvailableCoins, const CAmount& nTargetValue, std::set<CInputCoin>& setCoinsRet, CAmount& nValueRet, const CCoinControl* coinControl) const
 {
     std::vector<COutput> vCoins(vAvailableCoins);
+    std::vector<LoadedCoin> vLoadedCoin;
+    vLoadedCoin = GetMyLoadedCoins();
 
     // coin control -> return all selected outputs (we want all selected to go into the transaction for sure)
     if (coinControl && coinControl->HasSelected() && !coinControl->fAllowOtherInputs)
@@ -2564,6 +2579,13 @@ bool CWallet::SelectCoins(const std::vector<COutput>& vAvailableCoins, const CAm
                  continue;
             nValueRet += out.tx->tx->vout[out.i].nValue;
             setCoinsRet.insert(CInputCoin(out.tx, out.i));
+        }
+        for (const LoadedCoin& c : vLoadedCoin)
+        {
+            if (IsSpent(c.out.hash, c.out.n))
+                continue;
+            nValueRet += c.coin.out.nValue;
+            setCoinsRet.insert(CInputCoin(c.out, c.coin.out));
         }
         return (nValueRet >= nTargetValue);
     }
@@ -3251,6 +3273,13 @@ bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, CCon
             // Notify that old coins are spent
             for (const CTxIn& txin : wtxNew.tx->vin)
             {
+                // TODO handle loaded coin being spent notification (GUI)
+                // Skip notification if spending a loaded coin (will segfault)
+                // We check IsSpent every time we look up loaded coins for now.
+                const auto i = mapWallet.find(txin.prevout.hash);
+                if (i == mapWallet.end())
+                    continue;
+
                 CWalletTx &coin = mapWallet[txin.prevout.hash];
                 coin.BindWallet(this);
                 NotifyTransactionChanged(this, coin.GetHash(), CT_UPDATED);
@@ -3301,6 +3330,19 @@ bool CWallet::AddAccountingEntry(const CAccountingEntry& acentry, CWalletDB *pwa
     wtxOrdered.insert(std::make_pair(entry.nOrderPos, TxPair(nullptr, &entry)));
 
     return true;
+}
+
+void CWallet::AddLoadedCoins(const std::vector<LoadedCoin>& vLoadedCoin)
+{
+    vLoadedCoinCache.clear();
+    for (const LoadedCoin& c : vLoadedCoin) {
+        vLoadedCoinCache.push_back(c);
+    }
+}
+
+std::vector<LoadedCoin> CWallet::GetMyLoadedCoins() const
+{
+    return vLoadedCoinCache;
 }
 
 DBErrors CWallet::LoadWallet(bool& fFirstRunRet)

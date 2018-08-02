@@ -22,8 +22,10 @@ class OptionsModel;
 class PlatformStyle;
 class RecentRequestsTableModel;
 class TransactionTableModel;
+class LoadedCoin;
 class WalletModelTransaction;
 
+class Coin;
 class CCoinControl;
 class CKeyID;
 class COutPoint;
@@ -197,6 +199,7 @@ public:
     void getOutputs(const std::vector<COutPoint>& vOutpoints, std::vector<COutput>& vOutputs);
     bool isSpent(const COutPoint& outpoint) const;
     void listCoins(std::map<QString, std::vector<COutput> >& mapCoins) const;
+    std::vector<LoadedCoin> getMyLoadedCoins() const;
 
     bool isLockedCoin(uint256 hash, unsigned int n) const;
     void lockCoin(COutPoint& output);
