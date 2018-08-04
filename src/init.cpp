@@ -206,6 +206,8 @@ void Shutdown()
 #ifdef ENABLE_WALLET
     FlushWallets();
 #endif
+    // Stop mining
+    GenerateBitcoins(false, 0, Params());
     MapPort(false);
 
     // Because these depend on each-other, we make sure that neither can be

@@ -85,6 +85,8 @@ std::map<CNetAddr, LocalServiceInfo> mapLocalHost;
 static bool vfLimited[NET_MAX] = {};
 std::string strSubVersion;
 
+CCriticalSection cs_vNodes;
+
 limitedmap<uint256, int64_t> mapAlreadyAskedFor(MAX_INV_SZ);
 
 void CConnman::AddOneShot(const std::string& strDest)

@@ -87,6 +87,8 @@ static const size_t DEFAULT_MAXSENDBUFFER    = 1 * 1000;
 // NOTE: When adjusting this, update rpcnet:setban's help ("24h")
 static const unsigned int DEFAULT_MISBEHAVING_BANTIME = 60 * 60 * 24;  // Default 24-hour ban
 
+extern CCriticalSection cs_vNodes;
+
 typedef int64_t NodeId;
 
 struct AddedNodeInfo
@@ -399,7 +401,6 @@ private:
     CCriticalSection cs_vAddedNodes;
     std::vector<CNode*> vNodes;
     std::list<CNode*> vNodesDisconnected;
-    mutable CCriticalSection cs_vNodes;
     std::atomic<NodeId> nLastNodeId;
 
     /** Services this instance offers */

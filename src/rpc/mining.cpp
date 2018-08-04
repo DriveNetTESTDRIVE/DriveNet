@@ -185,6 +185,45 @@ UniValue generatetoaddress(const JSONRPCRequest& request)
     return generateBlocks(coinbaseScript, nGenerate, nMaxTries, false);
 }
 
+UniValue setgenerate(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() < 1 || request.params.size() > 2)
+        throw std::runtime_error(
+            "setgenerate generate ( genproclimit )\n"
+            "\nSet 'generate' true or false to turn generation on or off.\n"
+            "Generation is limited to 'genproclimit' processors, -1 is unlimited.\n"
+            "See the getgenerate call for the current setting.\n"
+            "\nArguments:\n"
+            "1. generate         (boolean, required) Set to true to turn on generation, off to turn off.\n"
+            "2. genproclimit     (numeric, optional) Set the processor limit for when generation is on. Can be -1 for unlimited.\n"
+            "\nExamples:\n"
+            "\nSet the generation on with a limit of one processor\n"
+            + HelpExampleCli("setgenerate", "true 1") +
+            "\nCheck the setting\n"
+            + HelpExampleCli("getgenerate", "") +
+            "\nTurn off generation\n"
+            + HelpExampleCli("setgenerate", "false") +
+            "\nUsing json rpc\n"
+            + HelpExampleRpc("setgenerate", "true, 1")
+        );
+
+    bool fGenerate = true;
+    if (request.params.size() > 0)
+        fGenerate = request.params[0].get_bool();
+
+    int nGenProcLimit = 1;
+    if (request.params.size() > 1)
+    {
+        nGenProcLimit = request.params[1].get_int();
+        if (nGenProcLimit == 0)
+            fGenerate = false;
+    }
+
+    GenerateBitcoins(fGenerate, nGenProcLimit, Params());
+
+    return NullUniValue;
+}
+
 UniValue getmininginfo(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() != 0)
@@ -945,6 +984,7 @@ static const CRPCCommand commands[] =
 
 
     { "generating",         "generatetoaddress",      &generatetoaddress,      {"nblocks","address","maxtries"} },
+    { "generating",         "setgenerate",            &setgenerate,            {"generate","genproclimit"} },
 
     { "hidden",             "estimatefee",            &estimatefee,            {} },
     { "util",               "estimatesmartfee",       &estimatesmartfee,       {"conf_target", "estimate_mode"} },

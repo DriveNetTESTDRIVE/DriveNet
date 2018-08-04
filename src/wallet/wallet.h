@@ -1075,6 +1075,11 @@ public:
     }
 
     void GetScriptForMining(std::shared_ptr<CReserveScript> &script);
+    void ResetRequestCount(const uint256 &hash)
+    {
+        LOCK(cs_wallet);
+        mapRequestCount[hash] = 0;
+    };
 
     unsigned int GetKeyPoolSize()
     {
@@ -1325,5 +1330,6 @@ public:
         }
     }
 };
+
 
 #endif // BITCOIN_WALLET_WALLET_H
