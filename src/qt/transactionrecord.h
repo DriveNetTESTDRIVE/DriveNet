@@ -21,7 +21,7 @@ class TransactionStatus
 public:
     TransactionStatus():
         countsForBalance(false), sortKey(""),
-        matures_in(0), status(Offline), depth(0), open_for(0), cur_num_blocks(-1)
+        matures_in(0), status(Offline), replay_status(ReplayUnknown), depth(0), open_for(0), cur_num_blocks(-1)
     { }
 
     enum Status {
@@ -40,6 +40,16 @@ public:
         NotAccepted         /**< Mined but not accepted */
     };
 
+    // The members enumerated here are named as such to not be confused
+    // with the other wallet tx status colum in the transaction table model.
+    enum ReplayStatus {
+        ReplayUnknown,
+        ReplayFalse,
+        ReplayLoaded,
+        ReplayTrue,
+        ReplaySplit
+    };
+
     /// Transaction counts towards available balance
     bool countsForBalance;
     /// Sorting key based on status
@@ -53,6 +63,7 @@ public:
     /** @name Reported status
        @{*/
     Status status;
+    ReplayStatus replay_status;
     qint64 depth;
     qint64 open_for; /**< Timestamp if status==OpenUntilDate, otherwise number
                       of additional blocks that need to be mined before
@@ -137,6 +148,9 @@ public:
     /** Update status from core wallet tx.
      */
     void updateStatus(const CWalletTx &wtx);
+
+    /** Update replay status of record */
+    void updateReplayStatus(TransactionStatus::ReplayStatus replayStatus);
 
     /** Return whether a status update is needed.
      */

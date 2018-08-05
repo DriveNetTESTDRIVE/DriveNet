@@ -98,10 +98,10 @@ QT_FORMS_UI = \
   qt/forms/addressbookpage.ui \
   qt/forms/askpassphrasedialog.ui \
   qt/forms/coincontroldialog.ui \
+  qt/forms/coinsplitdialog.ui \
   qt/forms/editaddressdialog.ui \
   qt/forms/helpmessagedialog.ui \
   qt/forms/intro.ui \
-  qt/forms/modaloverlay.ui \
   qt/forms/openuridialog.ui \
   qt/forms/optionsdialog.ui \
   qt/forms/overviewpage.ui \
@@ -112,6 +112,7 @@ QT_FORMS_UI = \
   qt/forms/sendcoinsentry.ui \
   qt/forms/sidechaindepositdialog.ui \
   qt/forms/sidechaintabledialog.ui \
+  qt/forms/sidechainpage.ui \
   qt/forms/signverifymessagedialog.ui \
   qt/forms/transactiondescdialog.ui
 
@@ -128,13 +129,13 @@ QT_MOC_CPP = \
   qt/moc_clientmodel.cpp \
   qt/moc_coincontroldialog.cpp \
   qt/moc_coincontroltreewidget.cpp \
+  qt/moc_coinsplitdialog.cpp \
   qt/moc_csvmodelwriter.cpp \
   qt/moc_editaddressdialog.cpp \
   qt/moc_guiutil.cpp \
   qt/moc_intro.cpp \
   qt/moc_macdockiconhandler.cpp \
   qt/moc_macnotificationhandler.cpp \
-  qt/moc_modaloverlay.cpp \
   qt/moc_notificator.cpp \
   qt/moc_openuridialog.cpp \
   qt/moc_optionsdialog.cpp \
@@ -153,6 +154,7 @@ QT_MOC_CPP = \
   qt/moc_sidechaindepositdialog.cpp \
   qt/moc_sidechaintabledialog.cpp \
   qt/moc_sidechainescrowtablemodel.cpp \
+  qt/moc_sidechainpage.cpp \
   qt/moc_sidechainwithdrawaltablemodel.cpp \
   qt/moc_signverifymessagedialog.cpp \
   qt/moc_splashscreen.cpp \
@@ -201,6 +203,7 @@ DRIVENET_QT_H = \
   qt/clientmodel.h \
   qt/coincontroldialog.h \
   qt/coincontroltreewidget.h \
+  qt/coinsplitdialog.h \
   qt/csvmodelwriter.h \
   qt/editaddressdialog.h \
   qt/guiconstants.h \
@@ -208,7 +211,6 @@ DRIVENET_QT_H = \
   qt/intro.h \
   qt/macdockiconhandler.h \
   qt/macnotificationhandler.h \
-  qt/modaloverlay.h \
   qt/networkstyle.h \
   qt/notificator.h \
   qt/openuridialog.h \
@@ -230,6 +232,7 @@ DRIVENET_QT_H = \
   qt/sidechaindepositdialog.h \
   qt/sidechaintabledialog.h \
   qt/sidechainescrowtablemodel.h \
+  qt/sidechainpage.h \
   qt/sidechainwithdrawaltablemodel.h \
   qt/signverifymessagedialog.h \
   qt/splashscreen.h \
@@ -314,7 +317,6 @@ DRIVENET_QT_BASE_CPP = \
   qt/csvmodelwriter.cpp \
   qt/guiutil.cpp \
   qt/intro.cpp \
-  qt/modaloverlay.cpp \
   qt/networkstyle.cpp \
   qt/notificator.cpp \
   qt/optionsdialog.cpp \
@@ -336,6 +338,7 @@ DRIVENET_QT_WALLET_CPP = \
   qt/askpassphrasedialog.cpp \
   qt/coincontroldialog.cpp \
   qt/coincontroltreewidget.cpp \
+  qt/coinsplitdialog.cpp \
   qt/editaddressdialog.cpp \
   qt/openuridialog.cpp \
   qt/overviewpage.cpp \
@@ -349,6 +352,7 @@ DRIVENET_QT_WALLET_CPP = \
   qt/sidechaindepositdialog.cpp \
   qt/sidechainescrowtablemodel.cpp \
   qt/sidechaintabledialog.cpp \
+  qt/sidechainpage.cpp \
   qt/sidechainwithdrawaltablemodel.cpp \
   qt/signverifymessagedialog.cpp \
   qt/transactiondesc.cpp \

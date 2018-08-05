@@ -177,7 +177,7 @@ void SidechainWithdrawalTableModel::AddDemoData()
 
     // WT^ 2
     SidechainWithdrawalTableObject object2;
-    object2.sidechain = QString::fromStdString(GetSidechainName(SIDECHAIN_HIVEMIND));
+    object2.sidechain = QString::fromStdString("Hivemind");
     object2.hashWTPrime = QString::fromStdString(GetRandHash().ToString());
     object2.nAcks = 13141;
     object2.nAge = 21358;
@@ -186,7 +186,7 @@ void SidechainWithdrawalTableModel::AddDemoData()
 
     // WT^ 3
     SidechainWithdrawalTableObject object3;
-    object3.sidechain = QString::fromStdString(GetSidechainName(SIDECHAIN_HIVEMIND));
+    object3.sidechain = QString::fromStdString("Hivemind");
     object3.hashWTPrime = QString::fromStdString(GetRandHash().ToString());
     object3.nAcks = 1637;
     object3.nAge = 2000;
@@ -195,7 +195,7 @@ void SidechainWithdrawalTableModel::AddDemoData()
 
     // WT^ 4
     SidechainWithdrawalTableObject object4;
-    object4.sidechain = QString::fromStdString(GetSidechainName(SIDECHAIN_CASH));
+    object4.sidechain = QString::fromStdString("Cash");
     object4.hashWTPrime = QString::fromStdString(GetRandHash().ToString());
     object4.nAcks = 705;
     object4.nAge = 26215;
@@ -204,7 +204,7 @@ void SidechainWithdrawalTableModel::AddDemoData()
 
     // WT^ 5
     SidechainWithdrawalTableObject object5;
-    object5.sidechain = QString::fromStdString(GetSidechainName(SIDECHAIN_ROOTSTOCK));
+    object5.sidechain = QString::fromStdString("Hivemind");
     object5.hashWTPrime = QString::fromStdString(GetRandHash().ToString());
     object5.nAcks = 10;
     object5.nAge = 10;
@@ -213,7 +213,7 @@ void SidechainWithdrawalTableModel::AddDemoData()
 
     // WT^ 6
     SidechainWithdrawalTableObject object6;
-    object6.sidechain = QString::fromStdString(GetSidechainName(SIDECHAIN_TEST));
+    object6.sidechain = QString::fromStdString("Test");
     object6.hashWTPrime = QString::fromStdString(GetRandHash().ToString());
     object6.nAcks = 1256;
     object6.nAge = 1378;
@@ -222,7 +222,7 @@ void SidechainWithdrawalTableModel::AddDemoData()
 
     // WT^ 7
     SidechainWithdrawalTableObject object7;
-    object7.sidechain = QString::fromStdString(GetSidechainName(SIDECHAIN_CASH));
+    object7.sidechain = QString::fromStdString("Cash");
     object7.hashWTPrime = QString::fromStdString(GetRandHash().ToString());
     object7.nAcks = SIDECHAIN_MIN_WORKSCORE + 10;
     object7.nAge = SIDECHAIN_MIN_WORKSCORE + 11;
@@ -231,7 +231,7 @@ void SidechainWithdrawalTableModel::AddDemoData()
 
     // WT^ 8
     SidechainWithdrawalTableObject object8;
-    object8.sidechain = QString::fromStdString(GetSidechainName(SIDECHAIN_HIVEMIND));
+    object8.sidechain = QString::fromStdString("Hivemind");
     object8.hashWTPrime = QString::fromStdString(GetRandHash().ToString());
     object8.nAcks = 1;
     object8.nAge = 26142;

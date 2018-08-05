@@ -50,6 +50,7 @@ public:
     };
 
     enum ColumnWidths {
+        REPLAY_STATUS_COLUMN_WIDTH = 30,
         STATUS_COLUMN_WIDTH = 30,
         WATCHONLY_COLUMN_WIDTH = 23,
         DATE_COLUMN_WIDTH = 120,
@@ -90,6 +91,7 @@ private Q_SLOTS:
     void contextualMenu(const QPoint &);
     void dateRangeChanged();
     void showDetails();
+    void showCoinSplitDialog();
     void copyAddress();
     void editLabel();
     void copyLabel();
@@ -115,6 +117,7 @@ public Q_SLOTS:
     void changedAmount();
     void changedSearch();
     void exportClicked();
+    void refreshReplayClicked();
     void focusTransaction(const QModelIndex&);
 
 };

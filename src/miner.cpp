@@ -325,15 +325,9 @@ CTransaction BlockAssembler::CreateWTPrimePayout(uint8_t nSidechain)
 
     const Sidechain& sidechain = ValidSidechains[nSidechain];
 
-    // TODO remove
-    if (nSidechain == SIDECHAIN_TEST) {
-        if (nHeight % SIDECHAIN_TEST_VERIFICATION_PERIOD != 0)
-            return mtx;
-    } else {
-        if (nHeight % SIDECHAIN_VERIFICATION_PERIOD != 0)
-            return mtx;
-    }
-
+    // Check if it is the end of the verification period
+    if (nHeight % SIDECHAIN_VERIFICATION_PERIOD != 0)
+        return mtx;
 
     // Select the highest scoring B-WT^ for sidechain during verification period
     uint256 hashBest = uint256();
@@ -348,19 +342,14 @@ CTransaction BlockAssembler::CreateWTPrimePayout(uint8_t nSidechain)
     if (hashBest == uint256())
         return mtx;
 
-    // Is the selected B-WT^ verified?
-    // Different MIN_WORKSCORE requirement for test sidechain (for testing..)
-    if (nSidechain == SIDECHAIN_TEST) {
-        if (scoreBest < SIDECHAIN_TEST_MIN_WORKSCORE)
-            return mtx;
-    } else {
-        if (scoreBest < SIDECHAIN_MIN_WORKSCORE)
-            return mtx;
-    }
+    // Does the selected B-WT^ have sufficient work score?
+    if (scoreBest < SIDECHAIN_MIN_WORKSCORE)
+        return mtx;
 
     // Copy outputs from B-WT^
     // Note that this shouldn't be changed to be more efficient by just copying
-    // the entire transaction. We should copy the outputs only.
+    // the entire transaction. We must copy the outputs only.
+    // (but maybe it could still be improved)
     std::vector<CTransaction> vWTPrime = scdb.GetWTPrimeCache();
     for (const CTransaction& tx : vWTPrime) {
         if (tx.GetHash() == hashBest) {

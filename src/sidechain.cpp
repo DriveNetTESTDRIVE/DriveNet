@@ -23,14 +23,6 @@ std::string Sidechain::GetSidechainName() const
     switch (nSidechain) {
     case SIDECHAIN_TEST:
         return "Test";
-    case SIDECHAIN_HIVEMIND:
-        return "Hivemind";
-    case SIDECHAIN_WIMBLE:
-        return "Mimble";
-    case SIDECHAIN_CASH:
-        return "Cash";
-    case SIDECHAIN_ROOTSTOCK:
-        return "RSK";
     default:
         break;
     }
@@ -193,10 +185,6 @@ bool IsSidechainNumberValid(uint8_t nSidechain)
     // Check that number corresponds to a valid sidechain
     switch (nSidechain) {
     case SIDECHAIN_TEST:
-    case SIDECHAIN_HIVEMIND:
-    case SIDECHAIN_WIMBLE:
-    case SIDECHAIN_CASH:
-    case SIDECHAIN_ROOTSTOCK:
         return true;
     default:
         return false;

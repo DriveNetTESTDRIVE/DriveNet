@@ -142,16 +142,10 @@ bool SidechainDB::CheckWorkScore(uint8_t nSidechain, const uint256& hashWTPrime)
     std::vector<SidechainWTPrimeState> vState = GetState(nSidechain);
     for (const SidechainWTPrimeState& state : vState) {
         if (state.hashWTPrime == hashWTPrime) {
-            if (nSidechain == SIDECHAIN_TEST) {
-                if (state.nWorkScore >= SIDECHAIN_TEST_MIN_WORKSCORE)
-                    return true;
-                else
-                    return false;
+            if (state.nWorkScore >= SIDECHAIN_MIN_WORKSCORE) {
+                return true;
             } else {
-                if (state.nWorkScore >= SIDECHAIN_MIN_WORKSCORE)
-                    return true;
-                else
-                    return false;
+                return false;
             }
         }
     }
@@ -244,12 +238,6 @@ bool SidechainDB::HasState() const
     // Check if any SCDBIndex(s) are populated
     if (SCDB[SIDECHAIN_TEST].IsPopulated())
         return true;
-    else
-    if (SCDB[SIDECHAIN_HIVEMIND].IsPopulated())
-        return true;
-    else
-    if (SCDB[SIDECHAIN_WIMBLE].IsPopulated())
-        return true;
 
     return false;
 }
@@ -328,12 +316,6 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const std::vecto
         return false;
     if (!vout.size())
         return false;
-
-    // TODO remove
-    if (nHeight > 0 && (nHeight % SIDECHAIN_TEST_VERIFICATION_PERIOD == 0)) {
-        SCDB.clear();
-        SCDB.resize(VALID_SIDECHAINS_COUNT);
-    }
 
     // If the verification period ended, reset sidechain WT^ verification status
     if (nHeight > 0 && (nHeight % SIDECHAIN_VERIFICATION_PERIOD) == 0) {

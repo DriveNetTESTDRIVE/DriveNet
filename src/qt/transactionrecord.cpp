@@ -248,6 +248,11 @@ void TransactionRecord::updateStatus(const CWalletTx &wtx)
     status.needsUpdate = false;
 }
 
+void TransactionRecord::updateReplayStatus(TransactionStatus::ReplayStatus replayStatus)
+{
+    status.replay_status = replayStatus;
+}
+
 bool TransactionRecord::statusUpdateNeeded() const
 {
     AssertLockHeld(cs_main);

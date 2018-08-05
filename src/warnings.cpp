@@ -74,7 +74,7 @@ std::string GetWarnings(const std::string& strFor)
 
     // Always show this warning:
     std::string strTestDrive = "This is a \"test drive\" of experimental " \
-            "Sidechain software. - Expires Aug 1 2018 (unofficial)";
+            "Sidechain software. - Expires August 15 2018 (unofficial)";
     strStatusBar = strRPC = strTestDrive;
     strGUI += (strGUI.empty() ? "" : uiAlertSeperator) + _(strTestDrive.c_str());
 

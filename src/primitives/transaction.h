@@ -243,6 +243,9 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
     const bool fAllowCriticalData = true; // TODO
 
     s >> tx.nVersion;
+    if (tx.nVersion == 3) {
+        s >> tx.replayBytes;
+    }
     unsigned char flags = 0;
     tx.vin.clear();
     tx.vout.clear();
@@ -284,6 +287,9 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
     const bool fAllowCriticalData = true; // TODO
 
     s << tx.nVersion;
+    if (tx.nVersion == 3) {
+        s << tx.replayBytes;
+    }
     unsigned char flags = 0;
     /* Check whether extra data needs to be serialized. */
     if (fAllowWitness) {
@@ -331,7 +337,7 @@ public:
     // adapting relay policy by bumping MAX_STANDARD_VERSION, and then later date
     // bumping the default CURRENT_VERSION at which point both CURRENT_VERSION and
     // MAX_STANDARD_VERSION will be equal.
-    static const int32_t MAX_STANDARD_VERSION=2;
+    static const int32_t MAX_STANDARD_VERSION=3;
 
     // The local variables are made const to prevent unintended modification
     // without updating the cached hash value. However, CTransaction is not
@@ -343,6 +349,7 @@ public:
     const CCriticalData criticalData;
     const int32_t nVersion;
     const uint32_t nLockTime;
+    const unsigned char replayBytes = 0x3f;
 
 private:
     /** Memory only. */
@@ -430,6 +437,7 @@ struct CMutableTransaction
     CCriticalData criticalData;
     int32_t nVersion;
     uint32_t nLockTime;
+    unsigned char replayBytes = 0x3f;
 
     CMutableTransaction();
     CMutableTransaction(const CTransaction& tx);

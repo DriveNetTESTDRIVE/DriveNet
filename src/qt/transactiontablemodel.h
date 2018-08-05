@@ -28,12 +28,13 @@ public:
     ~TransactionTableModel();
 
     enum ColumnIndex {
-        Status = 0,
-        Watchonly = 1,
-        Date = 2,
-        Type = 3,
-        ToAddress = 4,
-        Amount = 5
+        ReplayStatus = 0,
+        Status = 1,
+        Watchonly = 2,
+        Date = 3,
+        Type = 4,
+        ToAddress = 5,
+        Amount = 6
     };
 
     /** Roles to get specific information from a transaction row.
@@ -64,12 +65,16 @@ public:
         TxHexRole,
         /** Whole transaction as plain text */
         TxPlainTextRole,
+        /** Transaction output index for displayed amount */
+        TxOutputIndexRole,
         /** Is transaction confirmed? */
         ConfirmedRole,
         /** Formatted amount, without brackets when unconfirmed */
         FormattedAmountRole,
         /** Transaction status (TransactionRecord::Status) */
         StatusRole,
+        /** Replay status role */
+        ReplayStatusRole,
         /** Unprocessed icon */
         RawDecorationRole,
     };
@@ -101,12 +106,14 @@ private:
     QString formatTxAmount(const TransactionRecord *wtx, bool showUnconfirmed=true, BitcoinUnits::SeparatorStyle separators=BitcoinUnits::separatorStandard) const;
     QString formatTooltip(const TransactionRecord *rec) const;
     QVariant txStatusDecoration(const TransactionRecord *wtx) const;
+    QVariant txReplayStatusDecoration(const TransactionRecord *wtx) const;
     QVariant txWatchonlyDecoration(const TransactionRecord *wtx) const;
     QVariant txAddressDecoration(const TransactionRecord *wtx) const;
 
 public Q_SLOTS:
     /* New transaction, or transaction changed status */
     void updateTransaction(const QString &hash, int status, bool showTransaction);
+    void updateReplayStatus(const QString &hash, int replayStatus);
     void updateConfirmations();
     void updateDisplayUnit();
     /** Updates the column title to "Amount (DisplayUnit)" and emits headerDataChanged() signal for table headers to react. */

@@ -5,6 +5,7 @@
 #include <qt/transactionview.h>
 
 #include <qt/addresstablemodel.h>
+#include <qt/coinsplitdialog.h>
 #include <qt/drivenetunits.h>
 #include <qt/csvmodelwriter.h>
 #include <qt/editaddressdialog.h>
@@ -17,7 +18,9 @@
 #include <qt/transactiontablemodel.h>
 #include <qt/walletmodel.h>
 
+#include <apiclient.h>
 #include <ui_interface.h>
+#include <utilmoneystr.h>
 
 #include <QComboBox>
 #include <QDateTimeEdit>
@@ -28,6 +31,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QMenu>
+#include <QMessageBox>
 #include <QPoint>
 #include <QScrollBar>
 #include <QSignalMapper>
@@ -161,6 +165,7 @@ TransactionView::TransactionView(const PlatformStyle *platformStyle, QWidget *pa
     QAction *copyTxPlainText = new QAction(tr("Copy full transaction details"), this);
     QAction *editLabelAction = new QAction(tr("Edit label"), this);
     QAction *showDetailsAction = new QAction(tr("Show transaction details"), this);
+    QAction *splitCoinsAction = new QAction(tr("Split coins and enable replay protection"), this);
 
     contextMenu = new QMenu(this);
     contextMenu->setObjectName("contextMenu");
@@ -171,6 +176,7 @@ TransactionView::TransactionView(const PlatformStyle *platformStyle, QWidget *pa
     contextMenu->addAction(copyTxHexAction);
     contextMenu->addAction(copyTxPlainText);
     contextMenu->addAction(showDetailsAction);
+    contextMenu->addAction(splitCoinsAction);
     contextMenu->addSeparator();
     contextMenu->addAction(bumpFeeAction);
     contextMenu->addAction(abandonAction);
@@ -202,6 +208,7 @@ TransactionView::TransactionView(const PlatformStyle *platformStyle, QWidget *pa
     connect(copyTxPlainText, SIGNAL(triggered()), this, SLOT(copyTxPlainText()));
     connect(editLabelAction, SIGNAL(triggered()), this, SLOT(editLabel()));
     connect(showDetailsAction, SIGNAL(triggered()), this, SLOT(showDetails()));
+    connect(splitCoinsAction, SIGNAL(triggered()), this, SLOT(showCoinSplitDialog()));
 }
 
 void TransactionView::setModel(WalletModel *_model)
@@ -226,6 +233,7 @@ void TransactionView::setModel(WalletModel *_model)
         transactionView->sortByColumn(TransactionTableModel::Date, Qt::DescendingOrder);
         transactionView->verticalHeader()->hide();
 
+        transactionView->setColumnWidth(TransactionTableModel::ReplayStatus, REPLAY_STATUS_COLUMN_WIDTH);
         transactionView->setColumnWidth(TransactionTableModel::Status, STATUS_COLUMN_WIDTH);
         transactionView->setColumnWidth(TransactionTableModel::Watchonly, WATCHONLY_COLUMN_WIDTH);
         transactionView->setColumnWidth(TransactionTableModel::Date, DATE_COLUMN_WIDTH);
@@ -343,6 +351,66 @@ void TransactionView::changedAmount()
     else
     {
         transactionProxyModel->setMinAmount(0);
+    }
+}
+
+void TransactionView::refreshReplayClicked()
+{
+    if (!model || !model->getOptionsModel()) {
+        return;
+    }
+    QMessageBox messageBox;
+    // Refresh transaction replay status
+    if(!transactionView || !transactionView->selectionModel())
+        return;
+    QModelIndexList selection = transactionView->selectionModel()->selectedRows(0);
+    if (selection.size() != 1) {
+        messageBox.setWindowTitle("Please select transaction(s)!");
+        QString str = QString("<p>You must select a transaction to check the replay status of!</p>" \
+                              "<p><b>Please highlight one, and no more than one transaction.</b></p>" \
+                              "This will be improved in the next release.");
+        messageBox.setText(str);
+        messageBox.setIcon(QMessageBox::Information);
+        messageBox.setStandardButtons(QMessageBox::Ok);
+        messageBox.exec();
+        return;
+    }
+    messageBox.setWindowTitle("Are you sure?");
+    QString warning = "Privacy Warning:\n\n";
+    warning += "Using this feature will send requests over the internet ";
+    warning += "which include information about your wallet's transactions.";
+    warning += "\n\n";
+    warning += "Checking the replay status of your wallet's transactions ";
+    warning += "will require sending the same data over the internet as ";
+    warning += "if you had vistied a block explorer yourself.\n";
+    messageBox.setText(warning);
+    messageBox.setIcon(QMessageBox::Warning);
+    messageBox.setStandardButtons(QMessageBox::Abort | QMessageBox::Ok);
+    messageBox.setDefaultButton(QMessageBox::Abort);
+    int ret = messageBox.exec();
+    if (ret != QMessageBox::Ok) {
+        return;
+    }
+
+    // TODO Make asynchronus and then allow the user to select more than one
+    // transaction to update the status of at once.
+    APIClient client;
+    for (const QModelIndex& i : selection) {
+        uint256 hash;
+        QString hashQStr = i.data(TransactionTableModel::TxHashRole).toString();
+        hash.SetHex(hashQStr.toStdString());
+        // TODO
+        // if replay status is currently ReplayLoaded, skip
+        // TODO
+        // if replay status is already ReplayTrue, skip
+        // TODO handle request failure and keep set to unknown...
+        if (client.IsTxReplayed(hash)) {
+            model->getTransactionTableModel()->updateReplayStatus(hashQStr, TransactionStatus::ReplayTrue);
+            model->getTransactionTableModel()->updateTransaction(hashQStr, CT_UPDATED, true);
+        } else {
+            model->getTransactionTableModel()->updateReplayStatus(hashQStr, TransactionStatus::ReplayFalse);
+            model->getTransactionTableModel()->updateTransaction(hashQStr, CT_UPDATED, true);
+        }
     }
 }
 
@@ -526,6 +594,22 @@ void TransactionView::showDetails()
         dlg->setAttribute(Qt::WA_DeleteOnClose);
         dlg->show();
     }
+}
+
+void TransactionView::showCoinSplitDialog()
+{
+    if(!transactionView->selectionModel() ||!model)
+        return;
+    QModelIndexList selection = transactionView->selectionModel()->selectedRows();
+    if (selection.isEmpty())
+        return;
+    CAmount amount = selection.at(0).data(TransactionTableModel::AmountRole).toLongLong();
+    QString strTXID = selection.at(0).data(TransactionTableModel::TxHashRole).toString();
+    QString strAmount = selection.at(0).data(TransactionTableModel::FormattedAmountRole).toString();
+    QString strAddress = selection.at(0).data(TransactionTableModel::AddressRole).toString();
+    int index = selection.at(0).data(TransactionTableModel::TxOutputIndexRole).toInt();
+    CoinSplitDialog dialog(amount, strTXID, strAmount, strAddress, index);
+    dialog.exec();
 }
 
 void TransactionView::openThirdPartyTxUrl(QString url)

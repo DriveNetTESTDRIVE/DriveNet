@@ -26,11 +26,11 @@ class PlatformStyle;
 class RPCConsole;
 class SendCoinsRecipient;
 class SidechainTableDialog;
+class SidechainPage;
 class UnitDisplayStatusBarControl;
 class WalletFrame;
 class WalletModel;
 class HelpMessageDialog;
-class ModalOverlay;
 
 QT_BEGIN_NAMESPACE
 class QAction;
@@ -95,6 +95,7 @@ private:
     QAction *historyAction;
     QAction *quitAction;
     QAction *sendCoinsAction;
+    QAction *sidechainAction;
     QAction *sendCoinsMenuAction;
     QAction *usedSendingAddressesAction;
     QAction *usedReceivingAddressesAction;
@@ -119,7 +120,6 @@ private:
     Notificator *notificator;
     RPCConsole *rpcConsole;
     HelpMessageDialog *helpMessageDialog;
-    ModalOverlay *modalOverlay;
 
 #ifdef ENABLE_WALLET
     /** Sidechain table dialog (for testing) */
@@ -202,6 +202,8 @@ private Q_SLOTS:
     void gotoOverviewPage();
     /** Switch to history (transactions) page */
     void gotoHistoryPage();
+    /** Switch to Sidechain page */
+    void gotoSidechainPage();
     /** Switch to receive coins page */
     void gotoReceiveCoinsPage();
     /** Switch to send coins page */
@@ -249,8 +251,6 @@ private Q_SLOTS:
 
     /** Toggle networking */
     void toggleNetworkActive();
-
-    void showModalOverlay();
 };
 
 class UnitDisplayStatusBarControl : public QLabel

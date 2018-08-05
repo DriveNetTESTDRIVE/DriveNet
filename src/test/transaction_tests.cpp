@@ -758,4 +758,27 @@ BOOST_AUTO_TEST_CASE(test_IsStandard)
     BOOST_CHECK(!IsStandardTx(t, reason));
 }
 
+BOOST_AUTO_TEST_CASE(transaction_v3_replay_serialization)
+{
+    // Check that a version 3 transaction serializes & deserializes correctly
+    CMutableTransaction mtx;
+    mtx.vin.resize(1);
+    mtx.vout.resize(1);
+    mtx.nVersion = 3;
+    mtx.vin[0].prevout.SetNull();
+    mtx.vin[0].scriptSig = CScript();
+    CScript script;
+    script << OP_RETURN;
+    mtx.vout[0] = CTxOut(50 * CENT, script);
+    // Get the transaction's serialization
+    CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
+    mtx.Serialize(ss);
+    // Deserialize
+    CTransaction txDeserialized(deserialize, ss);
+    // Check that CTransaction was properly deserialized
+    BOOST_CHECK(txDeserialized.GetHash() == mtx.GetHash());
+
+    BOOST_CHECK(mtx.replayBytes == 0x3f);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

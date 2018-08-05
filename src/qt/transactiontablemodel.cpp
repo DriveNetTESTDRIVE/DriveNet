@@ -28,6 +28,7 @@
 
 // Amount column is right-aligned it contains numbers
 static int column_alignments[] = {
+        Qt::AlignLeft|Qt::AlignVCenter, /* replay status */
         Qt::AlignLeft|Qt::AlignVCenter, /* status */
         Qt::AlignLeft|Qt::AlignVCenter, /* watchonly */
         Qt::AlignLeft|Qt::AlignVCenter, /* date */
@@ -174,6 +175,26 @@ public:
         }
     }
 
+    void updateWalletReplayStatus(const uint256 &hash, int replayStatus)
+    {
+        qDebug() << "TransactionTablePriv::updateWalletReplayStatus: " + QString::fromStdString(hash.ToString()) + " " + QString::number(replayStatus);
+        // Find bounds of this transaction in model
+        QList<TransactionRecord>::iterator lower = qLowerBound(
+            cachedWallet.begin(), cachedWallet.end(), hash, TxLessThan());
+        QList<TransactionRecord>::iterator upper = qUpperBound(
+            cachedWallet.begin(), cachedWallet.end(), hash, TxLessThan());
+        int lowerIndex = (lower - cachedWallet.begin());
+        int upperIndex = (upper - cachedWallet.begin());
+        bool inModel = (lower != upper);
+        if (!inModel)
+            return;
+        for (int i = lowerIndex; i < upperIndex; i++) {
+            TransactionRecord *rec = &cachedWallet[i];
+            rec->status.needsUpdate = true;
+            rec->status.replay_status = (TransactionStatus::ReplayStatus)replayStatus;
+        }
+    }
+
     int size()
     {
         return cachedWallet.size();
@@ -245,7 +266,7 @@ TransactionTableModel::TransactionTableModel(const PlatformStyle *_platformStyle
         fProcessingQueuedTransactions(false),
         platformStyle(_platformStyle)
 {
-    columns << QString() << QString() << tr("Date") << tr("Type") << tr("Label") << BitcoinUnits::getAmountColumnTitle(walletModel->getOptionsModel()->getDisplayUnit());
+    columns << QString() << QString() << QString() << tr("Date") << tr("Type") << tr("Label") << BitcoinUnits::getAmountColumnTitle(walletModel->getOptionsModel()->getDisplayUnit());
     priv->refreshWallet();
 
     connect(walletModel->getOptionsModel(), SIGNAL(displayUnitChanged(int)), this, SLOT(updateDisplayUnit()));
@@ -272,6 +293,21 @@ void TransactionTableModel::updateTransaction(const QString &hash, int status, b
     updated.SetHex(hash.toStdString());
 
     priv->updateWallet(updated, status, showTransaction);
+}
+
+void TransactionTableModel::updateReplayStatus(const QString &hash, int replayStatus)
+{
+    if (replayStatus != TransactionStatus::ReplayUnknown &&
+            replayStatus != TransactionStatus::ReplayFalse &&
+            replayStatus != TransactionStatus::ReplayLoaded &&
+            replayStatus != TransactionStatus::ReplayTrue &&
+            replayStatus != TransactionStatus::ReplaySplit)
+    {
+        return;
+    }
+    uint256 updated;
+    updated.SetHex(hash.toStdString());
+    priv->updateWalletReplayStatus(updated, replayStatus);
 }
 
 void TransactionTableModel::updateConfirmations()
@@ -334,6 +370,27 @@ QString TransactionTableModel::formatTxStatus(const TransactionRecord *wtx) cons
         break;
     case TransactionStatus::NotAccepted:
         status = tr("Generated but not accepted");
+        break;
+    }
+
+    // Also add transaction replay status
+    status += "\n\n";
+    status += "Replay status: ";
+    switch (wtx->status.replay_status) {
+    case TransactionStatus::ReplayUnknown:
+        status += "Unknown. (Refresh replay status to update)\n";
+        break;
+    case TransactionStatus::ReplayFalse:
+        status += "Not replayed.\n";
+        break;
+    case TransactionStatus::ReplayLoaded:
+        status += "Loaded coin, replayed.\n";
+        break;
+    case TransactionStatus::ReplayTrue:
+        status += "Replayed\n";
+        break;
+    case TransactionStatus::ReplaySplit:
+        status += "Split and replay protected\n";
         break;
     }
 
@@ -501,6 +558,25 @@ QVariant TransactionTableModel::txStatusDecoration(const TransactionRecord *wtx)
     }
 }
 
+QVariant TransactionTableModel::txReplayStatusDecoration(const TransactionRecord *wtx) const
+{
+    switch(wtx->status.replay_status)
+    {
+    case TransactionStatus::ReplayUnknown:
+        return QIcon(":/icons/replay_unknown");
+    case TransactionStatus::ReplayFalse:
+        return QIcon(":/icons/replay_not_replayed");
+    case TransactionStatus::ReplayLoaded:
+        return QIcon(":/icons/replay_loaded");
+    case TransactionStatus::ReplayTrue:
+        return QIcon(":/icons/replay_replayed");
+    case TransactionStatus::ReplaySplit:
+        return QIcon(":/icons/replay_split");
+    default:
+        return COLOR_BLACK;
+    }
+}
+
 QVariant TransactionTableModel::txWatchonlyDecoration(const TransactionRecord *wtx) const
 {
     if (wtx->involvesWatchAddress)
@@ -531,6 +607,8 @@ QVariant TransactionTableModel::data(const QModelIndex &index, int role) const
     case RawDecorationRole:
         switch(index.column())
         {
+        case ReplayStatus:
+            return txReplayStatusDecoration(rec);
         case Status:
             return txStatusDecoration(rec);
         case Watchonly:
@@ -649,6 +727,8 @@ QVariant TransactionTableModel::data(const QModelIndex &index, int role) const
             details.append(formatTxAmount(rec, false, BitcoinUnits::separatorNever));
             return details;
         }
+    case TxOutputIndexRole:
+        return rec->getOutputIndex();
     case ConfirmedRole:
         return rec->status.countsForBalance;
     case FormattedAmountRole:
@@ -656,6 +736,8 @@ QVariant TransactionTableModel::data(const QModelIndex &index, int role) const
         return formatTxAmount(rec, false, BitcoinUnits::separatorNever);
     case StatusRole:
         return rec->status.status;
+    case ReplayStatusRole:
+        return rec->status.replay_status;
     }
     return QVariant();
 }
@@ -675,6 +757,8 @@ QVariant TransactionTableModel::headerData(int section, Qt::Orientation orientat
         {
             switch(section)
             {
+            case ReplayStatus:
+                return tr("Transaction replay status.");
             case Status:
                 return tr("Transaction status. Hover over this field to show number of confirmations.");
             case Date:
