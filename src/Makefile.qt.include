@@ -305,7 +305,13 @@ RES_ICONS = \
   qt/res/icons/tx_output.png \
   qt/res/icons/tx_mined.png \
   qt/res/icons/warning.png \
-  qt/res/icons/verify.png
+  qt/res/icons/verify.png \
+  qt/res/icons/refresh.png \
+  qt/res/icons/replay_unknown.png \
+  qt/res/icons/replay_not_replayed.png \
+  qt/res/icons/replay_split.png \
+  qt/res/icons/replay_replayed.png \
+  qt/res/icons/replay_loaded.png
 
 DRIVENET_QT_BASE_CPP = \
   qt/bantablemodel.cpp \
