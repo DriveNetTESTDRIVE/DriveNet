@@ -131,7 +131,7 @@ public:
         // service bits we want, but we should get them updated to support all service bits wanted by any
         // release ASAP to avoid it where possible.
         //vSeeds.emplace_back("seed.com");
-        vFixedSeeds.clear();
+        //vFixedSeeds.clear();
         vSeeds.clear();
 
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,0);
@@ -144,6 +144,7 @@ public:
 
         bech32_hrp = "bc";
 
+        // TODO add more seed nodes
         vFixedSeeds = std::vector<SeedSpec6>(pnSeed6_main, pnSeed6_main + ARRAYLEN(pnSeed6_main));
 
         fDefaultConsistencyChecks = false;
@@ -239,7 +240,7 @@ public:
 
         bech32_hrp = "tb";
 
-        vFixedSeeds = std::vector<SeedSpec6>(pnSeed6_test, pnSeed6_test + ARRAYLEN(pnSeed6_test));
+        //vFixedSeeds = std::vector<SeedSpec6>(pnSeed6_test, pnSeed6_test + ARRAYLEN(pnSeed6_test));
 
         fDefaultConsistencyChecks = false;
         fRequireStandard = false;
