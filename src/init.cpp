@@ -1795,7 +1795,7 @@ bool AppInitMain()
     }
 
     // ********************************************************* Step 12: load coins
-    uiInterface.InitMessage(_("Importing Bitcoin Core UTXO set, please wait.... This will take a while."));
+    uiInterface.InitMessage(_("Importing Bitcoin Core UTXO set... Please wait a few minutes."));
 
     // TODO improve this check... Right now we're just checking if the last
     // loaded coin that will be written can currently be looked up by pcoinsTip.
@@ -1805,7 +1805,7 @@ bool AppInitMain()
     // people will not read or follow those instructions so maybe we can just do
     // our own checksum comparison here.
     //
-    // Check if we have loaded coins and try to load them if not
+    // Check if we have already imported loaded coins, try to load them if not
     if (chainparams.NetworkIDString() == "main" &&
             !pcoinsTip->HaveCoin(COutPoint(uint256S(LAST_LOADED_OUTPOINT), LAST_LOADED_N)))
     {

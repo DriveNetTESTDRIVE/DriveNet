@@ -72,8 +72,8 @@ public:
         consensus.BIP16Height = 0;
         consensus.BIP34Height = 0;
         consensus.BIP34Hash = uint256S("0x40baa592ae0c4f004f90a547b69ba921c32d191e2ade4b84997943ae57fe3482");
-        consensus.BIP65Height = 0; // 40baa592ae0c4f004f90a547b69ba921c32d191e2ade4b84997943ae57fe3482
-        consensus.BIP66Height = 0; // 40baa592ae0c4f004f90a547b69ba921c32d191e2ade4b84997943ae57fe3482
+        consensus.BIP65Height = 0;
+        consensus.BIP66Height = 0;
         consensus.powLimit = uint256S("0000005fffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
         consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks
         consensus.nPowTargetSpacing = 10 * 60;
@@ -101,7 +101,7 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_DRIVECHAINS].nTimeout = Consensus::BIP9Deployment::NO_TIMEOUT;
 
         // The best chain should have at least this much work.
-        consensus.nMinimumChainWork = uint256S("0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.nMinimumChainWork = uint256S("0x0000000000000000000000000000000000000000000000000000000002aaaab1");
 
         // By default assume that the signatures in ancestors of this block are valid.
         consensus.defaultAssumeValid = uint256S("0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
@@ -115,7 +115,7 @@ public:
         pchMessageStart[1] = 0xfe;
         pchMessageStart[2] = 0xca;
         pchMessageStart[3] = 0xfe;
-        nDefaultPort = 8333;
+        nDefaultPort = 8451;
         nPruneAfterHeight = 100000;
 
         genesis = CreateGenesisBlock(1533362452, 4324415, 0x1d5fffff, 1, 50 * COIN);
@@ -153,7 +153,7 @@ public:
 
         checkpointData = {
             {
-                { 0, uint256S("0x40baa592ae0c4f004f90a547b69ba921c32d191e2ade4b84997943ae57fe3482")},
+                { 0, uint256S("0x006cda0ac4735938ac32ce6bb44074b99c2903b46906f68ff46637b1cd36d76d")},
             }
         };
 
