@@ -37,6 +37,12 @@ public Q_SLOTS:
                     const CAmount& immatureBalance, const CAmount& watchOnlyBalance,
                     const CAmount& watchUnconfBalance, const CAmount& watchImmatureBalance);
 
+    void on_pushButtonDeposit_clicked();
+
+    void on_pushButtonPaste_clicked();
+
+    void on_pushButtonClear_clicked();
+
 private:
     Ui::SidechainPage *ui;
 
@@ -46,6 +52,8 @@ private:
     SidechainWithdrawalTableModel *withdrawalModel;
 
     void SetupTables();
+
+    bool validateDepositAmount();
 };
 
 #endif // SIDECHAINPAGE_H

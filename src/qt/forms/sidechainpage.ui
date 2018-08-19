@@ -52,7 +52,7 @@
        </widget>
       </item>
       <item>
-       <widget class="QComboBox" name="comboBox">
+       <widget class="QComboBox" name="comboBoxSidechains">
         <property name="currentText">
          <string>Test</string>
         </property>

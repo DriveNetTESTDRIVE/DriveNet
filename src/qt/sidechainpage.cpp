@@ -133,3 +133,114 @@ void SidechainPage::SetupTables()
     ui->tableViewEscrow->setWordWrap(false);
     ui->tableViewWT->setWordWrap(false);
 }
+void SidechainPage::on_pushButtonDeposit_clicked()
+{
+    QMessageBox messageBox;
+
+#ifdef ENABLE_WALLET
+    if (vpwallets.empty()) {
+        messageBox.setWindowTitle("Wallet Error!");
+        messageBox.setText("No active wallets to create the deposit.");
+        messageBox.exec();
+        return;
+    }
+
+    if (vpwallets[0]->IsLocked()) {
+        // Locked wallet message box
+        messageBox.setWindowTitle("Wallet locked!");
+        messageBox.setText("Wallet must be unlocked to create sidechain deposit.");
+        messageBox.exec();
+        return;
+    }
+#endif
+
+    if (!validateDepositAmount()) {
+        // Invalid deposit amount message box
+        messageBox.setWindowTitle("Invalid deposit amount!");
+        messageBox.setText("Check the amount you have entered and try again.");
+        messageBox.exec();
+        return;
+    }
+
+    unsigned int nSidechain = ui->comboBoxSidechains->currentIndex();
+
+    if (!IsSidechainNumberValid(nSidechain)) {
+        // Should never be displayed
+        messageBox.setWindowTitle("Invalid sidechain selected");
+        messageBox.exec();
+        return;
+    }
+
+    // Get keyID
+    CBitcoinAddress address(ui->payTo->text().toStdString());
+    CKeyID keyID;
+    if (!address.GetKeyID(keyID)) {
+        // Invalid address message box
+        messageBox.setWindowTitle("Invalid Bitcoin address!");
+        messageBox.setText("Check the address you have entered and try again.");
+        messageBox.exec();
+        return;
+    }
+
+#ifdef ENABLE_WALLET
+    // Attempt to create the deposit
+    const CAmount& nValue = ui->payAmount->value();
+    CTransactionRef tx;
+    std::string strFail = "";
+    if (!vpwallets.empty()) {
+        if (!vpwallets[0]->CreateSidechainDeposit(tx, strFail, nSidechain, nValue, keyID)) {
+            // Create transaction error message box
+            messageBox.setWindowTitle("Creating deposit transaction failed!");
+            QString createError = "Error creating transaction!\n\n";
+            createError += QString::fromStdString(strFail);
+            messageBox.setText(createError);
+            messageBox.exec();
+            return;
+        }
+    }
+
+    // Successful deposit message box
+    messageBox.setWindowTitle("Deposit transaction created!");
+    QString result = "Deposited to " + QString::fromStdString(GetSidechainName(nSidechain));
+    result += " Sidechain.\n";
+    result += "txid: " + QString::fromStdString(tx->GetHash().ToString());
+    result += "\n";
+    result += "Amount deposited: ";
+    result += BitcoinUnits::formatWithUnit(BitcoinUnit::BTC, nValue, false, BitcoinUnits::separatorAlways);
+    messageBox.setText(result);
+    messageBox.exec();
+#endif
+}
+
+void SidechainPage::on_pushButtonPaste_clicked()
+{
+    // Paste text from clipboard into recipient field
+    ui->payTo->setText(QApplication::clipboard()->text());
+}
+
+void SidechainPage::on_pushButtonClear_clicked()
+{
+    ui->payTo->clear();
+}
+
+bool SidechainPage::validateDepositAmount()
+{
+    if (!ui->payAmount->validate()) {
+        ui->payAmount->setValid(false);
+        return false;
+    }
+
+    // Sending a zero amount is invalid
+    if (ui->payAmount->value(0) <= 0) {
+        ui->payAmount->setValid(false);
+        return false;
+    }
+
+    // Reject dust outputs:
+    if (GUIUtil::isDust(ui->payTo->text(), ui->payAmount->value())) {
+        ui->payAmount->setValid(false);
+        return false;
+    }
+
+    return true;
+}
