@@ -1718,7 +1718,79 @@ bool AppInitMain()
         return false;
     }
 
-    // ********************************************************* Step 11: start node
+    // ********************************************************* Step 11: load coins
+
+    // TODO improve this check... Right now we're just checking if the last
+    // loaded coin that will be written can currently be looked up by pcoinsTip.
+    // That does basically ensure that we have loaded all of the coins, but I'm
+    // sure there's a better way of doing this. The loaded_coins.dat file itself
+    // should be checksum verified by the user after download. However, most
+    // people will not read or follow those instructions so maybe we can just do
+    // our own checksum comparison here.
+    //
+    // Note that we only load coins for main network.
+    //
+    // Check if we have already imported loaded coins, try to load them if not
+    if (chainparams.NetworkIDString() == "main" &&
+            !pcoinsTip->HaveCoin(COutPoint(uint256S(LAST_LOADED_OUTPOINT), LAST_LOADED_N)))
+    {
+        uiInterface.InitMessage(_("Importing Bitcoin Core UTXO set... Please wait a few minutes."));
+
+        // Try to read loaded coins
+        if (!pcoinsTip->ReadLoadedCoins()) {
+            // Failed to read loaded coins, abort
+            // TODO add link to website with setup guide
+            std::string strError = "Error reading loading coins!\n\n";
+            strError += "DriveNetTESTDRIVE needs to import loaded coins before starting for the first time.";
+            strError += "\n\n";
+            strError += "You must move loaded_coins.dat to your DriveNet datadir.";
+            strError += "\n\n";
+            strError += "Shutting down.";
+            uiInterface.ThreadSafeMessageBox(_(strError.c_str()), "", CClientUIInterface::MSG_ERROR);
+            LogPrintf("Error reading loaded coins, aborting init");
+            return false;
+        }
+    }
+
+#ifdef ENABLE_WALLET
+    if (!vpwallets.empty()) {
+        uiInterface.InitMessage(_("Reading wallet's loaded coins."));
+        CWalletRef pwallet = vpwallets.front();
+        std::vector<LoadedCoin> vLoadedCoin;
+        vLoadedCoin = pcoinsTip->ReadMyLoadedCoins();
+        pwallet->AddLoadedCoins(vLoadedCoin);
+    }
+#endif
+
+    // ********************************************************* Step 12: watch sidechain addresses
+
+#ifdef ENABLE_WALLET
+    StartWallets(scheduler);
+
+    uiInterface.InitMessage(_("Watching sidechain deposit addresses"));
+    if (drivechainsEnabled) {
+        for (CWalletRef pwallet : vpwallets) {
+            LOCK2(cs_main, pwallet->cs_wallet);
+            pwallet->MarkDirty();
+
+            // Watch sidechain deposit addresses
+            for (const Sidechain& sidechain : ValidSidechains) {
+                std::vector<unsigned char> data(ParseHex(std::string(sidechain.sidechainHex)));
+                CScript script(data.begin(), data.end());
+                if (!pwallet->HaveWatchOnly(script)) {
+                    pwallet->AddWatchOnly(script, 0 /* nCreateTime */);
+                }
+
+                CTxDestination destination;
+                if (ExtractDestination(script, destination)) {
+                    pwallet->SetAddressBook(destination, sidechain.GetSidechainName(), "receive");
+                }
+            }
+        }
+    }
+#endif
+
+    // ********************************************************* Step 13: start node
 
     int chain_active_height;
 
@@ -1794,74 +1866,9 @@ bool AppInitMain()
         return false;
     }
 
-    // ********************************************************* Step 12: load coins
-    uiInterface.InitMessage(_("Importing Bitcoin Core UTXO set... Please wait a few minutes."));
-
-    // TODO improve this check... Right now we're just checking if the last
-    // loaded coin that will be written can currently be looked up by pcoinsTip.
-    // That does basically ensure that we have loaded all of the coins, but I'm
-    // sure there's a better way of doing this. The loaded_coins.dat file itself
-    // should be checksum verified by the user after download. However, most
-    // people will not read or follow those instructions so maybe we can just do
-    // our own checksum comparison here.
-    //
-    // Check if we have already imported loaded coins, try to load them if not
-    if (chainparams.NetworkIDString() == "main" &&
-            !pcoinsTip->HaveCoin(COutPoint(uint256S(LAST_LOADED_OUTPOINT), LAST_LOADED_N)))
-    {
-        // Try to read loaded coins
-        if (!pcoinsTip->ReadLoadedCoins()) {
-            // Failed to read loaded coins, abort
-            // TODO add link to website with setup guide
-            std::string strError = "Error reading loading coins!\n\n";
-            strError += "DriveNetTESTDRIVE needs to import loaded coins before starting for the first time.";
-            strError += "\n\n";
-            strError += "You must move loaded_coins.dat to your DriveNet datadir.";
-            strError += "\n\n";
-            strError += "Shutting down.";
-            uiInterface.ThreadSafeMessageBox(_(strError.c_str()), "", CClientUIInterface::MSG_ERROR);
-            LogPrintf("Error reading loaded coins, aborting init");
-            return false;
-        }
-    }
-
-#ifdef ENABLE_WALLET
-    if (!vpwallets.empty()) {
-        CWalletRef pwallet = vpwallets.front();
-        std::vector<LoadedCoin> vLoadedCoin;
-        vLoadedCoin = pcoinsTip->ReadMyLoadedCoins();
-        pwallet->AddLoadedCoins(vLoadedCoin);
-    }
-#endif
-
-    // ********************************************************* Step 13: finished
+    // ********************************************************* Step 14: finished
     SetRPCWarmupFinished();
 
-#ifdef ENABLE_WALLET
-    StartWallets(scheduler);
-
-    uiInterface.InitMessage(_("Watching sidechain deposit addresses"));
-    if (drivechainsEnabled) {
-        for (CWalletRef pwallet : vpwallets) {
-            LOCK2(cs_main, pwallet->cs_wallet);
-            pwallet->MarkDirty();
-
-            // Watch sidechain deposit addresses
-            for (const Sidechain& sidechain : ValidSidechains) {
-                std::vector<unsigned char> data(ParseHex(std::string(sidechain.sidechainHex)));
-                CScript script(data.begin(), data.end());
-                if (!pwallet->HaveWatchOnly(script)) {
-                    pwallet->AddWatchOnly(script, 0 /* nCreateTime */);
-                }
-
-                CTxDestination destination;
-                if (ExtractDestination(script, destination)) {
-                    pwallet->SetAddressBook(destination, sidechain.GetSidechainName(), "receive");
-                }
-            }
-        }
-    }
-#endif
     uiInterface.InitMessage(_("DriveNet ready to TESTDRIVE"));
 
     return !fRequestShutdown;
