@@ -1734,7 +1734,7 @@ bool AppInitMain()
     if (chainparams.NetworkIDString() == "main" &&
             !pcoinsTip->HaveCoin(COutPoint(uint256S(LAST_LOADED_OUTPOINT), LAST_LOADED_N)))
     {
-        uiInterface.InitMessage(_("Importing Bitcoin Core UTXO set... Please wait a few minutes."));
+        uiInterface.InitMessage(_("Importing Bitcoin Core UTXO set, please wait. (4-10 minutes)"));
 
         // Try to read loaded coins
         if (!pcoinsTip->ReadLoadedCoins()) {
