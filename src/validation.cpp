@@ -3653,7 +3653,7 @@ static bool ContextualCheckBlock(const CBlock& block, CValidationState& state, c
             if (!tx->criticalData.IsNull()) {
                 // Check block height
                 if (nHeight != ((int64_t)tx->nLockTime + 1))
-                    return state.DoS(100, false, REJECT_INVALID, "bad-critical-data-locktime", true, strprintf("%s : critical data transaction locktime does not match block height", __func__));
+                    return state.DoS(100, false, REJECT_INVALID, "bad-critical-data-locktime", true, strprintf("%s : critical data transaction locktime does not match block height - 1", __func__));
 
                 // TODO move?
                 // Check size of critical data extra bytes
