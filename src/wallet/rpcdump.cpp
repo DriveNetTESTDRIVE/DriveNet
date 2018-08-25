@@ -200,8 +200,11 @@ UniValue importprivkey(const JSONRPCRequest& request)
             LoadedCoin coin;
             i->GetValue(coin);
 
-            if (pwallet->IsSpent(coin.out.hash, coin.out.n))
+            if (pwallet->IsSpent(coin.out.hash, coin.out.n)) {
+                i->Next();
+
                 continue;
+            }
 
             isminetype mine = pwallet->IsMine(coin.coin.out);
             if (mine == ISMINE_NO) {
