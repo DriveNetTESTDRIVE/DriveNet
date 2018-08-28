@@ -29,19 +29,6 @@ std::string Sidechain::GetSidechainName() const
     return "SIDECHAIN_UNKNOWN";
 }
 
-int Sidechain::GetLastVerificationPeriod(int nHeight) const
-{
-    // TODO more efficient
-    for (;;) {
-        if (nHeight < 0)
-            return -1;
-        if (nHeight % SIDECHAIN_VERIFICATION_PERIOD == 0 || nHeight == 0)
-            break;
-        nHeight--;
-    }
-    return nHeight;
-}
-
 bool Sidechain::operator==(const Sidechain& a) const
 {
     return (a.nSidechain == nSidechain);

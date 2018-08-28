@@ -28,15 +28,16 @@ BOOST_AUTO_TEST_CASE(sidechaindb_isolated)
     // SIDECHAIN_TEST
     SidechainWTPrimeState wtTest;
     wtTest.hashWTPrime = hashWTTest;
-    // Start at +1 because we decrement in the loop
-    wtTest.nBlocksLeft = SIDECHAIN_VERIFICATION_PERIOD + 1;
+    wtTest.nBlocksLeft = SIDECHAIN_VERIFICATION_PERIOD;
     wtTest.nSidechain = SIDECHAIN_TEST;
+    int nHeight = 0;
     for (int i = 1; i <= SIDECHAIN_MIN_WORKSCORE; i++) {
         std::vector<SidechainWTPrimeState> vWT;
         wtTest.nWorkScore = i;
         wtTest.nBlocksLeft--;
         vWT.push_back(wtTest);
-        scdb.UpdateSCDBIndex(vWT);
+        scdb.UpdateSCDBIndex(vWT, nHeight);
+        nHeight++;
     }
 
     // WT^ 0 should pass with valid workscore (100/100)
@@ -57,15 +58,16 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MultipleVerificationPeriods)
     // Verify first transaction, check work score
     SidechainWTPrimeState wt1;
     wt1.hashWTPrime = hashWTTest1;
-    // Start at +1 because we decrement in the loop
-    wt1.nBlocksLeft = SIDECHAIN_VERIFICATION_PERIOD + 1;
+    wt1.nBlocksLeft = SIDECHAIN_VERIFICATION_PERIOD;
     wt1.nSidechain = SIDECHAIN_TEST;
+    int nHeight = 0;
     for (int i = 1; i <= SIDECHAIN_MIN_WORKSCORE; i++) {
         std::vector<SidechainWTPrimeState> vWT;
         wt1.nWorkScore = i;
         wt1.nBlocksLeft--;
         vWT.push_back(wt1);
-        scdb.UpdateSCDBIndex(vWT);
+        scdb.UpdateSCDBIndex(vWT, nHeight);
+        nHeight++;
     }
     BOOST_CHECK(scdb.CheckWorkScore(SIDECHAIN_TEST, hashWTTest1));
 
@@ -94,7 +96,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MultipleVerificationPeriods)
     wt2.nSidechain = SIDECHAIN_TEST;
     wt2.nWorkScore = 1;
     vWT.push_back(wt2);
-    scdb.UpdateSCDBIndex(vWT);
+    scdb.UpdateSCDBIndex(vWT, 0);
     BOOST_CHECK(!scdb.CheckWorkScore(SIDECHAIN_TEST, hashWTTest2));
 
     // Verify that SCDB has updated to correct WT^
@@ -102,12 +104,14 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MultipleVerificationPeriods)
     BOOST_CHECK(vState.size() == 1 && vState[0].hashWTPrime == hashWTTest2);
 
     // Give second transaction sufficient workscore and check work score
+    nHeight = 0;
     for (int i = 1; i <= SIDECHAIN_MIN_WORKSCORE; i++) {
         std::vector<SidechainWTPrimeState> vWT;
         wt2.nWorkScore = i;
         wt2.nBlocksLeft--;
         vWT.push_back(wt2);
-        scdb.UpdateSCDBIndex(vWT);
+        scdb.UpdateSCDBIndex(vWT, nHeight);
+        nHeight++;
     }
     BOOST_CHECK(scdb.CheckWorkScore(SIDECHAIN_TEST, hashWTTest2));
 
@@ -131,7 +135,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MT_single)
     wt.nSidechain = SIDECHAIN_TEST;
 
     vWT.push_back(wt);
-    scdb.UpdateSCDBIndex(vWT);
+    scdb.UpdateSCDBIndex(vWT, 0);
 
     // Create a copy of the SCDB to manipulate
     SidechainDB scdbCopy = scdb;
@@ -141,7 +145,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MT_single)
     wt.nWorkScore++;
     wt.nBlocksLeft--;
     vWT.push_back(wt);
-    scdbCopy.UpdateSCDBIndex(vWT);
+    scdbCopy.UpdateSCDBIndex(vWT, 0);
 
     // Simulate receiving Sidechain WT^ update message
     SidechainUpdateMSG msg;
@@ -178,7 +182,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MT_multipleSC)
     std::vector<SidechainWTPrimeState> vWT;
     vWT.push_back(wtTest);
 
-    scdb.UpdateSCDBIndex(vWT);
+    scdb.UpdateSCDBIndex(vWT, 0);
 
     // Create a copy of the SCDB to manipulate
     SidechainDB scdbCopy = scdb;
@@ -190,7 +194,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MT_multipleSC)
     vWT.clear();
     vWT.push_back(wtTest);
 
-    scdbCopy.UpdateSCDBIndex(vWT);
+    scdbCopy.UpdateSCDBIndex(vWT, 1);
 
     // Simulate receiving Sidechain WT^ update message
     SidechainUpdateMSG msgTest;
@@ -228,7 +232,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MT_multipleWT)
     std::vector<SidechainWTPrimeState> vWT;
     vWT.push_back(wtTest);
 
-    scdb.UpdateSCDBIndex(vWT);
+    scdb.UpdateSCDBIndex(vWT, 0);
 
     // Create a copy of the SCDB to manipulate
     SidechainDB scdbCopy = scdb;
@@ -240,7 +244,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MT_multipleWT)
     vWT.clear();
     vWT.push_back(wtTest);
 
-    scdbCopy.UpdateSCDBIndex(vWT);
+    scdbCopy.UpdateSCDBIndex(vWT, 1);
 
     // Simulate receiving Sidechain WT^ update message
     SidechainUpdateMSG msgTest;

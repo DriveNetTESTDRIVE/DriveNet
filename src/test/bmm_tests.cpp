@@ -76,7 +76,7 @@ BOOST_AUTO_TEST_CASE(bmm_valid)
     block.vtx.push_back(MakeTransactionRef(std::move(mtx)));
 
     // Generate commit
-    GenerateCriticalHashCommitment(block, Params().GetConsensus());
+    GenerateCriticalHashCommitments(block, Params().GetConsensus());
 
     // Copy coinbase from block
     CMutableTransaction commit(*block.vtx[0]);
@@ -151,7 +151,7 @@ BOOST_AUTO_TEST_CASE(bmm_invalid_sidechain)
     block.vtx.push_back(MakeTransactionRef(std::move(mtx)));
 
     // Generate commit
-    GenerateCriticalHashCommitment(block, Params().GetConsensus());
+    GenerateCriticalHashCommitments(block, Params().GetConsensus());
 
     // Copy coinbase from block
     CMutableTransaction commit(*block.vtx[0]);
@@ -222,7 +222,7 @@ BOOST_AUTO_TEST_CASE(bmm_invalid_prevblockref_limit)
     block.vtx.push_back(MakeTransactionRef(std::move(mtx)));
 
     // Generate commit
-    GenerateCriticalHashCommitment(block, Params().GetConsensus());
+    GenerateCriticalHashCommitments(block, Params().GetConsensus());
 
     // Copy coinbase from block
     CMutableTransaction commit(*block.vtx[0]);
@@ -293,7 +293,7 @@ BOOST_AUTO_TEST_CASE(bmm_invalid_prevblockref)
     block.vtx.push_back(MakeTransactionRef(std::move(mtx)));
 
     // Generate commit
-    GenerateCriticalHashCommitment(block, Params().GetConsensus());
+    GenerateCriticalHashCommitments(block, Params().GetConsensus());
 
     // Copy coinbase from block
     CMutableTransaction commit(*block.vtx[0]);

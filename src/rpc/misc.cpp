@@ -927,8 +927,9 @@ UniValue receivewtprime(const JSONRPCRequest& request)
     if (wtPrime.IsNull())
         throw std::runtime_error("Invalid WT^ hex");
 
-    // Add WT^ to sidechain DB and start verification
-    if (!scdb.AddWTPrime(nSidechain, wtPrime))
+    // Add WT^ to our local cache so that we can create a WT^ hash commitment
+    // in the next block we mine to begin the verification process
+    if (!scdb.CacheWTPrime(nSidechain, wtPrime))
         throw std::runtime_error("WT^ rejected (duplicate?)");
 
     // Return WT^ hash to verify it has been received

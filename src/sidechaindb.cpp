@@ -78,7 +78,27 @@ void SidechainDB::AddSidechainNetworkUpdatePackage(const SidechainUpdatePackage&
     vSidechainUpdateCache.push_back(update);
 }
 
-bool SidechainDB::AddWTPrime(uint8_t nSidechain, const CTransaction& tx)
+bool SidechainDB::AddWTPrime(uint8_t nSidechain, const uint256& hashWTPrime, int nHeight)
+{
+    if (!IsSidechainNumberValid(nSidechain))
+        return false;
+
+    std::vector<SidechainWTPrimeState> vWT;
+
+    SidechainWTPrimeState wt;
+    wt.nSidechain = nSidechain;
+
+    int nAge = GetNumBlocksSinceLastSidechainVerificationPeriod(nHeight);
+    wt.nBlocksLeft = SIDECHAIN_VERIFICATION_PERIOD - nAge;
+    wt.nWorkScore = 1;
+    wt.hashWTPrime = hashWTPrime;
+
+    vWT.push_back(wt);
+
+    return UpdateSCDBIndex(vWT, nHeight);
+}
+
+bool SidechainDB::CacheWTPrime(uint8_t nSidechain, const CTransaction& tx)
 {
     if (vWTPrimeCache.size() >= SIDECHAIN_MAX_WT)
         return false;
@@ -87,21 +107,9 @@ bool SidechainDB::AddWTPrime(uint8_t nSidechain, const CTransaction& tx)
     if (HaveWTPrimeCached(tx.GetHash()))
         return false;
 
-    std::vector<SidechainWTPrimeState> vWT;
+    vWTPrimeCache.push_back(tx);
 
-    SidechainWTPrimeState wt;
-    wt.nSidechain = nSidechain;
-    wt.nBlocksLeft = SIDECHAIN_VERIFICATION_PERIOD;
-    wt.nWorkScore = 1;
-    wt.hashWTPrime = tx.GetHash();
-
-    vWT.push_back(wt);
-
-    if (UpdateSCDBIndex(vWT)) {
-        vWTPrimeCache.push_back(tx);
-        return true;
-    }
-    return false;
+    return true;
 }
 
 int SidechainDB::CountBlocksAtop(const CCriticalData& data) const
@@ -190,10 +198,10 @@ uint256 SidechainDB::GetHashBlockLastSeen()
     return hashBlockLastSeen;
 }
 
-uint256 SidechainDB::GetSCDBHashIfUpdate(const std::vector<SidechainWTPrimeState>& vNewScores) const
+uint256 SidechainDB::GetSCDBHashIfUpdate(const std::vector<SidechainWTPrimeState>& vNewScores, int nHeight) const
 {
     SidechainDB scdbCopy = (*this);
-    scdbCopy.UpdateSCDBIndex(vNewScores);
+    scdbCopy.UpdateSCDBIndex(vNewScores, nHeight);
 
     return (scdbCopy.GetSCDBHash());
 }
@@ -229,6 +237,20 @@ std::vector<CTransaction> SidechainDB::GetWTPrimeCache() const
     return vWTPrimeCache;
 }
 
+std::vector<uint256> SidechainDB::GetUncommittedWTPrimeCache(uint8_t nSidechain) const
+{
+    std::vector<uint256> vHash;
+    // TODO update the container of WT^ cache, and only loop through the
+    // correct sidechain's (based on nSidechain) WT^(s).
+    for (const CTransaction& t : vWTPrimeCache) {
+        uint256 txid = t.GetHash();
+        if (!HaveWTPrimeWorkScore(txid, nSidechain)) {
+            vHash.push_back(t.GetHash());
+        }
+    }
+    return vHash;
+}
+
 bool SidechainDB::HasState() const
 {
     // Make sure that SCDB is actually initialized
@@ -237,6 +259,9 @@ bool SidechainDB::HasState() const
 
     // Check if any SCDBIndex(s) are populated
     if (SCDB[SIDECHAIN_TEST].IsPopulated())
+        return true;
+
+    if (vWTPrimeCache.size())
         return true;
 
     return false;
@@ -267,6 +292,19 @@ bool SidechainDB::HaveWTPrimeCached(const uint256& hashWTPrime) const
 {
     for (const CTransaction& tx : vWTPrimeCache) {
         if (tx.GetHash() == hashWTPrime)
+            return true;
+    }
+    return false;
+}
+
+bool SidechainDB::HaveWTPrimeWorkScore(const uint256& hashWTPrime, uint8_t nSidechain) const
+{
+    if (!IsSidechainNumberValid(nSidechain))
+        return false;
+
+    std::vector<SidechainWTPrimeState> vState = GetState(nSidechain);
+    for (const SidechainWTPrimeState& state : vState) {
+        if (state.hashWTPrime == hashWTPrime)
             return true;
     }
     return false;
@@ -317,13 +355,12 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const std::vecto
     if (!vout.size())
         return false;
 
-    // If the verification period ended, reset sidechain WT^ verification status
+    // If the verification period ended, clear old data
     if (nHeight > 0 && (nHeight % SIDECHAIN_VERIFICATION_PERIOD) == 0) {
         SCDB.clear();
         SCDB.resize(VALID_SIDECHAINS_COUNT);
+        vWTPrimeCache.clear();
     }
-    // TODO clear out cached WT^(s) that belong to the Sidechain
-    // that was just reset.
 
     /*
      * Now we will look for data that is relevant to SCDB
@@ -360,7 +397,6 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const std::vecto
             if (!criticalData.IsBMMRequest(nSidechain, nPrevBlockRef))
                 continue;
 
-
             if (nPrevBlockRef > ratchet[nSidechain].size())
                 continue;
 
@@ -373,7 +409,7 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const std::vecto
 
             // Maintain ratchet size limit
             if (!(ratchet[nSidechain].size() < BMM_MAX_LD)) {
-                // TODO change to vector of queue for pop()
+                // TODO change to vector of queue for pop() ?
                 ratchet.erase(ratchet.begin());
             }
         }
@@ -384,41 +420,22 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const std::vecto
         const CScript& scriptPubKey = out.scriptPubKey;
         if (scriptPubKey.IsWTPrimeHashCommit()) {
             // Get WT^ hash from script
-            CScript::const_iterator phash = scriptPubKey.begin() + 7;
-            opcodetype opcode;
-            std::vector<unsigned char> vchHash;
-            if (!scriptPubKey.GetOp(phash, opcode, vchHash))
-                continue;
-            if (vchHash.size() != 32)
-                continue;
+            uint256 hashWTPrime = uint256(std::vector<unsigned char>(scriptPubKey.begin() + 6, scriptPubKey.begin() + 38));
 
-            uint256 hashWT = uint256(vchHash);
-
-            // Check sidechain number
-            CScript::const_iterator pnsidechain = scriptPubKey.begin() + 39;
+            // Get sidechain number
+            CScript::const_iterator pnsidechain = scriptPubKey.begin() + 38;
             std::vector<unsigned char> vchNS;
+            opcodetype opcode;
             if (!scriptPubKey.GetOp(pnsidechain, opcode, vchNS))
             if (vchNS.size() < 1 || vchNS.size() > 4)
                 continue;
 
             CScriptNum nSidechain(vchNS, true);
-            if (!IsSidechainNumberValid(nSidechain.getint()))
+
+            if (!AddWTPrime(nSidechain.getint(), hashWTPrime, nHeight)) {
+                // TODO handle failure or at least log something
                 continue;
-
-            // Create WT^ object
-            std::vector<SidechainWTPrimeState> vWT;
-
-            SidechainWTPrimeState wt;
-            wt.nSidechain = nSidechain.getint();
-            wt.nBlocksLeft = SIDECHAIN_VERIFICATION_PERIOD;
-            wt.nWorkScore = 1;
-            wt.hashWTPrime = hashWT;
-
-            vWT.push_back(wt);
-
-            // Add to SCDB
-            bool fUpdated = UpdateSCDBIndex(vWT);
-            // TODO handle !fUpdated
+            }
         }
     }
 
@@ -438,15 +455,9 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const std::vecto
         const CScript& scriptPubKey = vMTHashScript.front();
 
         // Get MT hash from script
-        CScript::const_iterator phash = scriptPubKey.begin() + 6;
-        opcodetype opcode;
-        std::vector<unsigned char> vch;
-        if (scriptPubKey.GetOp(phash, opcode, vch) && vch.size() == 32) {
-            // Try and sync
-            uint256 hashMerkleRoot = uint256(vch);
-            bool fUpdated = UpdateSCDBMatchMT(nHeight, hashMerkleRoot);
-            // TODO handle !fUpdated
-        }
+        uint256 hashMerkleRoot = uint256(std::vector<unsigned char>(scriptPubKey.begin() + 6, scriptPubKey.begin() + 38));
+        bool fUpdated = UpdateSCDBMatchMT(nHeight, hashMerkleRoot);
+        // TODO handle !fUpdated
     }
 
     // Update hashBLockLastSeen
@@ -455,7 +466,7 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const std::vecto
     return true;
 }
 
-bool SidechainDB::UpdateSCDBIndex(const std::vector<SidechainWTPrimeState>& vNewScores)
+bool SidechainDB::UpdateSCDBIndex(const std::vector<SidechainWTPrimeState>& vNewScores, int nHeight)
 {
     if (!vNewScores.size())
         return false;
@@ -502,7 +513,9 @@ bool SidechainDB::UpdateSCDBIndex(const std::vector<SidechainWTPrimeState>& vNew
             // Add a new WT^
             if (s.nWorkScore != 1)
                 continue;
-            if (s.nBlocksLeft != SIDECHAIN_VERIFICATION_PERIOD)
+
+            int nAge = GetNumBlocksSinceLastSidechainVerificationPeriod(nHeight);
+            if (s.nBlocksLeft != (SIDECHAIN_VERIFICATION_PERIOD - nAge))
                 continue;
             index.InsertMember(s);
         }
@@ -518,20 +531,20 @@ bool SidechainDB::UpdateSCDBMatchMT(int nHeight, const uint256& hashMerkleRoot)
 
     // Try testing out most likely updates
     std::vector<SidechainWTPrimeState> vUpvote = GetUpvotes();
-    if (GetSCDBHashIfUpdate(vUpvote) == hashMerkleRoot) {
-        UpdateSCDBIndex(vUpvote);
+    if (GetSCDBHashIfUpdate(vUpvote, nHeight) == hashMerkleRoot) {
+        UpdateSCDBIndex(vUpvote, nHeight);
         return (GetSCDBHash() == hashMerkleRoot);
     }
 
     std::vector<SidechainWTPrimeState> vAbstain = GetAbstainVotes();
-    if (GetSCDBHashIfUpdate(vAbstain) == hashMerkleRoot) {
-        UpdateSCDBIndex(vAbstain);
+    if (GetSCDBHashIfUpdate(vAbstain, nHeight) == hashMerkleRoot) {
+        UpdateSCDBIndex(vAbstain, nHeight);
         return (GetSCDBHash() == hashMerkleRoot);
     }
 
     std::vector<SidechainWTPrimeState> vDownvote = GetDownvotes();
-    if (GetSCDBHashIfUpdate(vDownvote) == hashMerkleRoot) {
-        UpdateSCDBIndex(vDownvote);
+    if (GetSCDBHashIfUpdate(vDownvote, nHeight) == hashMerkleRoot) {
+        UpdateSCDBIndex(vDownvote, nHeight);
         return (GetSCDBHash() == hashMerkleRoot);
     }
 
@@ -569,8 +582,8 @@ bool SidechainDB::UpdateSCDBMatchMT(int nHeight, const uint256& hashMerkleRoot)
 
         // Test out updating SCDB copy with this update package
         // if it worked, apply the update
-        if (GetSCDBHashIfUpdate(vWT) == hashMerkleRoot) {
-            UpdateSCDBIndex(vWT);
+        if (GetSCDBHashIfUpdate(vWT, nHeight) == hashMerkleRoot) {
+            UpdateSCDBIndex(vWT, nHeight);
             return (GetSCDBHash() == hashMerkleRoot);
         }
     }
@@ -645,4 +658,23 @@ bool SidechainDB::ApplyDefaultUpdate()
         }
     }
     return true;
+}
+
+int GetLastSidechainVerificationPeriod(int nHeight)
+{
+    // TODO more efficient
+    for (;;) {
+        if (nHeight < 0)
+            return -1;
+        if (nHeight == 0 || nHeight % SIDECHAIN_VERIFICATION_PERIOD == 0)
+            break;
+        nHeight--;
+    }
+    return nHeight;
+}
+
+int GetNumBlocksSinceLastSidechainVerificationPeriod(int nHeight)
+{
+    int nPeriodStart = GetLastSidechainVerificationPeriod(nHeight);
+    return nHeight - nPeriodStart;
 }

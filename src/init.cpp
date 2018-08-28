@@ -1594,13 +1594,16 @@ bool AppInitMain()
     // Synchronize SCDB
     if (drivechainsEnabled && chainActive.Tip() && (chainActive.Tip()->GetBlockHash() != scdb.GetHashBlockLastSeen()))
     {
-        // Find out how many blocks we need to update SCDB
+        // TODO use GetLastSidechainVerificationPeriod() from validation
+        // Find out how far back (in blocks) we need to synchronize SCDB
         const int nHeight = chainActive.Height();
         int nTail = nHeight;
-        for (const Sidechain& s : ValidSidechains) {
-            int nLastPeriod = s.GetLastVerificationPeriod(nHeight);
-            if (nLastPeriod < nTail)
-                nTail = nLastPeriod;
+        for (;;) {
+            if (nTail < 0)
+                return InitError("Failed to initialize SCDB, invalid last period height\n");
+            if (nTail == 0 || nTail % SIDECHAIN_VERIFICATION_PERIOD == 0)
+                break;
+            nTail--;
         }
 
         // Update SCDB
@@ -1612,13 +1615,13 @@ bool AppInitMain()
             CBlockIndex* pindex = chainActive[i];
             // Check that block index exists
             if (!pindex) {
-                LogPrintf("SCDB cannot read null block index. Exiting.\n");
+                LogPrintf("Failed to initialize SCDB, cannot read null block index. Exiting.\n");
                 return false;
             }
 
             // Check that coinbase is cached
             if (!pindex->fCoinbase || !pindex->coinbase)
-                return InitError("Cannot initalize SCDB. Corrupt coinbase cache.\n");
+                return InitError("Failed to initalize SCDB, Corrupt coinbase cache.\n");
 
             // Update SCDB
             std::string strError = "";

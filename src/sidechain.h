@@ -33,8 +33,6 @@ struct Sidechain {
     const char* sidechainHex;
 
     std::string GetSidechainName() const;
-    // Return height of the beginning of current verification period
-    int GetLastVerificationPeriod(int nHeight) const;
     bool operator==(const Sidechain& a) const;
     std::string ToString() const;
 };
@@ -116,13 +114,19 @@ struct SCDBIndex {
 
 static const std::array<Sidechain, VALID_SIDECHAINS_COUNT> ValidSidechains =
 {{
-    // {nSidechain, sidechainKey, sidechainPriv, sidechainHex}
-    {SIDECHAIN_TEST, "4f63ac20e97ea2d44faa0212d0a26dff53ed5dca", "cPNEJzi2Q9m4R1jhNyL1uq6ABRqooFsSvTbMeAWb4d9EArVNLhjs", "76a914ca5ded53ff6da2d01202aa4fd4a27ee920ac634f88ac"},
+    //
+    // {nSidechain, sidechain keyID, sidechain private key, public key}
+    //
+    // Test Sidechain: 4ZZC8413qr9gWRymw2PryT3mY3KikidNxg
+    {SIDECHAIN_TEST,
+        "f790b44c3cd78a786819cd4cb6fd696e8d81c0d9",
+        "Kxpt9ph9fdYzw1dVThf5fPuAHzsFzKaWfYiHx3EzYwVb6PQPy6f9",
+        "76a914d9c0818d6e69fdb64ccd1968788ad73c4cb490f788ac"},
 }};
 
 static const std::map<std::string, int> ValidSidechainField =
 {
-    {"76a914ca5ded53ff6da2d01202aa4fd4a27ee920ac634f88ac", SIDECHAIN_TEST},
+    {"76a914d9c0818d6e69fdb64ccd1968788ad73c4cb490f788ac", SIDECHAIN_TEST},
 };
 
 

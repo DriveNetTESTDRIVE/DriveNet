@@ -2107,8 +2107,8 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
          * M5: (Drivechain Deposit): A deposit will increase the amount of coins
          * held in the CTIP output of the sidechain.
          *
-         * M6: (Drivechain Withdrawal): A withdrawal will decrease the amount of coins
-         * held in the CTIP output of the sidechain.
+         * M6: (Drivechain Withdrawal): A withdrawal will decrease the amount of
+         * coins held in the CTIP output of the sidechain.
          */
 
         if (drivechainsEnabled) {
@@ -3294,7 +3294,7 @@ std::vector<unsigned char> GenerateCoinbaseCommitment(CBlock& block, const CBloc
     return commitment;
 }
 
-void GenerateCriticalHashCommitment(CBlock& block, const Consensus::Params& consensusParams)
+void GenerateCriticalHashCommitments(CBlock& block, const Consensus::Params& consensusParams)
 {
     /*
      * M8 (v1)
@@ -3305,10 +3305,10 @@ void GenerateCriticalHashCommitment(CBlock& block, const Consensus::Params& cons
         return;
 
     // Check for activation of Drivechains
-    if (!IsDrivechainEnabled(chainActive.Tip(), Params().GetConsensus()))
+    if (!IsDrivechainEnabled(chainActive.Tip(), consensusParams))
         return;
 
-    std::vector<CCriticalData> vCriticalData = GetCriticalDataRequests(block);
+    std::vector<CCriticalData> vCriticalData = GetCriticalDataRequests(block, consensusParams);
     std::vector<CTxOut> vout;
     for (const CCriticalData& d : vCriticalData) {
         CTxOut out;
@@ -3348,7 +3348,7 @@ void GenerateLNCriticalHashCommitment(CBlock& block, const Consensus::Params& co
      */
 
     // Check for activation of Drivechains
-    if (!IsDrivechainEnabled(chainActive.Tip(), Params().GetConsensus()))
+    if (!IsDrivechainEnabled(chainActive.Tip(), consensusParams))
         return;
 
     // TODO
@@ -3389,7 +3389,7 @@ void GenerateLNCriticalHashCommitment(CBlock& block, const Consensus::Params& co
     }
 }
 
-void GenerateSCDBHashMerkleRootCommitment(CBlock& block, const Consensus::Params& consensusParams)
+void GenerateSCDBHashMerkleRootCommitment(CBlock& block, const uint256& hashSCDB, const Consensus::Params& consensusParams)
 {
     /*
      * "M1, M2, M3, M4"
@@ -3398,7 +3398,7 @@ void GenerateSCDBHashMerkleRootCommitment(CBlock& block, const Consensus::Params
      */
 
     // Check for activation of Drivechains
-    if (!IsDrivechainEnabled(chainActive.Tip(), Params().GetConsensus()))
+    if (!IsDrivechainEnabled(chainActive.Tip(), consensusParams))
         return;
 
     // check consensusParams.vDeployments[Consensus::DEPLOYMENT_DRIVECHAINS]
@@ -3419,8 +3419,7 @@ void GenerateSCDBHashMerkleRootCommitment(CBlock& block, const Consensus::Params
     out.scriptPubKey[5] = 0x8C;
 
     // Add SCDB hashMerkleRoot
-    uint256 hashMerkleRoot = scdb.GetSCDBHash();
-    memcpy(&out.scriptPubKey[6], &hashMerkleRoot, 32);
+    memcpy(&out.scriptPubKey[6], &hashSCDB, 32);
 
     // Update coinbase in block
     CMutableTransaction mtx(*block.vtx[0]);
@@ -3437,7 +3436,7 @@ void GenerateBMMHashMerkleRootCommitment(CBlock& block, const Consensus::Params&
      */
 
     // Check for activation of Drivechains
-    if (!IsDrivechainEnabled(chainActive.Tip(), Params().GetConsensus()))
+    if (!IsDrivechainEnabled(chainActive.Tip(), consensusParams))
         return;
 
     if (!scdb.HasState())
@@ -3466,7 +3465,7 @@ void GenerateBMMHashMerkleRootCommitment(CBlock& block, const Consensus::Params&
     block.vtx[0] = MakeTransactionRef(std::move(mtx));
 }
 
-CScript GenerateWTPrimeHashCommitment(const uint256& hashWTPrime, const uint8_t nSidechain)
+void GenerateWTPrimeHashCommitment(CBlock& block, const uint256& hashWTPrime, const uint8_t nSidechain, const Consensus::Params& consensusParams)
 {
     /*
      * M3
@@ -3474,36 +3473,40 @@ CScript GenerateWTPrimeHashCommitment(const uint256& hashWTPrime, const uint8_t 
      * BIP: (INSERT HERE ONCE ASSIGNED) // TODO
      */
 
-    CScript script;
-
     // Check for activation of Drivechains
-    if (!IsDrivechainEnabled(chainActive.Tip(), Params().GetConsensus()))
-        return script;
+    if (!IsDrivechainEnabled(chainActive.Tip(), consensusParams))
+        return;
+
+    CTxOut out;
+    out.nValue = 0;
 
     // Add script header
-    script.resize(38);
-    script[0] = OP_RETURN;
-    script[1] = 0x24;
-    script[2] = 0xD4;
-    script[3] = 0x5A;
-    script[4] = 0xA9;
-    script[5] = 0x43;
+    out.scriptPubKey.resize(38);
+    out.scriptPubKey[0] = OP_RETURN;
+    out.scriptPubKey[1] = 0x24;
+    out.scriptPubKey[2] = 0xD4;
+    out.scriptPubKey[3] = 0x5A;
+    out.scriptPubKey[4] = 0xA9;
+    out.scriptPubKey[5] = 0x43;
 
-    // Add WT^ hash
-    memcpy(&script[6], &hashWTPrime, 32);
+    // Add BMM hashMerkleRoot
+    memcpy(&out.scriptPubKey[6], &hashWTPrime, 32);
 
     // Add nSidechain
-    script << CScriptNum(nSidechain);
+    out.scriptPubKey << CScriptNum(nSidechain);
 
-    return script;
+    // Update coinbase in block
+    CMutableTransaction mtx(*block.vtx[0]);
+    mtx.vout.push_back(out);
+    block.vtx[0] = MakeTransactionRef(std::move(mtx));
 }
 
-std::vector<CCriticalData> GetCriticalDataRequests(const CBlock& block)
+std::vector<CCriticalData> GetCriticalDataRequests(const CBlock& block, const Consensus::Params& consensusParams)
 {
     std::vector<CCriticalData> vCriticalData;
 
     // Check for activation of Drivechains
-    if (!IsDrivechainEnabled(chainActive.Tip(), Params().GetConsensus()))
+    if (!IsDrivechainEnabled(chainActive.Tip(), consensusParams))
         return vCriticalData;
 
     if (block.vtx.size() < 2)

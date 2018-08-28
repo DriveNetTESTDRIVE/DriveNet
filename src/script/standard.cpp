@@ -31,6 +31,7 @@ const char* GetTxnOutputType(txnouttype t)
     case TX_WITNESS_V0_KEYHASH: return "witness_v0_keyhash";
     case TX_WITNESS_V0_SCRIPTHASH: return "witness_v0_scripthash";
     case TX_WITNESS_UNKNOWN: return "witness_unknown";
+    case TX_ANYONE_CAN_SPEND: return "anyone_can_spend";
     }
     return nullptr;
 }
@@ -52,6 +53,14 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, std::vector<std::v
     }
 
     vSolutionsRet.clear();
+
+    // Shortcut for anyone-can-spend script of a certain type (op_true being
+    // the only thing pushed) where the entire script is 0x51.
+    if (scriptPubKey.size() == 1 && scriptPubKey.front() == OP_TRUE)
+    {
+        typeRet = TX_ANYONE_CAN_SPEND;
+        return true;
+    }
 
     // Shortcut for pay-to-script-hash, which are more constrained than the other types:
     // it is always OP_HASH160 20 [20 byte hash] OP_EQUAL

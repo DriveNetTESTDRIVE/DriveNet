@@ -127,13 +127,13 @@ QVariant SidechainWithdrawalTableModel::headerData(int section, Qt::Orientation 
 
 void SidechainWithdrawalTableModel::updateModel()
 {
-    if (!scdb.HasState())
-        return;
-
     // Clear old data
     beginResetModel();
     model.clear();
     endResetModel();
+
+    if (!scdb.HasState())
+        return;
 
     int nSidechains = ValidSidechains.size();
     beginInsertColumns(QModelIndex(), model.size(), model.size() + nSidechains);
@@ -144,7 +144,7 @@ void SidechainWithdrawalTableModel::updateModel()
             object.sidechain = QString::fromStdString(s.GetSidechainName());
             object.hashWTPrime = QString::fromStdString(wt.hashWTPrime.ToString());
             object.nAcks = wt.nWorkScore;
-            object.nAge = abs(wt.nBlocksLeft - SIDECHAIN_VERIFICATION_PERIOD);
+            object.nAge = abs(wt.nBlocksLeft - SIDECHAIN_VERIFICATION_PERIOD) + 1; // Note +1 because zero based
             object.nMaxAge = SIDECHAIN_VERIFICATION_PERIOD;
             object.fApproved = scdb.CheckWorkScore(wt.nSidechain, wt.hashWTPrime);
 

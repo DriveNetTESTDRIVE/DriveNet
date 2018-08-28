@@ -194,12 +194,34 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     pblock->vtx[0] = MakeTransactionRef(std::move(coinbaseTx));
 
     if (drivechainsEnabled) {
-        // We're generating the block, and will upvote the last WT^ by default.
-        if (scdb.HasState())
-            scdb.UpdateSCDBIndex(scdb.GetUpvotes());
-        GenerateSCDBHashMerkleRootCommitment(*pblock, chainparams.GetConsensus());
+        if (scdb.HasState()) {
+            bool fPeriodEnded = (nHeight % SIDECHAIN_VERIFICATION_PERIOD == 0);
+            // TODO make interactive - GUI
+            // We're generating the block, and will upvote the leading WT^ by default.
+            uint256 hashSCDB;
+            if (fPeriodEnded)
+                hashSCDB = scdb.GetSCDBHash();
+            else
+                hashSCDB = scdb.GetSCDBHashIfUpdate(scdb.GetUpvotes(), nHeight);
+
+            if ((!fPeriodEnded && !hashSCDB.IsNull()) || fPeriodEnded)
+                GenerateSCDBHashMerkleRootCommitment(*pblock, hashSCDB, chainparams.GetConsensus());
+        }
         GenerateBMMHashMerkleRootCommitment(*pblock, chainparams.GetConsensus());
-        GenerateCriticalHashCommitment(*pblock, chainparams.GetConsensus());
+        GenerateCriticalHashCommitments(*pblock, chainparams.GetConsensus());
+
+        // TODO make interactive - GUI
+        for (const Sidechain& s : ValidSidechains) {
+            std::vector<uint256> vFreshWTPrime;
+            vFreshWTPrime = scdb.GetUncommittedWTPrimeCache(s.nSidechain);
+
+            if (vFreshWTPrime.empty())
+                continue;
+
+            // For now, if there are fresh (uncommited, unknown to SCDB) WT^(s)
+            // we will commit the most recent in the block we are generating.
+            GenerateWTPrimeHashCommitment(*pblock, vFreshWTPrime.back(), s.nSidechain, chainparams.GetConsensus());
+        }
     }
 
     pblocktemplate->vchCoinbaseCommitment = GenerateCoinbaseCommitment(*pblock, pindexPrev, chainparams.GetConsensus());
@@ -252,6 +274,7 @@ bool BlockAssembler::TestPackage(uint64_t packageSize, int64_t packageSigOpsCost
 // - transaction finality (locktime)
 // - premature witness (in case segwit transactions are added to mempool before
 //   segwit activation)
+// - critical data request height
 bool BlockAssembler::TestPackageTransactions(const CTxMemPool::setEntries& package)
 {
     for (const CTxMemPool::txiter it : package) {
@@ -259,6 +282,10 @@ bool BlockAssembler::TestPackageTransactions(const CTxMemPool::setEntries& packa
             return false;
         if (!fIncludeWitness && it->GetTx().HasWitness())
             return false;
+        if (!it->GetTx().criticalData.IsNull()) {
+            if (nHeight != (int64_t)it->GetTx().nLockTime + 1)
+                return false;
+        }
     }
     return true;
 }
@@ -568,7 +595,6 @@ void BlockAssembler::addPackageTxs(int &nPackagesSelected, int &nDescendantsUpda
         onlyUnconfirmed(ancestors);
         ancestors.insert(iter);
 
-        // Test if all tx's are Final
         if (!TestPackageTransactions(ancestors)) {
             if (fUsingModified) {
                 mapModifiedTx.get<ancestor_score>().erase(modit);
@@ -682,7 +708,7 @@ void static BitcoinMiner(const CChainParams& chainparams)
 {
     LogPrintf("BitcoinMiner started\n");
     //SetThreadPriority(THREAD_PRIORITY_LOWEST);
-    RenameThread("bitcoin-miner");
+    RenameThread("drivenet-miner");
 
     unsigned int nExtraNonce = 0;
 
@@ -691,7 +717,6 @@ void static BitcoinMiner(const CChainParams& chainparams)
 
     std::shared_ptr<CReserveScript> coinbaseScript;
     vpwallets[0]->GetScriptForMining(coinbaseScript);
-
 
     try {
         // Throw an error if no script was provided.  This can happen
@@ -724,6 +749,10 @@ void static BitcoinMiner(const CChainParams& chainparams)
             //
             unsigned int nTransactionsUpdatedLast = mempool.GetTransactionsUpdated();
             CBlockIndex* pindexPrev = chainActive.Tip();
+
+            int nMinerSleep = gArgs.GetArg("-minersleep", 0);
+            if (nMinerSleep)
+                MilliSleep(nMinerSleep);
 
             std::unique_ptr<CBlockTemplate> pblocktemplate(BlockAssembler(Params()).CreateNewBlock(coinbaseScript->reserveScript));
             if (!pblocktemplate.get())
