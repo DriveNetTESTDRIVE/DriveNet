@@ -15,8 +15,8 @@ static const int SIDECHAIN_MAX_WT = 32; // TODO remove (CryptAxe wants this, psz
 static const size_t VALID_SIDECHAINS_COUNT = 1;
 
 // These are the temporary values to speed things up during testing
-static const int SIDECHAIN_VERIFICATION_PERIOD = 2600;
-static const int SIDECHAIN_MIN_WORKSCORE = 1600;
+static const int SIDECHAIN_VERIFICATION_PERIOD = 300;
+static const int SIDECHAIN_MIN_WORKSCORE = 141;
 
 // These are the values that will be used in the final release
 //static const int SIDECHAIN_VERIFICATION_PERIOD = 26298;
