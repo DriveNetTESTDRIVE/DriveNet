@@ -21,8 +21,8 @@ std::string Sidechain::GetSidechainName() const
 {
     // Check that number corresponds to a valid sidechain
     switch (nSidechain) {
-    case SIDECHAIN_TEST:
-        return "Test";
+    case SIDECHAIN_ONE:
+        return "Sidechain One";
     default:
         break;
     }
@@ -171,7 +171,7 @@ bool IsSidechainNumberValid(uint8_t nSidechain)
 
     // Check that number corresponds to a valid sidechain
     switch (nSidechain) {
-    case SIDECHAIN_TEST:
+    case SIDECHAIN_ONE:
         return true;
     default:
         return false;

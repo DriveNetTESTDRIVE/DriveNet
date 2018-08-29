@@ -54,11 +54,11 @@
       <item>
        <widget class="QComboBox" name="comboBoxSidechains">
         <property name="currentText">
-         <string>Test</string>
+         <string>Sidechain One</string>
         </property>
         <item>
          <property name="text">
-          <string>Test</string>
+          <string>Sidechain One</string>
          </property>
         </item>
        </widget>

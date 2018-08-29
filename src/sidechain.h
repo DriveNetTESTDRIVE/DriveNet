@@ -23,7 +23,7 @@ static const int SIDECHAIN_MIN_WORKSCORE = 141;
 //static const int SIDECHAIN_MIN_WORKSCORE = 13140;
 
 enum SidechainNumber {
-    SIDECHAIN_TEST = 0,
+    SIDECHAIN_ONE = 0,
 };
 
 struct Sidechain {
@@ -117,8 +117,8 @@ static const std::array<Sidechain, VALID_SIDECHAINS_COUNT> ValidSidechains =
     //
     // {nSidechain, sidechain keyID, sidechain private key, public key}
     //
-    // Test Sidechain: 4ZZC8413qr9gWRymw2PryT3mY3KikidNxg
-    {SIDECHAIN_TEST,
+    // Sidechain One (test sidechain): 4ZZC8413qr9gWRymw2PryT3mY3KikidNxg
+    {SIDECHAIN_ONE,
         "f790b44c3cd78a786819cd4cb6fd696e8d81c0d9",
         "Kxpt9ph9fdYzw1dVThf5fPuAHzsFzKaWfYiHx3EzYwVb6PQPy6f9",
         "76a914d9c0818d6e69fdb64ccd1968788ad73c4cb490f788ac"},
@@ -126,7 +126,7 @@ static const std::array<Sidechain, VALID_SIDECHAINS_COUNT> ValidSidechains =
 
 static const std::map<std::string, int> ValidSidechainField =
 {
-    {"76a914d9c0818d6e69fdb64ccd1968788ad73c4cb490f788ac", SIDECHAIN_TEST},
+    {"76a914d9c0818d6e69fdb64ccd1968788ad73c4cb490f788ac", SIDECHAIN_ONE},
 };
 
 

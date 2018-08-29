@@ -32,7 +32,7 @@ BOOST_AUTO_TEST_CASE(bmm_valid)
     bytes[1] = 0xbf;
     bytes[2] = 0x00;
 
-    bytes << CScriptNum::serialize(SIDECHAIN_TEST);
+    bytes << CScriptNum::serialize(SIDECHAIN_ONE);
     bytes << CScriptNum::serialize(0);
 
     CCriticalData criticalData;
@@ -88,7 +88,7 @@ BOOST_AUTO_TEST_CASE(bmm_valid)
 
     // Verify that h* was added
     // TODO
-    // BOOST_CHECK(scdb.HaveLinkingData(SIDECHAIN_TEST, criticalData.hashCritical));
+    // BOOST_CHECK(scdb.HaveLinkingData(SIDECHAIN_ONE, criticalData.hashCritical));
 
     // Reset SCDB after testing
     scdb.Reset();
@@ -162,7 +162,7 @@ BOOST_AUTO_TEST_CASE(bmm_invalid_sidechain)
     scdb.Update(0, hashBlock, commit.vout, strError);
 
     // Verify that h* was rejected
-    BOOST_CHECK(!scdb.HaveLinkingData(SIDECHAIN_TEST, criticalData.hashCritical));
+    BOOST_CHECK(!scdb.HaveLinkingData(SIDECHAIN_ONE, criticalData.hashCritical));
 }
 
 BOOST_AUTO_TEST_CASE(bmm_invalid_prevblockref_limit)
@@ -233,7 +233,7 @@ BOOST_AUTO_TEST_CASE(bmm_invalid_prevblockref_limit)
     scdb.Update(0, hashBlock, commit.vout, strError);
 
     // Verify that h* was rejected
-    BOOST_CHECK(!scdb.HaveLinkingData(SIDECHAIN_TEST, criticalData.hashCritical));
+    BOOST_CHECK(!scdb.HaveLinkingData(SIDECHAIN_ONE, criticalData.hashCritical));
 }
 
 BOOST_AUTO_TEST_CASE(bmm_invalid_prevblockref)
@@ -304,7 +304,7 @@ BOOST_AUTO_TEST_CASE(bmm_invalid_prevblockref)
     scdb.Update(0, hashBlock, commit.vout, strError);
 
     // Verify that h* was rejected
-    BOOST_CHECK(!scdb.HaveLinkingData(SIDECHAIN_TEST, criticalData.hashCritical));
+    BOOST_CHECK(!scdb.HaveLinkingData(SIDECHAIN_ONE, criticalData.hashCritical));
 }
 
 BOOST_AUTO_TEST_CASE(bmm_maturity)

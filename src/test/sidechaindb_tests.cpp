@@ -25,11 +25,11 @@ BOOST_AUTO_TEST_CASE(sidechaindb_isolated)
     // Test SidechainDB without blocks
     uint256 hashWTTest = GetRandHash();
 
-    // SIDECHAIN_TEST
+    // SIDECHAIN_ONE
     SidechainWTPrimeState wtTest;
     wtTest.hashWTPrime = hashWTTest;
     wtTest.nBlocksLeft = SIDECHAIN_VERIFICATION_PERIOD;
-    wtTest.nSidechain = SIDECHAIN_TEST;
+    wtTest.nSidechain = SIDECHAIN_ONE;
     int nHeight = 0;
     for (int i = 1; i <= SIDECHAIN_MIN_WORKSCORE; i++) {
         std::vector<SidechainWTPrimeState> vWT;
@@ -41,7 +41,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_isolated)
     }
 
     // WT^ 0 should pass with valid workscore (100/100)
-    BOOST_CHECK(scdb.CheckWorkScore(SIDECHAIN_TEST, hashWTTest));
+    BOOST_CHECK(scdb.CheckWorkScore(SIDECHAIN_ONE, hashWTTest));
 
     // Reset SCDB after testing
     scdb.Reset();
@@ -59,7 +59,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MultipleVerificationPeriods)
     SidechainWTPrimeState wt1;
     wt1.hashWTPrime = hashWTTest1;
     wt1.nBlocksLeft = SIDECHAIN_VERIFICATION_PERIOD;
-    wt1.nSidechain = SIDECHAIN_TEST;
+    wt1.nSidechain = SIDECHAIN_ONE;
     int nHeight = 0;
     for (int i = 1; i <= SIDECHAIN_MIN_WORKSCORE; i++) {
         std::vector<SidechainWTPrimeState> vWT;
@@ -69,7 +69,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MultipleVerificationPeriods)
         scdb.UpdateSCDBIndex(vWT, nHeight);
         nHeight++;
     }
-    BOOST_CHECK(scdb.CheckWorkScore(SIDECHAIN_TEST, hashWTTest1));
+    BOOST_CHECK(scdb.CheckWorkScore(SIDECHAIN_ONE, hashWTTest1));
 
     // Create dummy coinbase tx
     CMutableTransaction mtx;
@@ -93,14 +93,14 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MultipleVerificationPeriods)
     SidechainWTPrimeState wt2;
     wt2.hashWTPrime = hashWTTest2;
     wt2.nBlocksLeft = SIDECHAIN_VERIFICATION_PERIOD;
-    wt2.nSidechain = SIDECHAIN_TEST;
+    wt2.nSidechain = SIDECHAIN_ONE;
     wt2.nWorkScore = 1;
     vWT.push_back(wt2);
     scdb.UpdateSCDBIndex(vWT, 0);
-    BOOST_CHECK(!scdb.CheckWorkScore(SIDECHAIN_TEST, hashWTTest2));
+    BOOST_CHECK(!scdb.CheckWorkScore(SIDECHAIN_ONE, hashWTTest2));
 
     // Verify that SCDB has updated to correct WT^
-    const std::vector<SidechainWTPrimeState> vState = scdb.GetState(SIDECHAIN_TEST);
+    const std::vector<SidechainWTPrimeState> vState = scdb.GetState(SIDECHAIN_ONE);
     BOOST_CHECK(vState.size() == 1 && vState[0].hashWTPrime == hashWTTest2);
 
     // Give second transaction sufficient workscore and check work score
@@ -113,7 +113,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MultipleVerificationPeriods)
         scdb.UpdateSCDBIndex(vWT, nHeight);
         nHeight++;
     }
-    BOOST_CHECK(scdb.CheckWorkScore(SIDECHAIN_TEST, hashWTTest2));
+    BOOST_CHECK(scdb.CheckWorkScore(SIDECHAIN_ONE, hashWTTest2));
 
     // Reset SCDB after testing
     scdb.Reset();
@@ -132,7 +132,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MT_single)
     wt.hashWTPrime = GetRandHash();
     wt.nBlocksLeft = SIDECHAIN_VERIFICATION_PERIOD;
     wt.nWorkScore = 1;
-    wt.nSidechain = SIDECHAIN_TEST;
+    wt.nSidechain = SIDECHAIN_ONE;
 
     vWT.push_back(wt);
     scdb.UpdateSCDBIndex(vWT, 0);
@@ -149,7 +149,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MT_single)
 
     // Simulate receiving Sidechain WT^ update message
     SidechainUpdateMSG msg;
-    msg.nSidechain = SIDECHAIN_TEST;
+    msg.nSidechain = SIDECHAIN_ONE;
     msg.hashWTPrime = wt.hashWTPrime;
     msg.nWorkScore = 2;
 
@@ -176,7 +176,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MT_multipleSC)
     SidechainWTPrimeState wtTest;
     wtTest.hashWTPrime = GetRandHash();
     wtTest.nBlocksLeft = SIDECHAIN_VERIFICATION_PERIOD;
-    wtTest.nSidechain = SIDECHAIN_TEST;
+    wtTest.nSidechain = SIDECHAIN_ONE;
     wtTest.nWorkScore = 1;
 
     std::vector<SidechainWTPrimeState> vWT;
@@ -198,7 +198,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MT_multipleSC)
 
     // Simulate receiving Sidechain WT^ update message
     SidechainUpdateMSG msgTest;
-    msgTest.nSidechain = SIDECHAIN_TEST;
+    msgTest.nSidechain = SIDECHAIN_ONE;
     msgTest.hashWTPrime = wtTest.hashWTPrime;
     msgTest.nWorkScore = 2;
 
@@ -226,7 +226,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MT_multipleWT)
     SidechainWTPrimeState wtTest;
     wtTest.hashWTPrime = GetRandHash();
     wtTest.nBlocksLeft = SIDECHAIN_VERIFICATION_PERIOD;
-    wtTest.nSidechain = SIDECHAIN_TEST;
+    wtTest.nSidechain = SIDECHAIN_ONE;
     wtTest.nWorkScore = 1;
 
     std::vector<SidechainWTPrimeState> vWT;
@@ -248,7 +248,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MT_multipleWT)
 
     // Simulate receiving Sidechain WT^ update message
     SidechainUpdateMSG msgTest;
-    msgTest.nSidechain = SIDECHAIN_TEST;
+    msgTest.nSidechain = SIDECHAIN_ONE;
     msgTest.hashWTPrime = wtTest.hashWTPrime;
     msgTest.nWorkScore = 2;
 

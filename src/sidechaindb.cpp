@@ -258,7 +258,7 @@ bool SidechainDB::HasState() const
         return false;
 
     // Check if any SCDBIndex(s) are populated
-    if (SCDB[SIDECHAIN_TEST].IsPopulated())
+    if (SCDB[SIDECHAIN_ONE].IsPopulated())
         return true;
 
     if (vWTPrimeCache.size())
