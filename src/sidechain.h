@@ -42,6 +42,7 @@ struct SidechainDeposit {
     CKeyID keyID;
     CMutableTransaction tx;
     uint32_t n;
+    uint256 hashBlock;
 
     bool operator==(const SidechainDeposit& a) const;
     std::string ToString() const;

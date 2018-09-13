@@ -31,7 +31,7 @@ public:
     SidechainDB();
 
     /** Add deposit(s) to cache */
-    void AddDeposits(const std::vector<CTransaction>& vtx);
+    void AddDeposits(const std::vector<CTransaction>& vtx, const uint256& hashBlock);
 
     /** Cache WT^ update TODO here for testing, move to networking */
     void AddSidechainNetworkUpdatePackage(const SidechainUpdatePackage& update);

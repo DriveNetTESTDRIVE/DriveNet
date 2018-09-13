@@ -546,28 +546,29 @@ static bool CheckInputsFromMempoolAndCache(const CTransaction& tx, CValidationSt
     return CheckInputs(tx, state, view, true, flags, cacheSigStore, true, txdata);
 }
 
-void GetSidechainValues(const CTransaction &tx, CAmount& amtSidechainUTXO, CAmount& amtUserInput,
+void GetSidechainValues(CTxMemPool& pool, const CTransaction &tx, CAmount& amtSidechainUTXO, CAmount& amtUserInput,
                         CAmount& amtReturning, CAmount& amtWithdrawn)
 {
     // Collect coins from inputs
-    std::map<const uint256, Coin> mapCoinsDeposit;
+    CCoinsViewMemPool viewWithMemPool(pcoinsTip.get(), pool);
+    std::vector<Coin> vCoin;
     for (const CTxIn& in : tx.vin) {
-        Coin coins;
-        if (mapCoinsDeposit.find(in.prevout.hash) == mapCoinsDeposit.end()) {
-            pcoinsTip->GetCoin(in.prevout, coins);
-            mapCoinsDeposit[in.prevout.hash] = coins;
-        }
+        Coin coin;
+        // TODO return false / assert here if we can't find the coin
+        if (viewWithMemPool.GetCoin(in.prevout, coin))
+            vCoin.push_back(coin);
     }
 
-    // Count inputs
-    for (auto it = mapCoinsDeposit.begin(); it != mapCoinsDeposit.end(); it++) {
-        const CTxOut& out = it->second.out;
+    // Count value of inputs
+    for (const Coin& c : vCoin) {
+        const CTxOut& out = c.out;
         CScript scriptPubKey = out.scriptPubKey;
         if (ValidSidechainField.find(HexStr(scriptPubKey)) != ValidSidechainField.end()) {
             amtSidechainUTXO += out.nValue;
         } else {
             amtUserInput += out.nValue;
         }
+
     }
 
     // Count outputs
@@ -654,7 +655,7 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
         CAmount amtUserInput = CAmount(0);
         CAmount amtReturning = CAmount(0);
         CAmount amtWithdrawn = CAmount(0);
-        GetSidechainValues(tx, amtSidechainUTXO, amtUserInput, amtReturning, amtWithdrawn);
+        GetSidechainValues(pool, tx, amtSidechainUTXO, amtUserInput, amtReturning, amtWithdrawn);
 
         if (amtSidechainUTXO > amtReturning) {
             // M6 Withdrawal
@@ -2119,9 +2120,18 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
                 if (!tx.GetBWTHash(hashBWT))
                     return error("ConnectBlock(): WT^ (full id): %s has invalid format", tx.GetHash().ToString());
 
-                // Check workscore TODO nSidechain
-                if (!scdb.CheckWorkScore(nSidechain, hashBWT))
-                    return error("ConnectBlock(): CheckWorkScore failed for %s", hashBWT.ToString());
+                // Get values to and from sidechain
+                CAmount amtSidechainUTXO = CAmount(0);
+                CAmount amtUserInput = CAmount(0);
+                CAmount amtReturning = CAmount(0);
+                CAmount amtWithdrawn = CAmount(0);
+                GetSidechainValues(mempool, tx, amtSidechainUTXO, amtUserInput, amtReturning, amtWithdrawn); // TODO remove mempool?
+
+                if (amtSidechainUTXO > amtReturning) {
+                    // Check workscore TODO nSidechain
+                    if (!scdb.CheckWorkScore(nSidechain, hashBWT))
+                        return error("ConnectBlock(): CheckWorkScore failed (blind WT^ hash : txid): %s : %s", hashBWT.ToString(), tx.GetHash().ToString());
+                }
             }
         }
 
@@ -2178,7 +2188,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
     view.SetBestBlock(pindex->GetBlockHash());
 
     if (drivechainsEnabled && vDepositTx.size())
-        scdb.AddDeposits(vDepositTx);
+        scdb.AddDeposits(vDepositTx, block.GetHash());
 
     int64_t nTime5 = GetTimeMicros(); nTimeIndex += nTime5 - nTime4;
     LogPrint(BCLog::BENCH, "    - Index writing: %.2fms [%.2fs (%.2fms/blk)]\n", MILLI * (nTime5 - nTime4), nTimeIndex * MICRO, nTimeIndex * MILLI / nBlocksTotal);

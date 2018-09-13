@@ -2399,7 +2399,7 @@ void CWallet::AvailableSidechainCoins(std::vector<COutput>& vSidechainCoins, con
 
     // Collect available outputs
     std::vector<COutput> vCoins;
-    AvailableCoins(vCoins, true);
+    AvailableCoins(vCoins, false); // TODO ?
 
     // Search for available Sidechain outputs
     const Sidechain& s = ValidSidechains[nSidechain];
@@ -3160,7 +3160,10 @@ bool CWallet::CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, 
             return false;
         }
         scriptChange = GetScriptForDestination(vchPubKey.GetID());
-        mtx.vout.push_back(CTxOut(nChange - (1 * CENT), scriptChange));
+
+        CTxOut out(nChange, scriptChange);
+        if (!IsDust(out, ::dustRelayFee))
+            mtx.vout.push_back(out);
     }
 
     // Add deposit inputs
@@ -3173,22 +3176,62 @@ bool CWallet::CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, 
 
     // Add deposit output
     mtx.vout.push_back(CTxOut(nAmount, sidechainScript));
+    size_t nDepositIndex = mtx.vout.size() - 1;
 
     // Handle existing sidechain utxo
     std::vector<COutput> vSidechainCoins;
     AvailableSidechainCoins(vSidechainCoins, nSidechain);
+    CAmount returnAmount = CAmount(0);
     if (vSidechainCoins.size()) {
-        CAmount returnAmount = CAmount(0);
 
         for (const COutput& output : vSidechainCoins) {
             mtx.vin.push_back(CTxIn(output.tx->GetHash(), output.i));
             returnAmount += output.tx->tx->vout[output.i].nValue;
         }
         mtx.vout.back().nValue += returnAmount;
+     }
 
-        /*
-         * Sign the sidechain utxo input
-         */
+    // Dummy sign the transaction to calculate fee
+    std::set<CInputCoin> setCoinsTemp = setCoins;
+    // TODO also dummy sign the sidechain UTXO input
+    //for (const COutput& c : vSidechainCoins)
+    //    setCoinsTemp.emplace(CInputCoin(c.tx, c.i));
+
+    if (!DummySignTx(mtx, setCoins)) {
+        strFail = "Dummy signing transaction for fee calculation failed";
+        return false;
+    }
+
+    // Get transaction size with dummy signatures
+    unsigned int nBytes = GetVirtualTransactionSize(mtx);
+
+    // Calculate fee
+    CCoinControl coinControl;
+    FeeCalculation feeCalc;
+    CAmount nFeeNeeded = GetMinimumFee(nBytes, coinControl, ::mempool, ::feeEstimator, &feeCalc);
+    // TODO Improve this to pay minimal fee instead of over-estimating by making
+    // dummy transaction signature creator sign the sidechain utxo input.
+    //
+    // Double nFeeNeeded to cover sidechain utxo signature size
+    nFeeNeeded *= 2;
+
+    // Check that the fee is valid for relay
+    if (nFeeNeeded < ::minRelayTxFee.GetFee(nBytes)) {
+        strFail = "Transaction too large for fee policy";
+        return false;
+    }
+
+    // Subtract fee from deposit amount
+    mtx.vout[nDepositIndex].nValue -= nFeeNeeded;
+
+    // Remove dummy signatures
+    for (auto& vin : mtx.vin) {
+        vin.scriptSig = CScript();
+        vin.scriptWitness.SetNull();
+    }
+
+    // Sign the sidechain utxo if we need to
+    if (vSidechainCoins.size()) {
         CBitcoinSecret vchSecret;
         bool fGood = vchSecret.SetString(sidechain.sidechainPriv);
         if (!fGood) {

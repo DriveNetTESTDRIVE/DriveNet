@@ -793,18 +793,18 @@ UniValue createbmmcriticaldatatx(const JSONRPCRequest& request)
     return ret;
 }
 
-// TODO rename or change return value
 UniValue listsidechaindeposits(const JSONRPCRequest& request)
 {
-    if (request.fHelp || request.params.size() != 1)
+    if (request.fHelp || request.params.size() < 1)
         throw std::runtime_error(
             "listsidechaindeposits\n"
             "Called by sidechain, return list of deposits\n"
             "\nArguments:\n"
             "1. \"nsidechain\"      (numeric, required) The sidechain number\n"
+            "1. \"count\"           (numeric, optional) The number of most recent deposits to list\n"
             "\nExamples:\n"
-            + HelpExampleCli("listsidechaindeposits", "\"nsidechain\"")
-            + HelpExampleRpc("listsidechaindeposits", "\"nsidechain\"")
+            + HelpExampleCli("listsidechaindeposits", "\"nsidechain\", \"count\"")
+            + HelpExampleRpc("listsidechaindeposits", "\"nsidechain\", \"count\"")
             );
 
 #ifdef ENABLE_WALLET
@@ -821,80 +821,120 @@ UniValue listsidechaindeposits(const JSONRPCRequest& request)
     if (!IsSidechainNumberValid(nSidechain))
         throw std::runtime_error("Invalid sidechain number");
 
+    // Get number of recent deposits to return (default is all cached deposits)
+    bool fLimit = false;
+    int count = 0;
+    if (request.params.size() == 2) {
+        fLimit = true;
+        count = request.params[1].get_int();
+    }
+
+    UniValue arr(UniValue::VARR);
+
 #ifdef ENABLE_WALLET
-    // Get latest deposit from sidechain DB deposit cache
     std::vector<SidechainDeposit> vDeposit = scdb.GetDeposits(nSidechain);
     if (!vDeposit.size())
         throw std::runtime_error("No deposits in cache");
-    const SidechainDeposit& deposit = vDeposit.back();
 
-    // Add deposit txid to set
-    uint256 txid = deposit.tx.GetHash();
-    std::set<uint256> setTxids;
-    setTxids.insert(txid);
+    for (auto rit = vDeposit.crbegin(); rit != vDeposit.crend(); rit++) {
+        const SidechainDeposit d = *rit;
 
-    LOCK(cs_main);
+        // Add deposit txid to set
+        uint256 txid = d.tx.GetHash();
+        std::set<uint256> setTxids;
+        setTxids.insert(txid);
 
-    // Get deposit output
-    CBlockIndex* pblockindex = NULL;
-    Coin coin;
-    COutPoint c(txid, deposit.n);
-    if (pcoinsTip->GetCoin(c, coin) && coin.nHeight > 0 && coin.nHeight <= chainActive.Height())
-        pblockindex = chainActive[coin.nHeight];
+        LOCK(cs_main);
 
-    if (pblockindex == NULL)
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't get coins");
+        // TODO improve all of these error messages
 
-    // Read block containing deposit output
-    CBlock block;
-    if(!ReadBlockFromDisk(block, pblockindex, Params().GetConsensus()))
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read block from disk");
+        BlockMap::iterator it = mapBlockIndex.find(d.hashBlock);
+        if (it == mapBlockIndex.end())
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block hash not found");
 
-    // Look for deposit transaction
-    bool found = false;
-    for (const auto& tx : block.vtx)
-        if (tx->GetHash() == txid)
-            found = true;
-    if (!found)
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "transaction not found in specified block");
+        CBlockIndex* pblockindex = it->second;
+        if (pblockindex == NULL)
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "Block index null");
 
-    // Serialize and take hex of txout proof
-    CDataStream ssMB(SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS);
-    CMerkleBlock mb(block, setTxids);
-    ssMB << mb;
-    std::string strProofHex = HexStr(ssMB.begin(), ssMB.end());
+        if (!chainActive.Contains(pblockindex))
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "Block not in active chain");
 
-    // Calculate user payout
-    CAmount amtSidechainUTXO = CAmount(0);
-    CAmount amtUserInput = CAmount(0);
-    CAmount amtReturning = CAmount(0);
-    CAmount amtWithdrawn = CAmount(0);
-    GetSidechainValues(deposit.tx, amtSidechainUTXO, amtUserInput, amtReturning, amtWithdrawn);
+        // Read block containing deposit output
+        CBlock block;
+        if(!ReadBlockFromDisk(block, pblockindex, Params().GetConsensus()))
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read block from disk");
 
-    std::vector<COutput> vSidechainCoins;
-    vpwallets[0]->AvailableSidechainCoins(vSidechainCoins, nSidechain);
+        // Look for deposit transaction
+        bool found = false;
+        for (const auto& tx : block.vtx)
+            if (tx->GetHash() == txid)
+                found = true;
+        if (!found)
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "transaction not found in specified block");
 
-    amtSidechainUTXO = 0;
-    for (const COutput& output : vSidechainCoins)
-        amtSidechainUTXO += output.tx->tx->vout[output.i].nValue;
-    CAmount amtUserPayout = amtReturning;
-
+        // Serialize and take hex of txout proof
+        CDataStream ssMB(SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS);
+        CMerkleBlock mb(block, setTxids);
+        ssMB << mb;
+        std::string strProofHex = HexStr(ssMB.begin(), ssMB.end());
 #endif
-
-    UniValue ret(UniValue::VOBJ);
 
 #ifdef ENABLE_WALLET
-    UniValue obj(UniValue::VOBJ);
-    obj.push_back(Pair("nsidechain", deposit.nSidechain));
-    obj.push_back(Pair("keyid", deposit.keyID.ToString()));
-    obj.push_back(Pair("amountuserpayout", ValueFromAmount(amtUserPayout)));
-    obj.push_back(Pair("txhex", EncodeHexTx(deposit.tx)));
-    obj.push_back(Pair("proofhex", strProofHex));
+        UniValue obj(UniValue::VOBJ);
+        obj.push_back(Pair("nsidechain", d.nSidechain));
+        obj.push_back(Pair("keyid", d.keyID.ToString()));
+        obj.push_back(Pair("txhex", EncodeHexTx(d.tx)));
+        obj.push_back(Pair("n", (int64_t)d.n));
+        obj.push_back(Pair("proofhex", strProofHex));
 
-    ret.push_back(Pair("deposit", obj));
+        arr.push_back(obj);
+#endif
+        if (fLimit) {
+            count--;
+            if (count <= 0)
+                break;
+        }
+    }
+
+    return arr;
+}
+
+UniValue countsidechaindeposits(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() != 1)
+        throw std::runtime_error(
+            "countsidechaindeposits\n"
+            "Called by sidechain, return list of deposits\n"
+            "\nArguments:\n"
+            "1. \"nsidechain\"      (numeric, required) The sidechain number\n"
+            "\nExamples:\n"
+            + HelpExampleCli("countsidechaindeposits", "\"nsidechain\"")
+            + HelpExampleRpc("countsidechaindeposits", "\"nsidechain\"")
+            );
+
+#ifdef ENABLE_WALLET
+    // Check for active wallet
+    std::string strError;
+    if (vpwallets.empty()) {
+        strError = "Error: no wallets are available";
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+    }
 #endif
 
-    return ret;
+    // Is nSidechain valid?
+    uint8_t nSidechain = std::stoi(request.params[0].getValStr());
+    if (!IsSidechainNumberValid(nSidechain))
+        throw std::runtime_error("Invalid sidechain number");
+
+    int count = 0;
+
+#ifdef ENABLE_WALLET
+    // Get latest deposit from sidechain DB deposit cache
+    std::vector<SidechainDeposit> vDeposit = scdb.GetDeposits(nSidechain);
+    count = vDeposit.size();
+#endif
+
+    return count;
 }
 
 UniValue receivewtprime(const JSONRPCRequest& request)
@@ -1159,7 +1199,8 @@ static const CRPCCommand commands[] =
     /* Used by sidechain (not shown in help) */
     { "hidden",             "createcriticaldatatx",     &createcriticaldatatx,      {"amount", "height", "criticalhash"}},
     { "hidden",             "createbmmcriticaldatatx",  &createbmmcriticaldatatx,   {"amount", "height", "criticalhash", "nsidechain", "ndag"}},
-    { "hidden",             "listsidechaindeposits",    &listsidechaindeposits,     {"nsidechain"}},
+    { "hidden",             "listsidechaindeposits",    &listsidechaindeposits,     {"nsidechain", "count"}},
+    { "hidden",             "countsidechaindeposits",   &countsidechaindeposits,    {"nsidechain"}},
     { "hidden",             "receivewtprime",           &receivewtprime,            {"nsidechain","rawtx"}},
     { "hidden",             "receivewtprimeupdate",     &receivewtprimeupdate,      {"height","update"}},
     { "hidden",             "getbmmproof",              &getbmmproof,               {"blockhash", "criticalhash"}},

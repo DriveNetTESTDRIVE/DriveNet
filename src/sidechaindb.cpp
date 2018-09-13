@@ -18,7 +18,7 @@ SidechainDB::SidechainDB()
     ratchet.resize(VALID_SIDECHAINS_COUNT);
 }
 
-void SidechainDB::AddDeposits(const std::vector<CTransaction>& vtx)
+void SidechainDB::AddDeposits(const std::vector<CTransaction>& vtx, const uint256& hashBlock)
 {
     std::vector<SidechainDeposit> vDeposit;
     for (const CTransaction& tx : vtx) {
@@ -58,6 +58,7 @@ void SidechainDB::AddDeposits(const std::vector<CTransaction>& vtx)
             deposit.tx = tx;
             deposit.keyID = keyID;
             deposit.nSidechain = nSidechain;
+            deposit.hashBlock = hashBlock;
         }
         // TODO Confirm that deposit.nSidechain is correct by comparing deposit
         // output KeyID with sidechain KeyID before adding deposit to cache.
