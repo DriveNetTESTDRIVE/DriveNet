@@ -48,8 +48,9 @@ SidechainPage::SidechainPage(QWidget *parent) :
     for (const Sidechain& s : ValidSidechains) {
         QListWidgetItem *item = new QListWidgetItem(ui->listWidgetSidechains);
 
+        // TODO keep list of sidechain icons and display correct icon based on nSidechain
         // Set icon
-        QIcon icon(":/icons/bitcoin");
+        QIcon icon(":/icons/sidechain_one");
         item->setIcon(icon);
 
         // Set text

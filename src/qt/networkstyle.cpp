@@ -15,7 +15,7 @@ static const struct {
     const int iconColorSaturationReduction;
     const char *titleAddText;
 } network_styles[] = \
-    {{"main", QAPP_APP_NAME_DEFAULT, 190, 10, ""},
+    {{"main", QAPP_APP_NAME_DEFAULT, 0, 0, ""},
     {"test", QAPP_APP_NAME_TESTNET, 70, 30, QT_TRANSLATE_NOOP("SplashScreen", "[testnet]")},
     {"regtest", QAPP_APP_NAME_TESTNET, 160, 30, "[regtest]"}
 };
