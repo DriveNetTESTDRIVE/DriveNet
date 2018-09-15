@@ -1737,14 +1737,14 @@ bool AppInitMain()
     if (chainparams.NetworkIDString() == "main" &&
             !pcoinsTip->HaveCoin(COutPoint(uint256S(LAST_LOADED_OUTPOINT), LAST_LOADED_N)))
     {
-        uiInterface.InitMessage(_("Importing Bitcoin Core UTXO set, please wait. (4-10 minutes)"));
+        uiInterface.InitMessage(_("Importing UTXO set. One time only (~10 minutes)."));
 
         // Try to read loaded coins
         if (!pcoinsTip->ReadLoadedCoins()) {
             // Failed to read loaded coins, abort
             // TODO add link to website with setup guide
             std::string strError = "Error reading loading coins!\n\n";
-            strError += "DriveNetTESTDRIVE needs to import loaded coins before starting for the first time.";
+            strError += "DriveNetTESTDRIVE needs to import a UTXO set (loaded coins) before starting for the first time.";
             strError += "\n\n";
             strError += "You must move loaded_coins.dat to your DriveNet datadir.";
             strError += "\n\n";
