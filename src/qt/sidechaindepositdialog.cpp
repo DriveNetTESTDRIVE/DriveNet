@@ -111,9 +111,9 @@ void SidechainDepositDialog::on_pushButtonDeposit_clicked()
     }
 
     // Successful deposit message box
-    messageBox.setWindowTitle("Deposit transaction created!");
-    QString result = "Deposited to " + QString::fromStdString(GetSidechainName(nSidechain));
-    result += " Sidechain.\n";
+    messageBox.setWindowTitle("Sidechain deposit transaction created!");
+    QString result = "Deposited to: " + QString::fromStdString(GetSidechainName(nSidechain));
+    result += "\n";
     result += "txid: " + QString::fromStdString(tx->GetHash().ToString());
     result += "\n";
     result += "Amount deposited: ";
