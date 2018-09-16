@@ -138,6 +138,15 @@ void SidechainPage::on_pushButtonDeposit_clicked()
 {
     QMessageBox messageBox;
 
+    unsigned int nSidechain = ui->comboBoxSidechains->currentIndex();
+
+    if (!IsSidechainNumberValid(nSidechain)) {
+        // Should never be displayed
+        messageBox.setWindowTitle("Invalid sidechain selected");
+        messageBox.exec();
+        return;
+    }
+
 #ifdef ENABLE_WALLET
     if (vpwallets.empty()) {
         messageBox.setWindowTitle("Wallet Error!");
@@ -158,16 +167,11 @@ void SidechainPage::on_pushButtonDeposit_clicked()
     if (!validateDepositAmount()) {
         // Invalid deposit amount message box
         messageBox.setWindowTitle("Invalid deposit amount!");
-        messageBox.setText("Check the amount you have entered and try again.");
-        messageBox.exec();
-        return;
-    }
-
-    unsigned int nSidechain = ui->comboBoxSidechains->currentIndex();
-
-    if (!IsSidechainNumberValid(nSidechain)) {
-        // Should never be displayed
-        messageBox.setWindowTitle("Invalid sidechain selected");
+        QString error = "Check the amount you have entered and try again.\n\n";
+        error += "Your deposit must be > 0.00001 BTC to cover the sidechain ";
+        error += "deposit fee. If the output amount is dust after paying the ";
+        error += "fee, you will not receive anything on the sidechain.\n";
+        messageBox.setText(error);
         messageBox.exec();
         return;
     }
@@ -239,6 +243,18 @@ bool SidechainPage::validateDepositAmount()
 
     // Reject dust outputs:
     if (GUIUtil::isDust(ui->payTo->text(), ui->payAmount->value())) {
+        ui->payAmount->setValid(false);
+        return false;
+    }
+
+    // Reject deposits which cannot cover sidechain fee
+    if (ui->payAmount->value() < SIDECHAIN_DEPOSIT_FEE) {
+        ui->payAmount->setValid(false);
+        return false;
+    }
+
+    // Reject deposits which would net the user no payout on the sidechain
+    if (GUIUtil::isDust(ui->payTo->text(), ui->payAmount->value() - SIDECHAIN_DEPOSIT_FEE)) {
         ui->payAmount->setValid(false);
         return false;
     }

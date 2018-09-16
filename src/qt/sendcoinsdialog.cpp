@@ -13,7 +13,6 @@
 #include <qt/optionsmodel.h>
 #include <qt/platformstyle.h>
 #include <qt/sendcoinsentry.h>
-#include <qt/sidechaindepositdialog.h>
 
 #include <base58.h>
 #include <chainparams.h>
@@ -126,11 +125,6 @@ SendCoinsDialog::SendCoinsDialog(const PlatformStyle *_platformStyle, QWidget *p
     ui->customFee->setValue(settings.value("nTransactionFee").toLongLong());
     ui->checkBoxMinimumFee->setChecked(settings.value("fPayOnlyMinFee").toBool());
     minimizeFeeSection(settings.value("fFeeSectionMinimized").toBool());
-
-    // Disable sidechain deposit button if drivechains aren't activated
-    if (!IsDrivechainEnabled(chainActive.Tip(), Params().GetConsensus())) {
-        ui->sidechainDepositButton->setEnabled(false);
-    }
 }
 
 void SendCoinsDialog::setClientModel(ClientModel *_clientModel)
@@ -928,10 +922,4 @@ void SendConfirmationDialog::updateYesButton()
         yesButton->setEnabled(true);
         yesButton->setText(tr("Yes"));
     }
-}
-
-void SendCoinsDialog::on_sidechainDepositButton_clicked()
-{
-    SidechainDepositDialog scDialog;
-    scDialog.exec();
 }

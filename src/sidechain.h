@@ -22,6 +22,9 @@ static const int SIDECHAIN_MIN_WORKSCORE = 141;
 //static const int SIDECHAIN_VERIFICATION_PERIOD = 26298;
 //static const int SIDECHAIN_MIN_WORKSCORE = 13140;
 
+//! Sidechain deposit fee (TODO make configurable per sidechain)
+static const CAmount SIDECHAIN_DEPOSIT_FEE = 0.00001 * COIN;
+
 enum SidechainNumber {
     SIDECHAIN_ONE = 0,
 };
