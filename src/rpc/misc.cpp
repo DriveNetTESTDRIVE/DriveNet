@@ -736,7 +736,7 @@ UniValue createbmmcriticaldatatx(const JSONRPCRequest& request)
 
     // Create transaction with critical data
     CMutableTransaction mtx;
-    mtx.nVersion = 1;
+    mtx.nVersion = 3;
     mtx.vout.resize(1);
     mtx.vout[0].scriptPubKey = CScript() << OP_TRUE;
     mtx.vout[0].nValue = nAmount;

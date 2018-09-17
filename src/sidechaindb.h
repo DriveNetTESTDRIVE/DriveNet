@@ -9,7 +9,7 @@
 #include <queue>
 #include <vector>
 
-#include "uint256.h"
+#include <uint256.h>
 
 class CCriticalData;
 class CScript;

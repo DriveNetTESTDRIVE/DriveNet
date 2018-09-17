@@ -84,6 +84,9 @@ bool SidechainDB::AddWTPrime(uint8_t nSidechain, const uint256& hashWTPrime, int
     if (!IsSidechainNumberValid(nSidechain))
         return false;
 
+    if (HaveWTPrimeWorkScore(hashWTPrime, nSidechain))
+        return false;
+
     std::vector<SidechainWTPrimeState> vWT;
 
     SidechainWTPrimeState wt;
@@ -647,7 +650,7 @@ std::vector<SidechainWTPrimeState> SidechainDB::GetUpvotes() const
 bool SidechainDB::ApplyDefaultUpdate()
 {
     if (!HasState())
-    return true;
+        return true;
 
     // Decrement nBlocksLeft, nothing else changes
     for (const Sidechain& s : ValidSidechains) {

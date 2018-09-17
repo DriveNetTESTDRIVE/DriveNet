@@ -3034,7 +3034,7 @@ bool CChainState::ReceivedBlockTransactions(const CBlock &block, CValidationStat
 
         // Update / synchronize SCDB
         std::string strError = "";
-        if (!scdb.Update(chainActive.Height(), block.GetHash(), block.vtx[0]->vout, strError))
+        if (!scdb.Update(chainActive.Height() + 1, block.GetHash(), block.vtx[0]->vout, strError))
             LogPrintf("SCDB failed to update with block: %s\n", block.GetHash().ToString());
         if (strError != "")
             LogPrintf("SCDB update error: %s\n", strError);
@@ -3499,7 +3499,7 @@ void GenerateWTPrimeHashCommitment(CBlock& block, const uint256& hashWTPrime, co
     out.scriptPubKey[4] = 0xA9;
     out.scriptPubKey[5] = 0x43;
 
-    // Add BMM hashMerkleRoot
+    // Add WT^ hash
     memcpy(&out.scriptPubKey[6], &hashWTPrime, 32);
 
     // Add nSidechain

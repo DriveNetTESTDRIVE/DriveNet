@@ -340,6 +340,7 @@ CTransaction BlockAssembler::CreateWTPrimePayout(uint8_t nSidechain)
 {
     // The WT^ that will be created
     CMutableTransaction mtx;
+    mtx.nVersion = 2;
 
     if (!IsDrivechainEnabled(chainActive.Tip(), chainparams.GetConsensus()))
         return mtx;
