@@ -515,6 +515,12 @@ bool DumpMempool();
 /** Load the mempool from disk. */
 bool LoadMempool();
 
+/** Load the optional WT^ transaction cache from disk. */
+bool LoadWTPrimeCache();
+
+/** Dump the WT^ cache to disk. */
+void DumpWTPrimeCache();
+
 /** Tracks validation status of sidechain WT^(s) */
 extern SidechainDB scdb;
 

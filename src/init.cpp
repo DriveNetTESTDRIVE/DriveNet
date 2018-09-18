@@ -228,6 +228,8 @@ void Shutdown()
         DumpMempool();
     }
 
+    DumpWTPrimeCache();
+
     if (fFeeEstimatesInitialized)
     {
         ::feeEstimator.FlushUnconfirmed();
@@ -1632,6 +1634,8 @@ bool AppInitMain()
             }
         }
     }
+
+    LoadWTPrimeCache();
 
     // As LoadBlockIndex can take several minutes, it's possible the user
     // requested to kill the GUI during the last operation. If so, exit.

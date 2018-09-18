@@ -2113,6 +2113,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
          */
 
         if (drivechainsEnabled) {
+
             if (fSidechainInputs) {
                 // We must get the B-WT^ hash as work is applied to
                 // WT^ before inputs and the change output are known.
@@ -2189,6 +2190,15 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
 
     if (drivechainsEnabled && vDepositTx.size())
         scdb.AddDeposits(vDepositTx, block.GetHash());
+
+    if (drivechainsEnabled) {
+        // Update / synchronize SCDB
+        std::string strError = "";
+        if (!scdb.Update(pindex->nHeight, block.GetHash(), block.vtx[0]->vout, strError))
+            LogPrintf("SCDB failed to update with block: %s\n", block.GetHash().ToString());
+        if (strError != "")
+            LogPrintf("SCDB update error: %s\n", strError);
+    }
 
     int64_t nTime5 = GetTimeMicros(); nTimeIndex += nTime5 - nTime4;
     LogPrint(BCLog::BENCH, "    - Index writing: %.2fms [%.2fs (%.2fms/blk)]\n", MILLI * (nTime5 - nTime4), nTimeIndex * MICRO, nTimeIndex * MILLI / nBlocksTotal);
@@ -3032,12 +3042,6 @@ bool CChainState::ReceivedBlockTransactions(const CBlock &block, CValidationStat
         if (nCoinbaseCached >= COINBASE_CACHE_TARGET + COINBASE_CACHE_PRUNE_INTERVAL)
             PruneCoinbaseCache();
 
-        // Update / synchronize SCDB
-        std::string strError = "";
-        if (!scdb.Update(chainActive.Height() + 1, block.GetHash(), block.vtx[0]->vout, strError))
-            LogPrintf("SCDB failed to update with block: %s\n", block.GetHash().ToString());
-        if (strError != "")
-            LogPrintf("SCDB update error: %s\n", strError);
     }
 
     pindexNew->RaiseValidity(BLOCK_VALID_TRANSACTIONS);
@@ -5144,6 +5148,79 @@ bool DumpMempool(void)
         return false;
     }
     return true;
+}
+
+bool LoadWTPrimeCache()
+{
+    fs::path path = GetDataDir() / "wtprime.dat";
+    CAutoFile filein(fsbridge::fopen(path, "r"), SER_DISK, CLIENT_VERSION);
+    if (filein.IsNull()) {
+        return false;
+    }
+
+    // TODO log this
+    uint64_t fileSize = fs::file_size(path);
+
+    std::vector<CTransactionRef> vWTPrime;
+    try {
+        int nVersionRequired, nVersionThatWrote;
+        filein >> nVersionRequired;
+        filein >> nVersionThatWrote;
+        if (nVersionRequired > CLIENT_VERSION) {
+            return false;
+        }
+
+        int count = 0;
+        filein >> count;
+        for (int i = 0; i < count; i++) {
+            CTransactionRef tx;
+            filein >> tx;
+            vWTPrime.push_back(tx);
+        }
+    }
+    catch (const std::exception& e) {
+        // TODO log this
+        // std::cout << "Exception: " << e.what() << std::endl;
+        return false;
+    }
+
+    // Add to SCDB
+    // TODO nSidechain
+    for (const CTransactionRef& tx : vWTPrime) {
+        if (!scdb.CacheWTPrime(SIDECHAIN_ONE, *tx.get()))
+            return false;
+    }
+
+    return true;
+}
+
+void DumpWTPrimeCache()
+{
+    std::vector<CTransaction> vWTPrime = scdb.GetWTPrimeCache();
+
+    int count = vWTPrime.size();
+
+    // Write the coins
+    fs::path path = GetDataDir() / "wtprime.dat";
+    CAutoFile fileout(fsbridge::fopen(path, "w"), SER_DISK, CLIENT_VERSION);
+    if (fileout.IsNull()) {
+        return;
+    }
+
+    try {
+        fileout << 210000; // version required to read: 0.21.00 or later
+        fileout << CLIENT_VERSION; // version that wrote the file
+        fileout << count; // Number of coins in file
+
+        for (const CTransaction& tx : vWTPrime) {
+            fileout << MakeTransactionRef(tx);
+        }
+    }
+    catch (const std::exception& e) {
+        // TODO log this
+        // std::cout << "Exception: " << e.what() << std::endl;
+        return;
+    }
 }
 
 void PruneCoinbaseCache()
