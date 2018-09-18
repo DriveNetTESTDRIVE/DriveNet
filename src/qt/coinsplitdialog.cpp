@@ -37,7 +37,7 @@ CoinSplitDialog::CoinSplitDialog(const CAmount& amountIn, QString txidIn, QStrin
 #ifdef ENABLE_WALLET
     if (vpwallets.empty()) {
         messageBox.setWindowTitle("Wallet Error!");
-        messageBox.setText("No active wallets to create the deposit.");
+        messageBox.setText("Active wallet required to split coins.");
         messageBox.exec();
         return;
     }
@@ -93,10 +93,6 @@ void CoinSplitDialog::on_buttonBox_accepted()
     LOCK2(cs_main, vpwallets[0]->cs_wallet);
 
     CWalletTx wtx;
-    // Force the wallet transaction to be version 3
-    //CMutableTransaction mtx = *wtx.tx;
-    //mtx.nVersion = 3;
-    //wtx.SetTx(MakeTransactionRef(std::move(mtx)));
 
     CReserveKey reservekey(vpwallets[0]);
     CAmount nFeeRequired;
@@ -116,8 +112,6 @@ void CoinSplitDialog::on_buttonBox_accepted()
         messageBox.exec();
         return;
     }
-
-
 
     CValidationState state;
     if (!vpwallets[0]->CommitTransaction(wtx, reservekey, g_connman.get(), state)) {
