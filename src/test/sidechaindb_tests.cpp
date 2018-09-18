@@ -34,7 +34,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_isolated)
     for (int i = 1; i <= SIDECHAIN_MIN_WORKSCORE; i++) {
         std::vector<SidechainWTPrimeState> vWT;
         wtTest.nWorkScore = i;
-        wtTest.nBlocksLeft--;
+        wtTest.nBlocksLeft = SIDECHAIN_VERIFICATION_PERIOD - nHeight;
         vWT.push_back(wtTest);
         scdb.UpdateSCDBIndex(vWT, nHeight);
         nHeight++;
@@ -64,7 +64,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MultipleVerificationPeriods)
     for (int i = 1; i <= SIDECHAIN_MIN_WORKSCORE; i++) {
         std::vector<SidechainWTPrimeState> vWT;
         wt1.nWorkScore = i;
-        wt1.nBlocksLeft--;
+        wt1.nBlocksLeft = SIDECHAIN_VERIFICATION_PERIOD - nHeight;
         vWT.push_back(wt1);
         scdb.UpdateSCDBIndex(vWT, nHeight);
         nHeight++;
