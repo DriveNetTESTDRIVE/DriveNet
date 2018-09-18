@@ -121,6 +121,9 @@ public:
     /** Get state with downvotes applied to all WT^(s) */
     std::vector<SidechainWTPrimeState> GetUpvotes() const;
 
+    // TODO remove
+    bool fWTPrimeCreated;
+
 private:
     /** Sidechain "database" tracks verification status of WT^(s) */
     std::vector<SCDBIndex> SCDB;

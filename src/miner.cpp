@@ -180,12 +180,15 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
 
     bool drivechainsEnabled = IsDrivechainEnabled(pindexPrev, chainparams.GetConsensus());
 
-    if (drivechainsEnabled) {
+    if (drivechainsEnabled && !scdb.fWTPrimeCreated) {
         // Add WT^(s) which have been validated
         for (const Sidechain& s : ValidSidechains) {
-            CTransaction wtx = CreateWTPrimePayout(s.nSidechain);
-            if (wtx.vout.size() && wtx.vin.size())
+            CMutableTransaction wtx;
+            bool fCreated = CreateWTPrimePayout(s.nSidechain, wtx);
+            if (fCreated && wtx.vout.size() && wtx.vin.size()) {
                 pblock->vtx.push_back(MakeTransactionRef(std::move(wtx)));
+                scdb.fWTPrimeCreated = fCreated;
+            }
         }
     }
 
@@ -336,26 +339,22 @@ int BlockAssembler::UpdatePackagesForAdded(const CTxMemPool::setEntries& already
     return nDescendantsUpdated;
 }
 
-CTransaction BlockAssembler::CreateWTPrimePayout(uint8_t nSidechain)
+bool BlockAssembler::CreateWTPrimePayout(uint8_t nSidechain, CMutableTransaction& tx)
 {
     // The WT^ that will be created
     CMutableTransaction mtx;
     mtx.nVersion = 2;
 
     if (!IsDrivechainEnabled(chainActive.Tip(), chainparams.GetConsensus()))
-        return mtx;
+        return false;
 
 #ifdef ENABLE_WALLET
     if (!scdb.HasState())
-        return mtx;
+        return false;
     if (!IsSidechainNumberValid(nSidechain))
-        return mtx;
+        return false;
 
     const Sidechain& sidechain = ValidSidechains[nSidechain];
-
-    // Check if it is the end of the verification period
-    if (nHeight % SIDECHAIN_VERIFICATION_PERIOD != 0)
-        return mtx;
 
     // Select the highest scoring B-WT^ for sidechain during verification period
     uint256 hashBest = uint256();
@@ -368,11 +367,11 @@ CTransaction BlockAssembler::CreateWTPrimePayout(uint8_t nSidechain)
         }
     }
     if (hashBest == uint256())
-        return mtx;
+        return false;
 
     // Does the selected B-WT^ have sufficient work score?
     if (scoreBest < SIDECHAIN_MIN_WORKSCORE)
-        return mtx;
+        return false;
 
     // Copy outputs from B-WT^
     // Note that this shouldn't be changed to be more efficient by just copying
@@ -387,7 +386,7 @@ CTransaction BlockAssembler::CreateWTPrimePayout(uint8_t nSidechain)
         }
     }
     if (!mtx.vout.size())
-        return mtx;
+        return false;
 
     // Calculate the amount to be withdrawn by WT^
     CAmount amtBWT = CAmount(0);
@@ -413,7 +412,7 @@ CTransaction BlockAssembler::CreateWTPrimePayout(uint8_t nSidechain)
         pwallet->AvailableSidechainCoins(vSidechainCoins, nSidechain);
     }
     if (!vSidechainCoins.size())
-        return mtx;
+        return false;
 
     // Calculate amount returning to sidechain script
     CAmount returnAmount = CAmount(0);
@@ -427,18 +426,18 @@ CTransaction BlockAssembler::CreateWTPrimePayout(uint8_t nSidechain)
     mtx.vout.back().nValue -= amtBWT;
 
     if (mtx.vout.back().nValue < 0)
-        return mtx;
+        return false;
     if (!mtx.vin.size())
-        return mtx;
+        return false;
 
     CBitcoinSecret vchSecret;
     bool fGood = vchSecret.SetString(sidechain.sidechainPriv);
     if (!fGood)
-        return mtx;
+        return false;
 
     CKey privKey = vchSecret.GetKey();
     if (!privKey.IsValid())
-        return mtx;
+        return false;
 
     // Set up keystore with sidechain's private key
     CBasicKeyStore tempKeystore;
@@ -451,12 +450,21 @@ CTransaction BlockAssembler::CreateWTPrimePayout(uint8_t nSidechain)
     SignatureData sigdata;
     bool sigCreated = ProduceSignature(creator, sidechainScript, sigdata);
     if (!sigCreated)
-        return mtx;
+        return false;
 
     mtx.vin[0].scriptSig = sigdata.scriptSig;
 #endif
 
-    return mtx;
+    // Check to make sure that all of the outputs in this WT^ are unknown / new
+    for (size_t o = 0; o < mtx.vout.size(); o++) {
+        if (pcoinsTip->HaveCoin(COutPoint(mtx.GetHash(), o))) {
+            return false;
+        }
+    }
+
+    tx = mtx;
+
+    return true;
 }
 
 // Skip entries in mapTx that are already in a block or are present

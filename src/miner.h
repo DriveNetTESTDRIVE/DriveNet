@@ -193,7 +193,7 @@ private:
 
     // SidechainDB
     /** Returns a WT^ payout transaction for nSidechain if there is one */
-    CTransaction CreateWTPrimePayout(uint8_t nSidechain);
+    bool CreateWTPrimePayout(uint8_t nSidechain, CMutableTransaction& tx);
 };
 
 /** The old (actually useful) miner functions that were removed after 0.12 */
