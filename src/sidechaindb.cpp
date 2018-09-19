@@ -16,7 +16,6 @@ SidechainDB::SidechainDB()
 {
     SCDB.resize(VALID_SIDECHAINS_COUNT);
     ratchet.resize(VALID_SIDECHAINS_COUNT);
-    fWTPrimeCreated = false;
 }
 
 void SidechainDB::AddDeposits(const std::vector<CTransaction>& vtx, const uint256& hashBlock)
@@ -334,8 +333,6 @@ void SidechainDB::Reset()
 
     // Reset hashBlockLastSeen
     hashBlockLastSeen.SetNull();
-
-    fWTPrimeCreated = false;
 }
 
 std::string SidechainDB::ToString() const

@@ -180,14 +180,13 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
 
     bool drivechainsEnabled = IsDrivechainEnabled(pindexPrev, chainparams.GetConsensus());
 
-    if (drivechainsEnabled && !scdb.fWTPrimeCreated) {
+    if (drivechainsEnabled) {
         // Add WT^(s) which have been validated
         for (const Sidechain& s : ValidSidechains) {
             CMutableTransaction wtx;
             bool fCreated = CreateWTPrimePayout(s.nSidechain, wtx);
             if (fCreated && wtx.vout.size() && wtx.vin.size()) {
                 pblock->vtx.push_back(MakeTransactionRef(std::move(wtx)));
-                scdb.fWTPrimeCreated = fCreated;
             }
         }
     }
@@ -373,19 +372,21 @@ bool BlockAssembler::CreateWTPrimePayout(uint8_t nSidechain, CMutableTransaction
     if (scoreBest < SIDECHAIN_MIN_WORKSCORE)
         return false;
 
-    // Copy outputs from B-WT^
+    // Copy inputs & outputs from B-WT^
     // Note that this shouldn't be changed to be more efficient by just copying
-    // the entire transaction. We must copy the outputs only.
+    // the entire transaction.
     // (but maybe it could still be improved)
     std::vector<CTransaction> vWTPrime = scdb.GetWTPrimeCache();
     for (const CTransaction& tx : vWTPrime) {
         if (tx.GetHash() == hashBest) {
             for (const CTxOut& out : tx.vout)
                 mtx.vout.push_back(out);
+            for (const CTxIn& in : tx.vin)
+                mtx.vin.push_back(in);
             break;
         }
     }
-    if (!mtx.vout.size())
+    if (!mtx.vout.size() || !mtx.vin.size())
         return false;
 
     // Calculate the amount to be withdrawn by WT^
@@ -411,16 +412,18 @@ bool BlockAssembler::CreateWTPrimePayout(uint8_t nSidechain, CMutableTransaction
     for (CWalletRef pwallet : vpwallets) {
         pwallet->AvailableSidechainCoins(vSidechainCoins, nSidechain);
     }
-    if (!vSidechainCoins.size())
+    if (vSidechainCoins.size() != 1)
+        return false; // TODO log
+
+    // Check that sidechain utxo input is the same CTIP the sidechain used
+    if (vSidechainCoins.front().tx->GetHash() != mtx.vin.front().prevout.hash)
+        return false; // TODO log
+    if ((unsigned int)vSidechainCoins.front().i != mtx.vin.front().prevout.n)
         return false;
 
     // Calculate amount returning to sidechain script
-    CAmount returnAmount = CAmount(0);
-    for (const COutput& output : vSidechainCoins) {
-        mtx.vin.push_back(CTxIn(output.tx->GetHash(), output.i));
-        returnAmount += output.tx->tx->vout[output.i].nValue;
-        mtx.vout.back().nValue += returnAmount;
-    }
+    CAmount returnAmount = vSidechainCoins.front().tx->tx->vout[vSidechainCoins.front().i].nValue;
+    mtx.vout.back().nValue += returnAmount;
 
     // Subtract payout amount from sidechain change return
     mtx.vout.back().nValue -= amtBWT;

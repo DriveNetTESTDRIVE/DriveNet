@@ -141,6 +141,13 @@ isminetype IsMine(const CKeyStore &keystore, const CScript& scriptPubKey, bool& 
             return ISMINE_SPENDABLE;
         break;
     }
+
+    // TODO
+    // Anyone-can-spend outputs were made standard for the purpose of critical
+    // data transactions. Should we also expose other anyone-can-spend scripts
+    // to the wallet?
+    case TX_ANYONE_CAN_SPEND:
+        return ISMINE_NO;
     }
 
     if (keystore.HaveWatchOnly(scriptPubKey)) {

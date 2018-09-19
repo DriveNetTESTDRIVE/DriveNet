@@ -86,9 +86,7 @@ bool CTransaction::GetBWTHash(uint256& hashRet) const
     if (!mtx.vin.size() || !mtx.vout.size())
         return false;
 
-    // This is the format the sidechain must use for vin[0]
-    mtx.vin.clear();
-    mtx.vin.resize(1);
+    // Remove the CTIP scriptSig (set to OP_0 as the sidechain must orignally)
     mtx.vin[0].scriptSig = CScript() << OP_0;
 
     // Remove the sidechain change return

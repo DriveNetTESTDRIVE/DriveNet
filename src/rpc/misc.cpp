@@ -793,6 +793,51 @@ UniValue createbmmcriticaldatatx(const JSONRPCRequest& request)
     return ret;
 }
 
+UniValue listsidechainctip(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() < 1)
+        throw std::runtime_error(
+            "listsidechainctip\n"
+            "Called by sidechain, returns crtitical transaction index pair of sidechain\n"
+            "\nArguments:\n"
+            "1. \"nsidechain\"      (numeric, required) The sidechain number\n"
+            "\nExamples:\n"
+            + HelpExampleCli("listsidechainctip", "\"nsidechain\"")
+            + HelpExampleRpc("listsidechainctip", "\"nsidechain\"")
+            );
+
+#ifdef ENABLE_WALLET
+    // Check for active wallet
+    std::string strError;
+    if (vpwallets.empty()) {
+        strError = "Error: no wallets are available";
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+    }
+#endif
+
+    // Is nSidechain valid?
+    uint8_t nSidechain = std::stoi(request.params[0].getValStr());
+    if (!IsSidechainNumberValid(nSidechain))
+        throw std::runtime_error("Invalid sidechain number");
+
+    std::vector<COutput> vSidechainCoin;
+#ifdef ENABLE_WALLET
+    vpwallets[0]->AvailableSidechainCoins(vSidechainCoin, nSidechain);
+#endif
+
+    if (vSidechainCoin.empty())
+        throw std::runtime_error("No Sidechain CTIP found");
+
+    if (vSidechainCoin.size() != 1)
+        throw std::runtime_error("Invalid Sidechain CTIP (multiple CTIP found)");
+
+    UniValue obj(UniValue::VOBJ);
+    obj.push_back(Pair("txid", vSidechainCoin.front().tx->GetHash().ToString()));
+    obj.push_back(Pair("n", vSidechainCoin.front().i));
+
+    return obj;
+}
+
 UniValue listsidechaindeposits(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() < 1)
@@ -801,7 +846,7 @@ UniValue listsidechaindeposits(const JSONRPCRequest& request)
             "Called by sidechain, return list of deposits\n"
             "\nArguments:\n"
             "1. \"nsidechain\"      (numeric, required) The sidechain number\n"
-            "1. \"count\"           (numeric, optional) The number of most recent deposits to list\n"
+            "2. \"count\"           (numeric, optional) The number of most recent deposits to list\n"
             "\nExamples:\n"
             + HelpExampleCli("listsidechaindeposits", "\"nsidechain\", \"count\"")
             + HelpExampleRpc("listsidechaindeposits", "\"nsidechain\", \"count\"")
@@ -1199,6 +1244,7 @@ static const CRPCCommand commands[] =
     /* Used by sidechain (not shown in help) */
     { "hidden",             "createcriticaldatatx",     &createcriticaldatatx,      {"amount", "height", "criticalhash"}},
     { "hidden",             "createbmmcriticaldatatx",  &createbmmcriticaldatatx,   {"amount", "height", "criticalhash", "nsidechain", "ndag"}},
+    { "hidden",             "listsidechainctip",        &listsidechainctip,         {"nsidechain"}},
     { "hidden",             "listsidechaindeposits",    &listsidechaindeposits,     {"nsidechain", "count"}},
     { "hidden",             "countsidechaindeposits",   &countsidechaindeposits,    {"nsidechain"}},
     { "hidden",             "receivewtprime",           &receivewtprime,            {"nsidechain","rawtx"}},
