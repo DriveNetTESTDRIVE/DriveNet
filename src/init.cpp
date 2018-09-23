@@ -1727,6 +1727,8 @@ bool AppInitMain()
 
     // ********************************************************* Step 11: load coins
 
+    bool fReadLoadedCoins = gArgs.GetBoolArg("-loadedcoins", true);
+
     // TODO improve this check... Right now we're just checking if the last
     // loaded coin that will be written can currently be looked up by pcoinsTip.
     // That does basically ensure that we have loaded all of the coins, but I'm
@@ -1738,10 +1740,10 @@ bool AppInitMain()
     // Note that we only load coins for main network.
     //
     // Check if we have already imported loaded coins, try to load them if not
-    if (chainparams.NetworkIDString() == "main" &&
+    if (chainparams.NetworkIDString() == "main" && fReadLoadedCoins &&
             !pcoinsTip->HaveCoin(COutPoint(uint256S(LAST_LOADED_OUTPOINT), LAST_LOADED_N)))
     {
-        uiInterface.InitMessage(_("Importing UTXO set. One time only (~10 minutes)."));
+        uiInterface.InitMessage(_("Importing UTXO set. First time only (~10 minutes)."));
 
         // Try to read loaded coins
         if (!pcoinsTip->ReadLoadedCoins()) {

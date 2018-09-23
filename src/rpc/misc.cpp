@@ -973,11 +973,9 @@ UniValue countsidechaindeposits(const JSONRPCRequest& request)
 
     int count = 0;
 
-#ifdef ENABLE_WALLET
     // Get latest deposit from sidechain DB deposit cache
     std::vector<SidechainDeposit> vDeposit = scdb.GetDeposits(nSidechain);
     count = vDeposit.size();
-#endif
 
     return count;
 }
@@ -996,6 +994,17 @@ UniValue receivewtprime(const JSONRPCRequest& request)
             + HelpExampleRpc("receivewtprime", "")
      );
 
+#ifdef ENABLE_WALLET
+    // Check for active wallet
+    std::string strError;
+    CWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    if (!pwallet) {
+        strError = "Error: no wallets are available";
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+    }
+    LOCK2(cs_main, &pwallet->cs_wallet);
+#endif
+
     // Is nSidechain valid?
     int nSidechain = request.params[0].get_int();
     if (!IsSidechainNumberValid(nSidechain))
@@ -1011,6 +1020,23 @@ UniValue receivewtprime(const JSONRPCRequest& request)
 
     if (wtPrime.IsNull())
         throw std::runtime_error("Invalid WT^ hex");
+
+#ifdef ENABLE_WALLET
+    // Reject the WT^ if it spends more than the sidechain's CTIP as it won't
+    // be accepted anyway
+    CAmount amount = wtPrime.GetValueOut();
+    std::vector<COutput> vSidechainCoin;
+    pwallet->AvailableSidechainCoins(vSidechainCoin, nSidechain);
+
+    if (vSidechainCoin.empty())
+        throw std::runtime_error("Rejecting WT^: No Sidechain CTIP found!");
+
+    if (vSidechainCoin.size() != 1)
+        throw std::runtime_error("Rejecting WT^: Invalid Sidechain CTIP (multiple CTIP found!)");
+
+    if (amount > vSidechainCoin.front().tx->GetAvailableWatchOnlyCredit())
+        throw std::runtime_error("Rejecting WT^: Withdrawn amount greater than CTIP amount!");
+#endif
 
     // Add WT^ to our local cache so that we can create a WT^ hash commitment
     // in the next block we mine to begin the verification process
