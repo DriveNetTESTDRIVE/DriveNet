@@ -2407,7 +2407,39 @@ void CWallet::AvailableSidechainCoins(std::vector<COutput>& vSidechainCoins, con
         CScript scriptPubKey = output.tx->tx->vout[output.i].scriptPubKey;
 
         if (HexStr(scriptPubKey) == s.sidechainHex) {
-            vSidechainCoins.push_back(output);
+            const CTransaction tx = *output.tx->tx;
+
+            // Check that the output is a valid sidechain deposit
+            size_t nValidDeposit = 0;
+            for (size_t i = 0; i < tx.vout.size(); i++) {
+                CScript depositScript = tx.vout[i].scriptPubKey;
+                // scriptPubKey must contain keyID
+                if (depositScript.size() < sizeof(uint160) + 2)
+                    continue;
+                if (depositScript.front() != OP_RETURN)
+                    continue;
+
+                uint8_t nSidechain = (unsigned int)depositScript[1];
+                if (!IsSidechainNumberValid(nSidechain))
+                    continue;
+
+                CScript::const_iterator pkey = depositScript.begin() + 2;
+                opcodetype opcode;
+                std::vector<unsigned char> vch;
+                if (!depositScript.GetOp(pkey, opcode, vch))
+                    continue;
+                if (vch.size() != sizeof(uint160))
+                    continue;
+
+                CKeyID keyID = CKeyID(uint160(vch));
+                if (keyID.IsNull())
+                    continue;
+
+                nValidDeposit++;
+            }
+
+            if (nValidDeposit == 1)
+                vSidechainCoins.push_back(output);
         }
     }
 }
