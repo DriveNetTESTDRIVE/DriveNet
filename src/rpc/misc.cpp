@@ -798,7 +798,7 @@ UniValue listsidechainctip(const JSONRPCRequest& request)
     if (request.fHelp || request.params.size() < 1)
         throw std::runtime_error(
             "listsidechainctip\n"
-            "Called by sidechain, returns crtitical transaction index pair of sidechain\n"
+            "Returns the crtitical transaction index pair for nSidechain\n"
             "\nArguments:\n"
             "1. \"nsidechain\"      (numeric, required) The sidechain number\n"
             "\nExamples:\n"
@@ -843,7 +843,9 @@ UniValue listsidechaindeposits(const JSONRPCRequest& request)
     if (request.fHelp || request.params.size() < 1)
         throw std::runtime_error(
             "listsidechaindeposits\n"
-            "Called by sidechain, return list of deposits\n"
+            "List the most recent cached deposits (for nSidechain). Optionally "
+            "limited to count. Note that this does not return all sidechain "
+            "deposits, just the most recent deposits in the cache.\n"
             "\nArguments:\n"
             "1. \"nsidechain\"      (numeric, required) The sidechain number\n"
             "2. \"count\"           (numeric, optional) The number of most recent deposits to list\n"
@@ -949,7 +951,9 @@ UniValue countsidechaindeposits(const JSONRPCRequest& request)
     if (request.fHelp || request.params.size() != 1)
         throw std::runtime_error(
             "countsidechaindeposits\n"
-            "Called by sidechain, return list of deposits\n"
+            "Returns the number of deposits (for nSidechain) currently cached. "
+            "Note that this doesn't count all sidechain deposits, just the "
+            "number currently cached by the node.\n"
             "\nArguments:\n"
             "1. \"nsidechain\"      (numeric, required) The sidechain number\n"
             "\nExamples:\n"
@@ -1126,7 +1130,9 @@ UniValue getbmmproof(const JSONRPCRequest& request)
     if (request.fHelp || request.params.size() != 2)
         throw std::runtime_error(
             "getbmmproof\n"
-            "Called by sidechain\n"
+            "Get the BMM proof (txoutproof) of an h* BMM commit transaction "
+            "on the mainchain. Used by the sidechain (optionally) to double "
+            "check BMM commits before connecting a sidechain block\n"
             "\nArguments:\n"
             "1. \"blockhash\"      (string, required) mainchain blockhash with h*\n"
             "2. \"criticalhash\"   (string, required) h* to create proof of\n"
@@ -1198,7 +1204,8 @@ UniValue listpreviousblockhashes(const JSONRPCRequest& request)
     if (request.fHelp || request.params.size() != 0)
         throw std::runtime_error(
             "listpreviousblockhashes\n"
-            "Called by sidechain\n"
+            "List the 5 most recent mainchain block hashes. Used by sidechains " \
+            "to help search for BMM commitments.\n"
             "\nArguments:\n"
             "\nExamples:\n"
             + HelpExampleCli("listpreviousblockhashes", "")
@@ -1233,7 +1240,7 @@ UniValue echo(const JSONRPCRequest& request)
             "echo|echojson \"message\" ...\n"
             "\nSimply echo back the input arguments. This command is for testing.\n"
             "\nThe difference between echo and echojson is that echojson has argument conversion enabled in the client-side table in"
-            "bitcoin-cli and the GUI. There is no server-side difference."
+            "drivenet-cli and the GUI. There is no server-side difference."
         );
 
     return request.params;
@@ -1247,7 +1254,7 @@ static UniValue getinfo_deprecated(const JSONRPCRequest& request)
         "- getblockchaininfo: blocks, difficulty, chain\n"
         "- getnetworkinfo: version, protocolversion, timeoffset, connections, proxy, relayfee, warnings\n"
         "- getwalletinfo: balance, keypoololdest, keypoolsize, paytxfee, unlocked_until, walletversion\n"
-        "\nbitcoin-cli has the option -getinfo to collect and format these in the old format."
+        "\ndrivenet-cli has the option -getinfo to collect and format these in the old format."
     );
 }
 
@@ -1267,16 +1274,16 @@ static const CRPCCommand commands[] =
     { "hidden",             "echojson",               &echo,                   {"arg0","arg1","arg2","arg3","arg4","arg5","arg6","arg7","arg8","arg9"}},
     { "hidden",             "getinfo",                &getinfo_deprecated,     {}},
 
-    /* Used by sidechain (not shown in help) */
-    { "hidden",             "createcriticaldatatx",     &createcriticaldatatx,      {"amount", "height", "criticalhash"}},
-    { "hidden",             "createbmmcriticaldatatx",  &createbmmcriticaldatatx,   {"amount", "height", "criticalhash", "nsidechain", "ndag"}},
-    { "hidden",             "listsidechainctip",        &listsidechainctip,         {"nsidechain"}},
-    { "hidden",             "listsidechaindeposits",    &listsidechaindeposits,     {"nsidechain", "count"}},
-    { "hidden",             "countsidechaindeposits",   &countsidechaindeposits,    {"nsidechain"}},
-    { "hidden",             "receivewtprime",           &receivewtprime,            {"nsidechain","rawtx"}},
-    { "hidden",             "receivewtprimeupdate",     &receivewtprimeupdate,      {"height","update"}},
-    { "hidden",             "getbmmproof",              &getbmmproof,               {"blockhash", "criticalhash"}},
-    { "hidden",             "listpreviousblockhashes",  &listpreviousblockhashes,   {}},
+    /* DriveChain rpc commands (mainly used by sidechains) */
+    { "DriveChain",         "createcriticaldatatx",     &createcriticaldatatx,      {"amount", "height", "criticalhash"}},
+    { "DriveChain",         "createbmmcriticaldatatx",  &createbmmcriticaldatatx,   {"amount", "height", "criticalhash", "nsidechain", "ndag"}},
+    { "DriveChain",         "listsidechainctip",        &listsidechainctip,         {"nsidechain"}},
+    { "DriveChain",         "listsidechaindeposits",    &listsidechaindeposits,     {"nsidechain", "count"}},
+    { "DriveChain",         "countsidechaindeposits",   &countsidechaindeposits,    {"nsidechain"}},
+    { "DriveChain",         "receivewtprime",           &receivewtprime,            {"nsidechain","rawtx"}},
+    { "DriveChain",         "receivewtprimeupdate",     &receivewtprimeupdate,      {"height","update"}},
+    { "DriveChain",         "getbmmproof",              &getbmmproof,               {"blockhash", "criticalhash"}},
+    { "DriveChain",         "listpreviousblockhashes",  &listpreviousblockhashes,   {}},
 };
 
 void RegisterMiscRPCCommands(CRPCTable &t)
