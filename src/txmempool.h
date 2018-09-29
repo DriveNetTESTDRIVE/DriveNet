@@ -18,6 +18,7 @@
 #include <indirectmap.h>
 #include <policy/feerate.h>
 #include <primitives/transaction.h>
+#include <sidechain.h>
 #include <sync.h>
 #include <random.h>
 
@@ -501,6 +502,7 @@ public:
 
     const setEntries & GetMemPoolParents(txiter entry) const;
     const setEntries & GetMemPoolChildren(txiter entry) const;
+
 private:
     typedef std::map<txiter, setEntries, CompareIteratorByHash> cacheMap;
 
@@ -517,9 +519,12 @@ private:
 
     std::vector<indexed_transaction_set::const_iterator> GetSortedDepthAndScore() const;
 
+
 public:
     indirectmap<COutPoint, const CTransaction*> mapNextTx;
     std::map<uint256, CAmount> mapDeltas;
+
+    std::array<COutPoint, ValidSidechains.size()> LastSidechainDeposits;
 
     /** Create a new CTxMemPool.
      */

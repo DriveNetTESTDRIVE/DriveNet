@@ -660,23 +660,73 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
         if (amtSidechainUTXO > amtReturning) {
             // M6 Withdrawal
 
-            // Block sidechain withdrawals from the memory pool.
-            // WT^(s) can only valid when added to a block by miners
-            // not as a loose transaction. When added by miners, WT^
-            // work score will be verified before the block is connected.
+            // Block sidechain withdrawals (WT^(s)) from the memory pool.
+            // When a WT^ has sufficient workscore it can be added to a block
+            // by miners. Workscore is verified when the block is connected.
             return state.DoS(100, false, REJECT_INVALID, "sidechain-withdraw-loose");
-        } else {
+        } else if (amtReturning > amtSidechainUTXO) {
             // M5 Deposit
-            // TODO we need some additional logic to determine whether a
-            // sidechain deposit should be accepted into the mempool.
-            //
-            // If there are no other deposits in the mempool for a
-            // particular sidechain the new deposit should be accepted.
-            //
-            // If there are other deposits for a particular sidechain in
-            // the memory pool then each new deposit needs to spend the
-            // previous without creating a situation where the funds will
-            // be locked up (insufficient priority etc).
+
+            // Check format & extract sidechain number & deposit outpoint
+            uint8_t nSidechain = -1;
+            COutPoint outpoint;
+            bool fFormatChecked = false;
+            for (size_t i = 0; i < tx.vout.size(); i++) {
+                const CScript &scriptPubKey = tx.vout[i].scriptPubKey;
+                if (ValidSidechainField.find(HexStr(scriptPubKey)) != ValidSidechainField.end()) {
+                    // Copy output index of deposit and move on
+                    outpoint.n = i;
+                    outpoint.hash = tx.GetHash();
+                    continue;
+                }
+                // scriptPubKey must contain keyID
+                if (scriptPubKey.size() < sizeof(uint160) + 2)
+                    continue;
+                if (scriptPubKey.front() != OP_RETURN)
+                    continue;
+
+                nSidechain = (unsigned int)scriptPubKey[1];
+                if (!IsSidechainNumberValid(nSidechain))
+                    continue;
+                CScript::const_iterator pkey = scriptPubKey.begin() + 2;
+                opcodetype opcode;
+                std::vector<unsigned char> vch;
+                if (!scriptPubKey.GetOp(pkey, opcode, vch))
+                    continue;
+                if (vch.size() != sizeof(uint160))
+                    continue;
+
+                CKeyID keyID = CKeyID(uint160(vch));
+                if (keyID.IsNull())
+                    continue;
+
+                fFormatChecked = true;
+            }
+
+            if (!fFormatChecked)
+                return state.DoS(100, false, REJECT_INVALID, "sidechain-deposit-invalid-format");
+
+            // Check nSidechain again
+            if (!IsSidechainNumberValid(nSidechain))
+                return state.DoS(100, false, REJECT_INVALID, "sidechain-deposit-invalid-sidechain-number");
+
+            // Check that CTIP input was spent if there is one
+            if (!mempool.LastSidechainDeposits[nSidechain].IsNull()) {
+                int nCTIPSpent = 0;
+                const COutPoint out = mempool.LastSidechainDeposits[nSidechain];
+                for (const CTxIn& in : tx.vin) {
+                    if (in.prevout == out)
+                        nCTIPSpent++;
+                }
+                if (nCTIPSpent != 1)
+                    return state.DoS(100, false, REJECT_INVALID, "sidechain-deposit-invalid-no-ctip-spent");
+            }
+
+            // Track with mempool
+            mempool.LastSidechainDeposits[nSidechain] = outpoint;
+
+        } else if (amtSidechainUTXO > 0) {
+            return state.DoS(100, false, REJECT_INVALID, "sidechain-invalid-ctip-spend");
         }
     }
 
