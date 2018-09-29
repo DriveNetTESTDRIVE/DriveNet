@@ -95,7 +95,7 @@ static CZMQNotificationInterface* pzmqNotificationInterface = nullptr;
 static const char* FEE_ESTIMATES_FILENAME="fee_estimates.dat";
 
 static const char* LAST_LOADED_OUTPOINT="000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f";
-static const uint32_t LAST_LOADED_N=1;
+static const uint32_t LAST_LOADED_N=3;
 
 //////////////////////////////////////////////////////////////////////////////
 //

@@ -118,11 +118,11 @@ public:
         nDefaultPort = 8451;
         nPruneAfterHeight = 100000;
 
-        genesis = CreateGenesisBlock(1533362452, 4324415, 0x1d5fffff, 1, 50 * COIN);
+        genesis = CreateGenesisBlock(1538208103, 4297535, 0x1d5fffff, 1, 50 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
 
-        // PoW: 0000004804c1ceee75b80be05666d5a5edab23618982ec48ab2d7200da72686d
-        assert(consensus.hashGenesisBlock == uint256S("0x006cda0ac4735938ac32ce6bb44074b99c2903b46906f68ff46637b1cd36d76d"));
+        // PoW: 0000000e59437607652e2caf9d1854695a85b33af14cf7cfc0532ec4e934f952
+        assert(consensus.hashGenesisBlock == uint256S("0x17469695449b0942290d625ca45cae06646f4bc0f4f397a3256c975d5c228606"));
         assert(genesis.hashMerkleRoot == uint256S("0x4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"));
 
         // Note that of those which support the service bits prefix, most only support a subset of
@@ -153,7 +153,7 @@ public:
 
         checkpointData = {
             {
-                { 0, uint256S("0x006cda0ac4735938ac32ce6bb44074b99c2903b46906f68ff46637b1cd36d76d")},
+                { 0, uint256S("0x17469695449b0942290d625ca45cae06646f4bc0f4f397a3256c975d5c228606")},
             }
         };
 
@@ -207,7 +207,7 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_DRIVECHAINS].nTimeout = 1547510401; // January 15th, 2019.
 
         // The best chain should have at least this much work.
-        consensus.nMinimumChainWork = uint256S("0x00000000cd1c3e3cd8f98fc0bea20745ca52f44c3e108bb65fa27aef139df8ac");
+        consensus.nMinimumChainWork = uint256S("0x0000000000000000000000000000000000000000000000000000000100010001");
 
         // By default assume that the signatures in ancestors of this block are valid.
         consensus.defaultAssumeValid = uint256S("0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
@@ -220,11 +220,11 @@ public:
         nDefaultPort = 18333;
         nPruneAfterHeight = 1000;
 
-        genesis = CreateGenesisBlock(1531692481, 2430860146, 0x1d00ffff, 1, 50 * COIN);
+        genesis = CreateGenesisBlock(1538237139, 3682765239, 0x1d00ffff, 1, 50 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
 
-        // PoW: 00000000cd1c3e3cd8f98fc0bea20745ca52f44c3e108bb65fa27aef139df8ac
-        assert(consensus.hashGenesisBlock == uint256S("0xf5f52a696de080edce5e42e6c475cb3828ce25e9a3900c77cf78bcba500ba351"));
+        // PoW: 000000007f35a199e3bd12f099078aa9ec69ce56b4e7d425303370633ba08c87
+        assert(consensus.hashGenesisBlock == uint256S("0x461e99324112e184763710fee6e32d180ae90f56f7d6cdb53142e0ea608fd9bf"));
         assert(genesis.hashMerkleRoot == uint256S("0x4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"));
 
         vFixedSeeds.clear();
@@ -248,7 +248,7 @@ public:
 
         checkpointData = {
             {
-                {0, uint256S("f5f52a696de080edce5e42e6c475cb3828ce25e9a3900c77cf78bcba500ba351")},
+                {0, uint256S("461e99324112e184763710fee6e32d180ae90f56f7d6cdb53142e0ea608fd9bf")},
             }
         };
 
@@ -310,11 +310,11 @@ public:
         nDefaultPort = 18444;
         nPruneAfterHeight = 1000;
 
-        genesis = CreateGenesisBlock(1531565232, 900, 0x207fffff, 1, 50 * COIN);
+        genesis = CreateGenesisBlock(1538245548, 44, 0x207fffff, 1, 50 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
 
-        // PoW: 038f3eef412ad0f3687076b19f5d4ae36868865bf222328b0c1a8ea08b02d3b3
-        assert(consensus.hashGenesisBlock == uint256S("0xe57dde3154e8e37a22f7c7dc753159c1ce1124f6016643338a404837b926099c"));
+        // PoW: 5f7b23e5c858849788406fd2e18dabaff85afdd7d6efbcdff4bc91550ecff6d9
+        assert(consensus.hashGenesisBlock == uint256S("0x800270728d0a4bc737ae5858c45de5b7d41a571a4ff508010b7389ccd91bed3a"));
         assert(genesis.hashMerkleRoot == uint256S("0x4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"));
 
         vFixedSeeds.clear(); //!< Regtest mode doesn't have any fixed seeds.
@@ -326,7 +326,7 @@ public:
 
         checkpointData = {
             {
-                {0, uint256S("e57dde3154e8e37a22f7c7dc753159c1ce1124f6016643338a404837b926099c")},
+                {0, uint256S("800270728d0a4bc737ae5858c45de5b7d41a571a4ff508010b7389ccd91bed3a")},
             }
         };
 
