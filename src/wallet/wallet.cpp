@@ -2781,7 +2781,7 @@ OutputType CWallet::TransactionChangeType(OutputType change_type, const std::vec
 }
 
 bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet,
-                                int& nChangePosInOut, std::string& strFailReason, const CCoinControl& coin_control, bool sign, uint32_t nVersionOverride)
+                                int& nChangePosInOut, std::string& strFailReason, const CCoinControl& coin_control, bool sign, uint32_t nVersionOverride, uint32_t nLockTimeOverride, CCriticalData criticalData)
 {
     CAmount nValue = 0;
     int nChangePosRequest = nChangePosInOut;
@@ -2830,6 +2830,12 @@ bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletT
     // now we ensure code won't be written that makes assumptions about
     // nLockTime that preclude a fix later.
     txNew.nLockTime = chainActive.Height();
+
+    if (nLockTimeOverride != 0)
+        txNew.nLockTime = nLockTimeOverride;
+
+    if (!criticalData.IsNull())
+        txNew.criticalData = criticalData;
 
     // Secondly occasionally randomly pick a nLockTime even further back, so
     // that transactions that are delayed after signing for whatever reason,

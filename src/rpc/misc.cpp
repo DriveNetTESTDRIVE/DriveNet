@@ -734,19 +734,6 @@ UniValue createbmmcriticaldatatx(const JSONRPCRequest& request)
     criticalData.bytes = std::vector<unsigned char>(bytes.begin(), bytes.end());
     criticalData.hashCritical = hashCritical;
 
-    // Create transaction with critical data
-    CMutableTransaction mtx;
-    mtx.nVersion = 3;
-    mtx.vout.resize(1);
-    mtx.vout[0].scriptPubKey = CScript() << OP_TRUE;
-    mtx.vout[0].nValue = nAmount;
-
-    // Set lock time
-    mtx.nLockTime = nHeight;
-
-    // Add critical data
-    mtx.criticalData = criticalData;
-
 #ifdef ENABLE_WALLET
     // Create and send the transaction
     std::string strError;
@@ -755,31 +742,28 @@ UniValue createbmmcriticaldatatx(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
 
-    CCoinControl coinControl;
-    int nChange = -1;
-    CAmount nFeeOut;
-    std::string strFail;
-    std::set<int> setSubtractFeeFromOutputs;
-    setSubtractFeeFromOutputs.insert(0);
-    if (!vpwallets[0]->FundTransaction(mtx, nFeeOut, nChange, strFail, false, setSubtractFeeFromOutputs, coinControl)) {
-        throw JSONRPCError(RPC_WALLET_ERROR, strFail);
-    }
+    // Create transaction with critical data
+    std::vector<CRecipient> vecSend;
+    CRecipient recipient = {CScript() << OP_TRUE, nAmount, true};
+    vecSend.push_back(recipient);
 
-    if (!vpwallets[0]->SignTransaction(mtx)) {
-        throw JSONRPCError(RPC_WALLET_ERROR, "Failed to sign transaction!");
-    }
+    LOCK2(cs_main, vpwallets[0]->cs_wallet);
 
     CWalletTx wtx;
-    wtx.fTimeReceivedIsTxTime = true;
-    wtx.fFromMe = true;
-    wtx.BindWallet(vpwallets[0]);
-
-    wtx.SetTx(MakeTransactionRef(std::move(mtx)));
-
-    CReserveKey reserveKey(vpwallets[0]);
+    CReserveKey reservekey(vpwallets[0]);
+    CAmount nFeeRequired;
+    int nChangePosRet = -1;
+    //TODO: set this as a real thing
+    CCoinControl cc;
+    if (!vpwallets[0]->CreateTransaction(vecSend, wtx, reservekey, nFeeRequired, nChangePosRet, strError, cc, true, 3, nHeight, criticalData)) {
+        if (nAmount + nFeeRequired > vpwallets[0]->GetBalance())
+            strError = strprintf("Error: This transaction requires a transaction fee of at least %s", FormatMoney(nFeeRequired));
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+    }
     CValidationState state;
-    if (!vpwallets[0]->CommitTransaction(wtx, reserveKey, g_connman.get(), state)) {
-        throw JSONRPCError(RPC_WALLET_ERROR, state.GetRejectReason());
+    if (!vpwallets[0]->CommitTransaction(wtx, reservekey, g_connman.get(), state)) {
+        strError = strprintf("Error: The transaction was rejected! Reason given: %s", state.GetRejectReason());
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
 #endif
 
