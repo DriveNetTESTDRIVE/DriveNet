@@ -515,6 +515,15 @@ bool DumpMempool();
 /** Load the mempool from disk. */
 bool LoadMempool();
 
+// TODO Add startup param to enable this, make disabled by default. The other
+// .dat files aren't created unless the user is BMM mining but this cache needs
+// an extra parameter in order to be made optional.
+/** Load the optional deposit cache from disk. */
+bool LoadDepositCache();
+
+/** Dump the deposit cache to disk. */
+void DumpDepositCache();
+
 /** Load the optional WT^ transaction cache from disk. */
 bool LoadWTPrimeCache();
 

@@ -74,6 +74,13 @@ void SidechainDB::AddDeposits(const std::vector<CTransaction>& vtx, const uint25
     }
 }
 
+void SidechainDB::AddDeposits(const std::vector<SidechainDeposit>& vDeposit)
+{
+    for (const SidechainDeposit& d : vDeposit) {
+        vDepositCache.push_back(d);
+    }
+}
+
 void SidechainDB::AddSidechainNetworkUpdatePackage(const SidechainUpdatePackage& update)
 {
     vSidechainUpdateCache.push_back(update);
@@ -324,9 +331,6 @@ void SidechainDB::Reset()
 
     // Clear out BMM LD
     ratchet.clear();
-
-    // Clear out Deposit data
-    vDepositCache.clear();
 
     // Clear out cached WT^(s)
     vWTPrimeCache.clear();

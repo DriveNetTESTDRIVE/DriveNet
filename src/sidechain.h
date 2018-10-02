@@ -49,6 +49,17 @@ struct SidechainDeposit {
 
     bool operator==(const SidechainDeposit& a) const;
     std::string ToString() const;
+
+    ADD_SERIALIZE_METHODS
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action) {
+        READWRITE(nSidechain);
+        READWRITE(keyID);
+        READWRITE(tx);
+        READWRITE(n);
+        READWRITE(hashBlock);
+    }
 };
 
 struct SidechainLD {

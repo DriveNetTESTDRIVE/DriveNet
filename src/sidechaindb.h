@@ -33,6 +33,8 @@ public:
     /** Add deposit(s) to cache */
     void AddDeposits(const std::vector<CTransaction>& vtx, const uint256& hashBlock);
 
+    void AddDeposits(const std::vector<SidechainDeposit>& vDeposit);
+
     /** Cache WT^ update TODO here for testing, move to networking */
     void AddSidechainNetworkUpdatePackage(const SidechainUpdatePackage& update);
 

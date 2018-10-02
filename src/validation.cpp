@@ -5200,6 +5200,79 @@ bool DumpMempool(void)
     return true;
 }
 
+bool LoadDepositCache()
+{
+    fs::path path = GetDataDir() / "deposit.dat";
+    CAutoFile filein(fsbridge::fopen(path, "r"), SER_DISK, CLIENT_VERSION);
+    if (filein.IsNull()) {
+        return false;
+    }
+
+    // TODO log this
+    uint64_t fileSize = fs::file_size(path);
+
+    std::vector<SidechainDeposit> vDeposit;
+    try {
+        int nVersionRequired, nVersionThatWrote;
+        filein >> nVersionRequired;
+        filein >> nVersionThatWrote;
+        if (nVersionRequired > CLIENT_VERSION) {
+            return false;
+        }
+
+        int count = 0;
+        filein >> count;
+        for (int i = 0; i < count; i++) {
+            SidechainDeposit deposit;
+            filein >> deposit;
+            vDeposit.push_back(deposit);
+        }
+    }
+    catch (const std::exception& e) {
+        // TODO log this
+        // std::cout << "Exception: " << e.what() << std::endl;
+        return false;
+    }
+
+    // Add to SCDB
+    // TODO nSidechain
+    if (!vDeposit.empty())
+        scdb.AddDeposits(vDeposit);
+
+    return true;
+}
+
+void DumpDepositCache()
+{
+    // TODO multiple sidechain support
+    // TODO nSidechain
+    std::vector<SidechainDeposit> vDeposit = scdb.GetDeposits(SIDECHAIN_ONE);
+
+    int count = vDeposit.size();
+
+    // Write the coins
+    fs::path path = GetDataDir() / "deposit.dat";
+    CAutoFile fileout(fsbridge::fopen(path, "w"), SER_DISK, CLIENT_VERSION);
+    if (fileout.IsNull()) {
+        return;
+    }
+
+    try {
+        fileout << 210000; // version required to read: 0.21.00 or later
+        fileout << CLIENT_VERSION; // version that wrote the file
+        fileout << count; // Number of coins in file
+
+        for (const SidechainDeposit& d : vDeposit) {
+            fileout << d;
+        }
+    }
+    catch (const std::exception& e) {
+        // TODO log this
+        // std::cout << "Exception: " << e.what() << std::endl;
+        return;
+    }
+}
+
 bool LoadWTPrimeCache()
 {
     fs::path path = GetDataDir() / "wtprime.dat";

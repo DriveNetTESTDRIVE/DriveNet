@@ -228,6 +228,7 @@ void Shutdown()
         DumpMempool();
     }
 
+    DumpDepositCache();
     DumpWTPrimeCache();
 
     if (fFeeEstimatesInitialized)
@@ -1635,6 +1636,7 @@ bool AppInitMain()
         }
     }
 
+    LoadDepositCache();
     LoadWTPrimeCache();
 
     // As LoadBlockIndex can take several minutes, it's possible the user
