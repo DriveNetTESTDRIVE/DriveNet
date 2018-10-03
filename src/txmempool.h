@@ -503,6 +503,8 @@ public:
     const setEntries & GetMemPoolParents(txiter entry) const;
     const setEntries & GetMemPoolChildren(txiter entry) const;
 
+    void RemoveExpiredCriticalRequests();
+
 private:
     typedef std::map<txiter, setEntries, CompareIteratorByHash> cacheMap;
 
