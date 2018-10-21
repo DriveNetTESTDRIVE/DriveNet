@@ -71,7 +71,7 @@ public:
         consensus.nSubsidyHalvingInterval = 210000;
         consensus.BIP16Height = 0;
         consensus.BIP34Height = 0;
-        consensus.BIP34Hash = uint256S("0x40baa592ae0c4f004f90a547b69ba921c32d191e2ade4b84997943ae57fe3482");
+        consensus.BIP34Hash = uint256S("0xd66c6ede0a3019cf0963cea33d57b0bc18954ce4756756775ee978bf5a2e0317");
         consensus.BIP65Height = 0;
         consensus.BIP66Height = 0;
         consensus.powLimit = uint256S("0000005fffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
@@ -118,11 +118,11 @@ public:
         nDefaultPort = 8551;
         nPruneAfterHeight = 100000;
 
-        genesis = CreateGenesisBlock(1538208103, 4297535, 0x1d5fffff, 1, 50 * COIN);
+        genesis = CreateGenesisBlock(1540097102, 89385579, 0x1d5fffff, 1, 50 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
 
-        // PoW: 0000000e59437607652e2caf9d1854695a85b33af14cf7cfc0532ec4e934f952
-        assert(consensus.hashGenesisBlock == uint256S("0x17469695449b0942290d625ca45cae06646f4bc0f4f397a3256c975d5c228606"));
+        // PoW: 0000003eb355714f443ade4f6143e8f4e60768297331f8f3daf643f13b9d1352
+        assert(consensus.hashGenesisBlock == uint256S("0xd66c6ede0a3019cf0963cea33d57b0bc18954ce4756756775ee978bf5a2e0317"));
         assert(genesis.hashMerkleRoot == uint256S("0x4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"));
 
         // Note that of those which support the service bits prefix, most only support a subset of
@@ -153,7 +153,7 @@ public:
 
         checkpointData = {
             {
-                { 0, uint256S("0x17469695449b0942290d625ca45cae06646f4bc0f4f397a3256c975d5c228606")},
+                { 0, uint256S("0xd66c6ede0a3019cf0963cea33d57b0bc18954ce4756756775ee978bf5a2e0317")},
             }
         };
 
