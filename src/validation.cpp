@@ -668,7 +668,7 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
             // M5 Deposit
 
             // Check format & extract sidechain number & deposit outpoint
-            uint8_t nSidechain = -1;
+            uint8_t nSidechainFromScript = -1;
             COutPoint outpoint;
             bool fFormatChecked = false;
             for (size_t i = 0; i < tx.vout.size(); i++) {
@@ -679,16 +679,22 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
                     outpoint.hash = tx.GetHash();
                     continue;
                 }
-                // scriptPubKey must contain keyID
-                if (scriptPubKey.size() < sizeof(uint160) + 2)
+                // scriptPubKey must contain keyID, OP_RETURN, nSidechain
+                if (scriptPubKey.size() != 23 && scriptPubKey.size() != 24)
                     continue;
                 if (scriptPubKey.front() != OP_RETURN)
                     continue;
 
-                nSidechain = (unsigned int)scriptPubKey[1];
-                if (!IsSidechainNumberValid(nSidechain))
+                std::vector<unsigned char> vchNS;
+                vchNS.push_back(scriptPubKey[1]);
+
+                CScriptNum nSidechain(vchNS, false);
+                nSidechainFromScript = (unsigned int)nSidechain.getint();
+
+                if (!IsSidechainNumberValid(nSidechainFromScript))
                     continue;
-                CScript::const_iterator pkey = scriptPubKey.begin() + 2;
+
+                CScript::const_iterator pkey = scriptPubKey.begin() + 2 + (scriptPubKey.size() == 24);
                 opcodetype opcode;
                 std::vector<unsigned char> vch;
                 if (!scriptPubKey.GetOp(pkey, opcode, vch))
@@ -707,13 +713,13 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
                 return state.DoS(100, false, REJECT_INVALID, "sidechain-deposit-invalid-format");
 
             // Check nSidechain again
-            if (!IsSidechainNumberValid(nSidechain))
+            if (!IsSidechainNumberValid(nSidechainFromScript))
                 return state.DoS(100, false, REJECT_INVALID, "sidechain-deposit-invalid-sidechain-number");
 
             // Check that CTIP input was spent if there is one
-            if (!mempool.LastSidechainDeposits[nSidechain].IsNull()) {
+            if (!mempool.LastSidechainDeposits[nSidechainFromScript].IsNull()) {
                 int nCTIPSpent = 0;
-                const COutPoint out = mempool.LastSidechainDeposits[nSidechain];
+                const COutPoint out = mempool.LastSidechainDeposits[nSidechainFromScript];
                 for (const CTxIn& in : tx.vin) {
                     if (in.prevout == out)
                         nCTIPSpent++;
@@ -723,7 +729,7 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
             }
 
             // Track with mempool
-            mempool.LastSidechainDeposits[nSidechain] = outpoint;
+            mempool.LastSidechainDeposits[nSidechainFromScript] = outpoint;
 
         } else if (amtSidechainUTXO > 0) {
             return state.DoS(100, false, REJECT_INVALID, "sidechain-invalid-ctip-spend");
@@ -2176,10 +2182,9 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
                 CAmount amtUserInput = CAmount(0);
                 CAmount amtReturning = CAmount(0);
                 CAmount amtWithdrawn = CAmount(0);
-                GetSidechainValues(mempool, tx, amtSidechainUTXO, amtUserInput, amtReturning, amtWithdrawn); // TODO remove mempool?
+                GetSidechainValues(mempool, tx, amtSidechainUTXO, amtUserInput, amtReturning, amtWithdrawn);
 
                 if (amtSidechainUTXO > amtReturning) {
-                    // Check workscore TODO nSidechain
                     if (!scdb.CheckWorkScore(nSidechain, hashBWT))
                         return error("ConnectBlock(): CheckWorkScore failed (blind WT^ hash : txid): %s : %s", hashBWT.ToString(), tx.GetHash().ToString());
                 }
@@ -5244,9 +5249,13 @@ bool LoadDepositCache()
 
 void DumpDepositCache()
 {
-    // TODO multiple sidechain support
-    // TODO nSidechain
-    std::vector<SidechainDeposit> vDeposit = scdb.GetDeposits(SIDECHAIN_ONE);
+    // TODO seperate dump & read by nSidechain. Split deposit cache into
+    // individual vectors for each sidechain for performance reasons.
+    std::vector<SidechainDeposit> vDeposit;
+    for (const Sidechain& s : ValidSidechains) {
+        std::vector<SidechainDeposit> vSidechainDeposit = scdb.GetDeposits(s.nSidechain);
+        vDeposit.insert(std::end(vDeposit), std::begin(vSidechainDeposit), std::end(vSidechainDeposit));
+    }
 
     int count = vDeposit.size();
 

@@ -32,8 +32,8 @@ BOOST_AUTO_TEST_CASE(bmm_valid)
     bytes[1] = 0xbf;
     bytes[2] = 0x00;
 
-    bytes << CScriptNum::serialize(SIDECHAIN_ONE);
-    bytes << CScriptNum::serialize(0);
+    bytes << CScriptNum(SIDECHAIN_ONE);
+    bytes << CScriptNum(0);
 
     CCriticalData criticalData;
     criticalData.bytes = std::vector<unsigned char>(bytes.begin(), bytes.end());
@@ -114,8 +114,8 @@ BOOST_AUTO_TEST_CASE(bmm_invalid_sidechain)
     bytes[2] = 0x00;
 
     // Use invalid sidechain number
-    bytes << CScriptNum::serialize(2600);
-    bytes << CScriptNum::serialize(0);
+    bytes << CScriptNum(2600);
+    bytes << CScriptNum(0);
 
     CCriticalData criticalData;
     criticalData.bytes = std::vector<unsigned char>(bytes.begin(), bytes.end());
@@ -185,8 +185,8 @@ BOOST_AUTO_TEST_CASE(bmm_invalid_prevblockref_limit)
     bytes[2] = 0x00;
 
     // Use invalid nPrevBlockRef > BMM_MAX_PREVBLOCK
-    bytes << CScriptNum::serialize(0);
-    bytes << CScriptNum::serialize(BMM_MAX_PREVBLOCK + 1);
+    bytes << CScriptNum(0);
+    bytes << CScriptNum((BMM_MAX_PREVBLOCK + 1));
 
     CCriticalData criticalData;
     criticalData.bytes = std::vector<unsigned char>(bytes.begin(), bytes.end());
@@ -256,8 +256,8 @@ BOOST_AUTO_TEST_CASE(bmm_invalid_prevblockref)
     bytes[2] = 0x00;
 
     // Use invalid nPrevBlockRef > BMM_MAX_PREVBLOCK
-    bytes << CScriptNum::serialize(0);
-    bytes << CScriptNum::serialize(21);
+    bytes << CScriptNum(0);
+    bytes << CScriptNum(21);
 
     CCriticalData criticalData;
     criticalData.bytes = std::vector<unsigned char>(bytes.begin(), bytes.end());

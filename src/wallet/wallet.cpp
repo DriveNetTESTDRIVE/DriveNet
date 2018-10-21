@@ -2391,7 +2391,7 @@ const CTxOut& CWallet::FindNonChangeParentOutput(const CTransaction& tx, int out
     return ptx->vout[n];
 }
 
-void CWallet::AvailableSidechainCoins(std::vector<COutput>& vSidechainCoins, const uint8_t& nSidechain) const
+void CWallet::AvailableSidechainCoins(std::vector<COutput>& vSidechainCoins, const uint8_t nSidechain) const
 {
     // Check if sidechain number is valid
     if (!IsSidechainNumberValid(nSidechain))
@@ -2414,16 +2414,25 @@ void CWallet::AvailableSidechainCoins(std::vector<COutput>& vSidechainCoins, con
             for (size_t i = 0; i < tx.vout.size(); i++) {
                 CScript depositScript = tx.vout[i].scriptPubKey;
                 // scriptPubKey must contain keyID
-                if (depositScript.size() < sizeof(uint160) + 2)
+                if (depositScript.size() != 23 && depositScript.size() != 24)
                     continue;
                 if (depositScript.front() != OP_RETURN)
                     continue;
 
-                uint8_t nSidechain = (unsigned int)depositScript[1];
-                if (!IsSidechainNumberValid(nSidechain))
+                uint8_t nSidechainScript = -1;
+                std::vector<unsigned char> vchNS;
+                vchNS.push_back(depositScript[1]);
+
+                CScriptNum nSidechainNum(vchNS, false);
+                nSidechainScript = (unsigned int)nSidechainNum.getint();
+
+                if (!IsSidechainNumberValid(nSidechainScript))
                     continue;
 
-                CScript::const_iterator pkey = depositScript.begin() + 2;
+                if (nSidechainScript != nSidechain)
+                    continue;
+
+                CScript::const_iterator pkey = depositScript.begin() + 2 + (depositScript.size() == 24);
                 opcodetype opcode;
                 std::vector<unsigned char> vch;
                 if (!depositScript.GetOp(pkey, opcode, vch))
@@ -3148,7 +3157,7 @@ bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletT
     return true;
 }
 
-bool CWallet::CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, const uint8_t& nSidechain, const CAmount& nAmount, const CKeyID& keyID)
+bool CWallet::CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, const uint8_t nSidechain, const CAmount& nAmount, const CKeyID& keyID)
 {
     if (!IsSidechainNumberValid(nSidechain)) {
         strFail = "Invalid Sidechain number!\n";
@@ -3163,13 +3172,14 @@ bool CWallet::CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, 
     LOCK2(cs_main, vpwallets[0]->cs_wallet);
 
     // User deposit data script
-    CScript dataScript = CScript() << OP_RETURN << nSidechain << ToByteVector(keyID);
+    CScript dataScript = CScript() << OP_RETURN << CScriptNum(nSidechain) << ToByteVector(keyID);
 
     const Sidechain& sidechain = ValidSidechains[nSidechain];
-    CKeyID sidechainKey;
-    sidechainKey.SetHex(sidechain.sidechainKey);
-    CScript sidechainScript;
-    sidechainScript << OP_DUP << OP_HASH160 << ToByteVector(sidechainKey) << OP_EQUALVERIFY << OP_CHECKSIG;
+    std::vector<unsigned char> vch(ParseHex(sidechain.sidechainHex));
+    CScript sidechainScript = CScript(vch.begin(), vch.end());
+
+    if (sidechainScript.empty())
+        return false;
 
     // The deposit transaction
     CMutableTransaction mtx;

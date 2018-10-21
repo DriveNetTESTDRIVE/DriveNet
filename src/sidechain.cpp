@@ -23,6 +23,8 @@ std::string Sidechain::GetSidechainName() const
     switch (nSidechain) {
     case SIDECHAIN_ONE:
         return "Sidechain One";
+    case SIDECHAIN_PAYMENT:
+        return "Payment Sidechain";
     default:
         break;
     }
@@ -166,14 +168,10 @@ bool SCDBIndex::GetMember(uint256 hashWT, SidechainWTPrimeState& wt) const
 
 bool IsSidechainNumberValid(uint8_t nSidechain)
 {
-    if (!(nSidechain < ValidSidechains.size()))
-        return false;
-
-    // Check that number corresponds to a valid sidechain
-    switch (nSidechain) {
-    case SIDECHAIN_ONE:
-        return true;
-    default:
-        return false;
+    for (const Sidechain& s : ValidSidechains) {
+        if (s.nSidechain == nSidechain)
+            return true;
     }
+
+    return false;
 }

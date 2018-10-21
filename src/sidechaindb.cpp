@@ -34,7 +34,7 @@ void SidechainDB::AddDeposits(const std::vector<CTransaction>& vtx, const uint25
             }
 
             // scriptPubKey must contain keyID
-            if (scriptPubKey.size() < sizeof(uint160) + 2)
+            if (scriptPubKey.size() != 23 && scriptPubKey.size() != 24)
                 continue;
             if (scriptPubKey.front() != OP_RETURN)
                 continue;
@@ -43,7 +43,7 @@ void SidechainDB::AddDeposits(const std::vector<CTransaction>& vtx, const uint25
             if (!IsSidechainNumberValid(nSidechain))
                 continue;
 
-            CScript::const_iterator pkey = scriptPubKey.begin() + 2;
+            CScript::const_iterator pkey = scriptPubKey.begin() + 2 + (scriptPubKey.size() == 24);
             opcodetype opcode;
             std::vector<unsigned char> vch;
             if (!scriptPubKey.GetOp(pkey, opcode, vch))
@@ -173,6 +173,7 @@ bool SidechainDB::CheckWorkScore(uint8_t nSidechain, const uint256& hashWTPrime)
 
 std::vector<SidechainDeposit> SidechainDB::GetDeposits(uint8_t nSidechain) const
 {
+    // TODO C++11 const for loop
     std::vector<SidechainDeposit> vSidechainDeposit;
     for (size_t i = 0; i < vDepositCache.size(); i++) {
         if (vDepositCache[i].nSidechain == nSidechain)
@@ -269,8 +270,10 @@ bool SidechainDB::HasState() const
         return false;
 
     // Check if any SCDBIndex(s) are populated
-    if (SCDB[SIDECHAIN_ONE].IsPopulated())
-        return true;
+    for (const SCDBIndex& i : SCDB) {
+        if (i.IsPopulated())
+            return true;
+    }
 
     if (vWTPrimeCache.size())
         return true;
@@ -431,14 +434,10 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const std::vecto
             uint256 hashWTPrime = uint256(std::vector<unsigned char>(scriptPubKey.begin() + 6, scriptPubKey.begin() + 38));
 
             // Get sidechain number
-            CScript::const_iterator pnsidechain = scriptPubKey.begin() + 38;
             std::vector<unsigned char> vchNS;
-            opcodetype opcode;
-            if (!scriptPubKey.GetOp(pnsidechain, opcode, vchNS))
-            if (vchNS.size() < 1 || vchNS.size() > 4)
-                continue;
+            vchNS.push_back(scriptPubKey[39]);
 
-            CScriptNum nSidechain(vchNS, true);
+            CScriptNum nSidechain(vchNS, false);
 
             if (!AddWTPrime(nSidechain.getint(), hashWTPrime, nHeight)) {
                 // TODO handle failure or at least log something

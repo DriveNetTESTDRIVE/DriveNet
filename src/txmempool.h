@@ -526,7 +526,7 @@ public:
     indirectmap<COutPoint, const CTransaction*> mapNextTx;
     std::map<uint256, CAmount> mapDeltas;
 
-    std::array<COutPoint, ValidSidechains.size()> LastSidechainDeposits;
+    std::array<COutPoint, VALID_SIDECHAINS_COUNT> LastSidechainDeposits;
 
     /** Create a new CTxMemPool.
      */

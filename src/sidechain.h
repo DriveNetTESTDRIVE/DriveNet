@@ -12,7 +12,7 @@
 
 //! Max number of WT^(s) per sidechain during verification period
 static const int SIDECHAIN_MAX_WT = 32; // TODO remove (CryptAxe wants this, psztorc does not)
-static const size_t VALID_SIDECHAINS_COUNT = 1;
+static const size_t VALID_SIDECHAINS_COUNT = 2;
 
 // These are the temporary values to speed things up during testing
 static const int SIDECHAIN_VERIFICATION_PERIOD = 300;
@@ -27,6 +27,7 @@ static const CAmount SIDECHAIN_DEPOSIT_FEE = 0.00001 * COIN;
 
 enum SidechainNumber {
     SIDECHAIN_ONE = 0,
+    SIDECHAIN_PAYMENT = 1,
 };
 
 struct Sidechain {
@@ -132,16 +133,23 @@ static const std::array<Sidechain, VALID_SIDECHAINS_COUNT> ValidSidechains =
     //
     // {nSidechain, sidechain keyID, sidechain private key, public key}
     //
-    // Sidechain One (test sidechain): 4ZZC8413qr9gWRymw2PryT3mY3KikidNxg
+    // Sidechain One (test sidechain)
     {SIDECHAIN_ONE,
-        "f790b44c3cd78a786819cd4cb6fd696e8d81c0d9",
-        "Kxpt9ph9fdYzw1dVThf5fPuAHzsFzKaWfYiHx3EzYwVb6PQPy6f9",
-        "76a914d9c0818d6e69fdb64ccd1968788ad73c4cb490f788ac"},
+        "51c6eb4891cbb94ca30518b5f8441ea078c849eb",
+        "L4nNEPEuYwNaKMj1RZVsAuXPq5xbhdio43dTRzAr5CZgQHrSpFU8",
+        "76a91451c6eb4891cbb94ca30518b5f8441ea078c849eb88ac"},
+    //
+    // Payments sidechain
+    {SIDECHAIN_PAYMENT,
+        "7c33a3f6d9d5b873f96dba4b12d6aaf6be71fbd2",
+        "L3UjtLhNXKZaDgFtf14EHkxV1p5CKUoyRUT5DcU7aUS1X2yX8hhg",
+        "76a9147c33a3f6d9d5b873f96dba4b12d6aaf6be71fbd288ac"},
 }};
 
 static const std::map<std::string, int> ValidSidechainField =
 {
-    {"76a914d9c0818d6e69fdb64ccd1968788ad73c4cb490f788ac", SIDECHAIN_ONE},
+    {"76a91451c6eb4891cbb94ca30518b5f8441ea078c849eb88ac", SIDECHAIN_ONE},
+    {"76a9147c33a3f6d9d5b873f96dba4b12d6aaf6be71fbd288ac", SIDECHAIN_PAYMENT},
 };
 
 

@@ -1786,8 +1786,11 @@ bool AppInitMain()
 
             // Watch sidechain deposit addresses
             for (const Sidechain& sidechain : ValidSidechains) {
-                std::vector<unsigned char> data(ParseHex(std::string(sidechain.sidechainHex)));
+                std::vector<unsigned char> data;
+                data = std::vector<unsigned char>(ParseHex(sidechain.sidechainHex));
+
                 CScript script(data.begin(), data.end());
+
                 if (!pwallet->HaveWatchOnly(script)) {
                     pwallet->AddWatchOnly(script, 0 /* nCreateTime */);
                 }

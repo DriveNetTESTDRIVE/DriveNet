@@ -5,9 +5,11 @@
 #ifndef SIDECHAINPAGE_H
 #define SIDECHAINPAGE_H
 
+#include <QString>
 #include <QWidget>
 
 #include <amount.h>
+#include <sidechain.h>
 #include <uint256.h>
 
 #include <string>
@@ -21,6 +23,13 @@ class SidechainWithdrawalTableModel;
 namespace Ui {
 class SidechainPage;
 }
+
+// Sidechain icons
+static const std::array<QString, VALID_SIDECHAINS_COUNT> SidechainIcons =
+{{
+    {":/icons/sidechain_one"},
+    {":/icons/sidechain_payments"},
+}};
 
 class SidechainPage : public QWidget
 {
@@ -43,6 +52,10 @@ public Q_SLOTS:
 
     void on_pushButtonClear_clicked();
 
+    void on_comboBoxSidechains_currentIndexChanged(const int index);
+
+    void on_listWidgetSidechains_doubleClicked(const QModelIndex& index);
+
 private:
     Ui::SidechainPage *ui;
 
@@ -54,6 +67,7 @@ private:
     void SetupTables();
 
     bool validateDepositAmount();
+
 };
 
 #endif // SIDECHAINPAGE_H

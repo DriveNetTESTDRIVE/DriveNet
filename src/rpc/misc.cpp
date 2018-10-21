@@ -727,8 +727,8 @@ UniValue createbmmcriticaldatatx(const JSONRPCRequest& request)
     bytes[1] = 0xbf;
     bytes[2] = 0x00;
 
-    bytes << CScriptNum::serialize(nSidechain);
-    bytes << CScriptNum::serialize(nDAG);
+    bytes << CScriptNum(nSidechain);
+    bytes << CScriptNum(nDAG);
 
     CCriticalData criticalData;
     criticalData.bytes = std::vector<unsigned char>(bytes.begin(), bytes.end());
@@ -800,7 +800,7 @@ UniValue listsidechainctip(const JSONRPCRequest& request)
 #endif
 
     // Is nSidechain valid?
-    uint8_t nSidechain = std::stoi(request.params[0].getValStr());
+    uint8_t nSidechain = (unsigned int)request.params[0].get_int();
     if (!IsSidechainNumberValid(nSidechain))
         throw std::runtime_error("Invalid sidechain number");
 

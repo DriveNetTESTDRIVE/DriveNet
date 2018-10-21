@@ -30,6 +30,7 @@
         <file alias="overview">res/icons/overview.png</file>
         <file alias="export">res/icons/export.png</file>
         <file alias="sidechain_one">res/icons/sidechain_one.png</file>
+        <file alias="sidechain_payments">res/icons/sidechain_payments.png</file>
         <file alias="synced">res/icons/synced.png</file>
         <file alias="remove">res/icons/remove.png</file>
         <file alias="tx_mined">res/icons/tx_mined.png</file>

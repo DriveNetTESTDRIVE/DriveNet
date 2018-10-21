@@ -54,13 +54,8 @@
       <item>
        <widget class="QComboBox" name="comboBoxSidechains">
         <property name="currentText">
-         <string>Sidechain One</string>
+         <string/>
         </property>
-        <item>
-         <property name="text">
-          <string>Sidechain One</string>
-         </property>
-        </item>
        </widget>
       </item>
       <item>
@@ -180,13 +175,13 @@
              <item>
               <widget class="QPushButton" name="pushButtonDeposit">
                <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
                  <horstretch>0</horstretch>
                  <verstretch>0</verstretch>
                 </sizepolicy>
                </property>
                <property name="text">
-                <string>Deposit</string>
+                <string/>
                </property>
                <property name="icon">
                 <iconset resource="../drivenet.qrc">

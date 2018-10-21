@@ -161,28 +161,27 @@ bool CCriticalData::IsBMMRequest(uint8_t& nSidechain, uint16_t& nPrevBlockRef) c
     if (bytes[0] != 0x00 || bytes[1] != 0xbf || bytes[2] != 0x00)
         return false;
 
-    // Convert bytes to script for easy parsing
-    CScript script(bytes.begin(), bytes.end());
+    if (bytes.size() == 4) {
+        nSidechain = 0;
+        if (!IsSidechainNumberValid(nSidechain))
+            return false;
 
-    // Get nSidechain
-    CScript::const_iterator psidechain = script.begin() + 3;
-    opcodetype opcode;
-    std::vector<unsigned char> vchSidechain;
-    if (!script.GetOp(psidechain, opcode, vchSidechain))
-        return false;
+        std::vector<unsigned char> vch;
+        vch.push_back(bytes[3]);
+        nPrevBlockRef = CScriptNum(vch, false).getint();
 
-    // Is nSidechain valid?
-    nSidechain = CScriptNum(vchSidechain, true).getint();
-    if (!IsSidechainNumberValid(nSidechain))
-        return false;
+    } else {
+        std::vector<unsigned char> vch;
+        vch.push_back(bytes[3]);
 
-    // Get prevBlockRef
-    CScript::const_iterator pprevblock = psidechain + vchSidechain.size() + 1;
-    std::vector<unsigned char> vchPrevBlockRef;
-    if (!script.GetOp(pprevblock, opcode, vchPrevBlockRef))
-        return false;
+        nSidechain = CScriptNum(vch, false).getint();
+        if (!IsSidechainNumberValid(nSidechain))
+            return false;
 
-    nPrevBlockRef = CScriptNum(vchPrevBlockRef, true).getint();
+        std::vector<unsigned char> vchPrev;
+        vchPrev.push_back(bytes[4]);
+        nPrevBlockRef = CScriptNum(vchPrev, false).getint();
+    }
 
     return true;
 }

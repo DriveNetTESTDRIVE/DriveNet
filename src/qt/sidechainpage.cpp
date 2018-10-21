@@ -21,7 +21,6 @@
 #include <miner.h>
 #include <net.h>
 #include <primitives/block.h>
-#include <sidechain.h>
 #include <txdb.h>
 #include <validation.h>
 #include <wallet/coincontrol.h>
@@ -48,18 +47,22 @@ SidechainPage::SidechainPage(QWidget *parent) :
     for (const Sidechain& s : ValidSidechains) {
         QListWidgetItem *item = new QListWidgetItem(ui->listWidgetSidechains);
 
-        // TODO keep list of sidechain icons and display correct icon based on nSidechain
         // Set icon
-        QIcon icon(":/icons/sidechain_one");
+        QIcon icon(SidechainIcons[s.nSidechain]);
         item->setIcon(icon);
 
         // Set text
         item->setText(QString::fromStdString(s.GetSidechainName()));
         QFont font = item->font();
-        font.setPointSize(22);
+        font.setPointSize(16);
         item->setFont(font);
 
         ui->listWidgetSidechains->addItem(item);
+    }
+
+    // Setup sidechain selection combo box
+    for (const Sidechain& s : ValidSidechains) {
+        ui->comboBoxSidechains->addItem(QString::fromStdString(s.GetSidechainName()));
     }
 
     // Initialize models
@@ -207,7 +210,7 @@ void SidechainPage::on_pushButtonDeposit_clicked()
     // Successful deposit message box
     messageBox.setWindowTitle("Deposit transaction created!");
     QString result = "Deposited to " + QString::fromStdString(GetSidechainName(nSidechain));
-    result += " Sidechain.\n";
+    result += "\n";
     result += "txid: " + QString::fromStdString(tx->GetHash().ToString());
     result += "\n";
     result += "Amount deposited: ";
@@ -226,6 +229,24 @@ void SidechainPage::on_pushButtonPaste_clicked()
 void SidechainPage::on_pushButtonClear_clicked()
 {
     ui->payTo->clear();
+}
+
+void SidechainPage::on_comboBoxSidechains_currentIndexChanged(const int i)
+{
+    if (!IsSidechainNumberValid(i))
+        return;
+
+    ui->listWidgetSidechains->setCurrentRow(i);
+
+    // Update deposit button text
+    QString strSidechain = QString::fromStdString(GetSidechainName(i));
+    QString str = "Deposit to: " + strSidechain;
+    ui->pushButtonDeposit->setText(str);
+}
+
+void SidechainPage::on_listWidgetSidechains_doubleClicked(const QModelIndex& i)
+{
+    ui->comboBoxSidechains->setCurrentIndex(i.row());
 }
 
 bool SidechainPage::validateDepositAmount()
