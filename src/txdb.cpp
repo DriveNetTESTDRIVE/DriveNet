@@ -59,7 +59,7 @@ struct CoinEntry {
 
 }
 
-CCoinsViewDB::CCoinsViewDB(size_t nCacheSize, bool fMemory, bool fWipe) : db(GetDataDir() / "chainstate", nCacheSize / 2, fMemory, fWipe, true) , loadedcoindb(GetDataDir() / "loadedcoins", nCacheSize / 2, false, false, true)
+CCoinsViewDB::CCoinsViewDB(size_t nCacheSize, bool fMemory, bool fWipe) : db(GetDataDir() / "chainstate", nCacheSize / 2, fMemory, fWipe, true) , loadedcoindb(GetDataDir() / "loadedcoins", nCacheSize / 2, fMemory, fWipe, true)
 {
 }
 

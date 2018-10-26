@@ -95,7 +95,7 @@ public:
 
     // .dat file interaction
     bool ReadLoadedCoins();
-    bool WriteLoadedCoins(); // Note: only used for created loaded_coins.dat
+    bool WriteLoadedCoins(); // Note: only used for creating loaded_coins.dat
     std::vector<LoadedCoin> ReadMyLoadedCoins();
     void WriteMyLoadedCoins(const std::vector<LoadedCoin>& vLoadedCoin);
 };

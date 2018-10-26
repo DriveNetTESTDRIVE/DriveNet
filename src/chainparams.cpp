@@ -69,11 +69,11 @@ public:
     CMainParams() {
         strNetworkID = "main";
         consensus.nSubsidyHalvingInterval = 210000;
-        consensus.BIP16Height = 0;
-        consensus.BIP34Height = 0;
+        consensus.BIP16Height = 21;
+        consensus.BIP34Height = 21;
         consensus.BIP34Hash = uint256S("0xd66c6ede0a3019cf0963cea33d57b0bc18954ce4756756775ee978bf5a2e0317");
-        consensus.BIP65Height = 0;
-        consensus.BIP66Height = 0;
+        consensus.BIP65Height = 21;
+        consensus.BIP66Height = 21;
         consensus.powLimit = uint256S("0000005fffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
         consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks
         consensus.nPowTargetSpacing = 10 * 60;

@@ -1727,6 +1727,9 @@ bool AppInitMain()
         return false;
     }
 
+#ifdef ENABLE_WALLET
+    StartWallets(scheduler);
+
     // ********************************************************* Step 11: load coins
 
     bool fReadLoadedCoins = gArgs.GetBoolArg("-loadedcoins", true);
@@ -1763,25 +1766,23 @@ bool AppInitMain()
         }
     }
 
-#ifdef ENABLE_WALLET
     if (!vpwallets.empty()) {
         uiInterface.InitMessage(_("Reading wallet's loaded coins."));
         CWalletRef pwallet = vpwallets.front();
         std::vector<LoadedCoin> vLoadedCoin;
+        LOCK2(cs_main, pwallet->cs_wallet);
         vLoadedCoin = pcoinsTip->ReadMyLoadedCoins();
         pwallet->AddLoadedCoins(vLoadedCoin);
     }
-#endif
 
     // ********************************************************* Step 12: watch sidechain addresses
-
-#ifdef ENABLE_WALLET
-    StartWallets(scheduler);
-
     uiInterface.InitMessage(_("Watching sidechain deposit addresses"));
     if (drivechainsEnabled) {
-        for (CWalletRef pwallet : vpwallets) {
+        if (!vpwallets.empty()) {
+            CWalletRef pwallet = vpwallets.front();
+
             LOCK2(cs_main, pwallet->cs_wallet);
+
             pwallet->MarkDirty();
 
             // Watch sidechain deposit addresses

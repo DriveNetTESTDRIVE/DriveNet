@@ -3426,6 +3426,7 @@ bool CWallet::AddAccountingEntry(const CAccountingEntry& acentry, CWalletDB *pwa
 
 void CWallet::AddLoadedCoins(const std::vector<LoadedCoin>& vLoadedCoin)
 {
+    AssertLockHeld(cs_wallet);
     vLoadedCoinCache.clear();
     for (const LoadedCoin& c : vLoadedCoin) {
         vLoadedCoinCache.push_back(c);
