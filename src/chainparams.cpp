@@ -10,6 +10,8 @@
 #include <util.h>
 #include <utilstrencodings.h>
 
+#include <arith_uint256.h>
+
 #include <assert.h>
 
 #include <chainparamsseeds.h>
@@ -69,11 +71,11 @@ public:
     CMainParams() {
         strNetworkID = "main";
         consensus.nSubsidyHalvingInterval = 210000;
-        consensus.BIP16Height = 21;
-        consensus.BIP34Height = 21;
-        consensus.BIP34Hash = uint256S("0xd66c6ede0a3019cf0963cea33d57b0bc18954ce4756756775ee978bf5a2e0317");
-        consensus.BIP65Height = 21;
-        consensus.BIP66Height = 21;
+        consensus.BIP16Height = 0; // P2SH
+        consensus.BIP34Height = 1; // Block height in coinbase scriptSig
+        consensus.BIP34Hash = uint256S("0x0000000000000000000000000000000000000000000000000000000000000000");
+        consensus.BIP65Height = 0; // CLTV
+        consensus.BIP66Height = 0; // Strict DER signatures
         consensus.powLimit = uint256S("0000005fffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
         consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks
         consensus.nPowTargetSpacing = 10 * 60;
@@ -104,7 +106,7 @@ public:
         consensus.nMinimumChainWork = uint256S("0x0000000000000000000000000000000000000000000000000000000002aaaab1");
 
         // By default assume that the signatures in ancestors of this block are valid.
-        consensus.defaultAssumeValid = uint256S("0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.defaultAssumeValid = uint256S("0x71b6063f9518bfb4658b0374459018d0d295af08aa22468b00f7dbc43805824d");
 
         /**
          * The message start string is designed to be unlikely to occur in normal data.
@@ -118,11 +120,11 @@ public:
         nDefaultPort = 8551;
         nPruneAfterHeight = 100000;
 
-        genesis = CreateGenesisBlock(1540097102, 89385579, 0x1d5fffff, 1, 50 * COIN);
+        genesis = CreateGenesisBlock(1540870218, 5765350, 0x1d5fffff, 1, 50 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
 
-        // PoW: 0000003eb355714f443ade4f6143e8f4e60768297331f8f3daf643f13b9d1352
-        assert(consensus.hashGenesisBlock == uint256S("0xd66c6ede0a3019cf0963cea33d57b0bc18954ce4756756775ee978bf5a2e0317"));
+        // PoW: 0000002205bdc8c823571fe1abd2cf42aa82071f1d031c9978ea89167d847168
+        assert(consensus.hashGenesisBlock == uint256S("0x71b6063f9518bfb4658b0374459018d0d295af08aa22468b00f7dbc43805824d"));
         assert(genesis.hashMerkleRoot == uint256S("0x4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"));
 
         // Note that of those which support the service bits prefix, most only support a subset of
@@ -153,7 +155,7 @@ public:
 
         checkpointData = {
             {
-                { 0, uint256S("0xd66c6ede0a3019cf0963cea33d57b0bc18954ce4756756775ee978bf5a2e0317")},
+                { 0, uint256S("0x71b6063f9518bfb4658b0374459018d0d295af08aa22468b00f7dbc43805824d")},
             }
         };
 

@@ -89,9 +89,9 @@ public:
 
     // LDB interaction
     bool WriteLoadedCoinIndex(const std::vector<LoadedCoin>& vLoadedCoin);
+    bool WriteToLoadedCoinIndex(const LoadedCoin& coin);
     bool GetLoadedCoin(const uint256& hashOutPoint, LoadedCoin& coinOut) const;
     bool HaveLoadedCoin(const uint256& hashOutPoint) const;
-    void RescanLoadedCoins(std::vector<LoadedCoin>& vLoadedCoin) const;
 
     // .dat file interaction
     bool ReadLoadedCoins();

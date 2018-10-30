@@ -176,6 +176,13 @@ bool CCoinsViewDB::WriteLoadedCoinIndex(const std::vector<LoadedCoin>& vLoadedCo
     return loadedcoindb.WriteBatch(batch);
 }
 
+bool CCoinsViewDB::WriteToLoadedCoinIndex(const LoadedCoin& coin)
+{
+    std::vector<LoadedCoin> vLoadedCoin;
+    vLoadedCoin.push_back(coin);
+    return WriteLoadedCoinIndex(vLoadedCoin);
+}
+
 bool CCoinsViewDB::GetLoadedCoin(const uint256& hashOutPoint, LoadedCoin& coinOut) const
 {
     std::unique_ptr<CDBIterator> pcursor(const_cast<CDBWrapper&>(loadedcoindb).NewIterator());
@@ -227,9 +234,9 @@ bool CCoinsViewDB::ReadLoadedCoins()
         int count = 0;
         filein >> count;
         for (int i = 0; i < count; i++) {
-            if (i % 2000000 == 0) {
+            if (i % 4000000 == 0) {
                 // Write a batch of loaded coins to the index.
-                // Batches are 2000000 coins each, which is around 200MB.
+                // Batches are 4000000 coins each, which is around 400MB.
                 WriteLoadedCoinIndex(vLoadedCoin);
                 vLoadedCoin.clear();
             }
