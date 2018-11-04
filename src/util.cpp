@@ -575,6 +575,32 @@ fs::path GetDefaultDataDir()
 #endif
 }
 
+fs::path GetHomeDir()
+{
+    // Windows < Vista: C:\Documents and Settings\Username\Application Data
+    // Windows >= Vista: C:\Users\Username\AppData\Roaming
+    // Mac: ~/Library/Application Support/
+    // Unix: ~/
+#ifdef WIN32
+    // Windows
+    return GetSpecialFolderPath(CSIDL_APPDATA);
+#else
+    fs::path pathRet;
+    char* pszHome = getenv("HOME");
+    if (pszHome == nullptr || strlen(pszHome) == 0)
+        pathRet = fs::path("/");
+    else
+        pathRet = fs::path(pszHome);
+#ifdef MAC_OSX
+    // Mac
+    return pathRet / "Library/Application Support";
+#else
+    // Unix
+    return pathRet;
+#endif
+#endif
+}
+
 static fs::path pathCached;
 static fs::path pathCachedNetSpecific;
 static CCriticalSection csPathCached;

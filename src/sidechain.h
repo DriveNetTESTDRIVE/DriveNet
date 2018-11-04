@@ -30,6 +30,14 @@ enum SidechainNumber {
     SIDECHAIN_PAYMENT = 1,
 };
 
+// Configuration files
+static const std::array<std::pair<std::string, std::string>, VALID_SIDECHAINS_COUNT + 1> ConfigDirectories =
+{{
+    {".drivenet", "drivenet.conf"},
+    {".sidechain", "sidechain.conf"},
+    {".payment", "payment.conf"},
+}};
+
 struct Sidechain {
     uint8_t nSidechain;
     const char* sidechainKey;

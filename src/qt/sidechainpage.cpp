@@ -5,6 +5,7 @@
 #include <qt/sidechainpage.h>
 #include <qt/forms/ui_sidechainpage.h>
 
+#include <qt/confgeneratordialog.h>
 #include <qt/drivenetunits.h>
 #include <qt/guiconstants.h>
 #include <qt/guiutil.h>
@@ -229,6 +230,13 @@ void SidechainPage::on_pushButtonPaste_clicked()
 void SidechainPage::on_pushButtonClear_clicked()
 {
     ui->payTo->clear();
+}
+
+void SidechainPage::on_pushButtonGenerateConfig_clicked()
+{
+    // Show configuration generator dialog
+    ConfGeneratorDialog *dialog = new ConfGeneratorDialog(this);
+    dialog->exec();
 }
 
 void SidechainPage::on_comboBoxSidechains_currentIndexChanged(const int i)

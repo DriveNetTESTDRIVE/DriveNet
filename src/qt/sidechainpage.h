@@ -52,6 +52,8 @@ public Q_SLOTS:
 
     void on_pushButtonClear_clicked();
 
+    void on_pushButtonGenerateConfig_clicked();
+
     void on_comboBoxSidechains_currentIndexChanged(const int index);
 
     void on_listWidgetSidechains_doubleClicked(const QModelIndex& index);

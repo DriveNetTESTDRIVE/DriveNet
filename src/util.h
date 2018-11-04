@@ -176,6 +176,7 @@ bool RenameOver(fs::path src, fs::path dest);
 bool LockDirectory(const fs::path& directory, const std::string lockfile_name, bool probe_only=false);
 bool TryCreateDirectories(const fs::path& p);
 fs::path GetDefaultDataDir();
+fs::path GetHomeDir();
 const fs::path &GetDataDir(bool fNetSpecific = true);
 void ClearDatadirCache();
 fs::path GetConfigFile(const std::string& confPath);
