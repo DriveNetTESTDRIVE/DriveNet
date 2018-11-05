@@ -311,9 +311,19 @@
             </property>
             <layout class="QVBoxLayout" name="verticalLayout_9">
              <item>
+              <widget class="QLabel" name="label_5">
+               <property name="text">
+                <string>You can use this to automatically generate configuration files for DriveNet and any sidechains you are running. Everything you need for automated BMM will be configured.</string>
+               </property>
+               <property name="wordWrap">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item>
               <widget class="QPushButton" name="pushButtonGenerateConfig">
                <property name="text">
-                <string>Generate conf file(s)</string>
+                <string>Generate .conf file(s)</string>
                </property>
               </widget>
              </item>
