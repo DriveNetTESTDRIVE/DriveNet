@@ -164,7 +164,13 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
 
     int nPackagesSelected = 0;
     int nDescendantsUpdated = 0;
+
+    // Removed expired BMM requests that we don't want to consider
     mempool.RemoveExpiredCriticalRequests();
+
+    // Select which BMM requests (if any) to include
+    mempool.SelectBMMRequests();
+
     addPackageTxs(nPackagesSelected, nDescendantsUpdated);
 
     int64_t nTime1 = GetTimeMicros();

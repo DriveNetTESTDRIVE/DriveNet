@@ -1036,6 +1036,42 @@ void CTxMemPool::RemoveExpiredCriticalRequests()
     RemoveStaged(txToRemove, false, MemPoolRemovalReason::EXPIRY);
 }
 
+void CTxMemPool::SelectBMMRequests()
+{
+    // TODO
+    // For now, this is just making sure that we only accept 1 BMM request
+    // per block per sidechain. Eventually though, we should allow options
+    // such as minimum payment amount, filter by sidechain, etc.
+
+    LOCK(cs);
+    setEntries txToRemove;
+
+    std::vector<bool> vSidechain;
+    vSidechain.resize(VALID_SIDECHAINS_COUNT);
+
+    for (indexed_transaction_set::const_iterator it = mapTx.begin(); it != mapTx.end(); it++) {
+        if (!it->GetTx().criticalData.IsNull()) {
+
+            uint8_t nSidechain;
+            uint16_t nPrevBlockRef;
+
+            if (it->GetTx().criticalData.IsBMMRequest(nSidechain, nPrevBlockRef)) {
+                if (nSidechain > vSidechain.size()) {
+                    txToRemove.insert(it);
+                    continue;
+                }
+
+                if (vSidechain[nSidechain] == false)
+                    vSidechain[nSidechain] = true;
+                else
+                    txToRemove.insert(it);
+            }
+        }
+    }
+
+    RemoveStaged(txToRemove, false, MemPoolRemovalReason::EXPIRY);
+}
+
 CFeeRate CTxMemPool::GetMinFee(size_t sizelimit) const {
     LOCK(cs);
     if (!blockSinceLastRollingFeeBump || rollingMinimumFeeRate == 0)

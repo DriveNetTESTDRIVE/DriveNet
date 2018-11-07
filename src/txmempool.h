@@ -505,6 +505,8 @@ public:
 
     void RemoveExpiredCriticalRequests();
 
+    void SelectBMMRequests();
+
 private:
     typedef std::map<txiter, setEntries, CompareIteratorByHash> cacheMap;
 
