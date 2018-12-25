@@ -836,13 +836,10 @@ void SidechainDB::UpdateActivationStatus(const std::vector<uint256>& vHash)
     for (size_t i = 0; i < vActivationStatus.size(); i++) {
         vActivationStatus[i].nAge++;
         if (vActivationStatus[i].nAge > SIDECHAIN_ACTIVATION_MAX_AGE) {
-            std::vector<SidechainActivationStatus>::const_iterator it = vActivationStatus.begin() + i;
-            vExpired.push_back(it);
+            vActivationStatus[i] = vActivationStatus.back();
+            vActivationStatus.pop_back();
         }
     }
-    // Remove expired sidechain proposals
-    for (size_t i = 0; i < vExpired.size(); i++)
-        vActivationStatus.erase(vExpired[i]);
 
     // Calculate failures. Sidechain proposals in the proposal cache which do
     // not have a sidechain activation commitment in this block will have their
@@ -863,13 +860,9 @@ void SidechainDB::UpdateActivationStatus(const std::vector<uint256>& vHash)
     std::vector<std::vector<SidechainActivationStatus>::const_iterator> vFail;
     for (size_t i = 0; i < vActivationStatus.size(); i++) {
         if (vActivationStatus[i].nFail >= SIDECHAIN_ACTIVATION_MAX_FAILURES) {
-            std::vector<SidechainActivationStatus>::const_iterator it = vActivationStatus.begin() + i;
-            vFail.push_back(it);
+            vActivationStatus[i] = vActivationStatus.back();
+            vActivationStatus.pop_back();
         }
-    }
-    // Remove sidechain proposals with too many failures to activate
-    for (size_t i = 0; i < vFail.size(); i++) {
-        vActivationStatus.erase(vFail[i]);
     }
 
     // TODO this needs to be replaced
@@ -894,8 +887,9 @@ void SidechainDB::UpdateActivationStatus(const std::vector<uint256>& vHash)
 
             vActiveSidechain.push_back(sidechain);
 
-            std::vector<SidechainActivationStatus>::const_iterator it = vActivationStatus.begin() + i;
-            vActivated.push_back(it);
+            vActivationStatus[i] = vActivationStatus.back();
+            vActivationStatus.pop_back();
+
 
             // Add SCDBIndex to SCDB to track this sidechain's WT^(s)
             SCDBIndex index;
@@ -905,20 +899,11 @@ void SidechainDB::UpdateActivationStatus(const std::vector<uint256>& vHash)
             // Did one of our cached proposals activate?
             for (size_t j = 0; j < vSidechainProposal.size(); j++) {
                 if (vActivationStatus[i].proposal == vSidechainProposal[j]) {
-                    std::vector<SidechainProposal>::const_iterator it2 = vSidechainProposal.begin() + j;
-                    vActivatedMine.push_back(it2);
+                    vSidechainProposal[i] = vSidechainProposal.back();
+                    vSidechainProposal.pop_back();
                 }
             }
         }
-    }
-    // TODO change container / set value instead of erase. Vector erase is slow.
-    // Remove sidechain proposals which have activated.
-    for (size_t i = 0; i < vActivated.size(); i++) {
-        vActivationStatus.erase(vActivated[i]);
-    }
-    // Remove our sidechain proposals that have activated from the cache
-    for (size_t i = 0; i < vActivatedMine.size(); i++) {
-        vSidechainProposal.erase(vActivatedMine[i]);
     }
 }
 
