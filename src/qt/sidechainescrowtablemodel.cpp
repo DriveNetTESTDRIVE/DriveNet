@@ -6,6 +6,7 @@
 #include <pubkey.h>
 #include <random.h>
 #include <sidechain.h>
+#include <sidechaindb.h>
 #include <validation.h>
 
 #ifdef ENABLE_WALLET
@@ -140,10 +141,12 @@ void SidechainEscrowTableModel::updateModel()
     model.clear();
     endResetModel();
 
-    int nSidechains = ValidSidechains.size();
+    std::vector<Sidechain> vSidechain = scdb.GetActiveSidechains();
+
+    int nSidechains = vSidechain.size();
     beginInsertRows(QModelIndex(), 0, nSidechains - 1);
 
-    for (const Sidechain& s : ValidSidechains) {
+    for (const Sidechain& s : vSidechain) {
         SidechainEscrowTableObject object;
         object.nSidechain = s.nSidechain;
         object.fActive = true; // TODO
@@ -156,13 +159,15 @@ void SidechainEscrowTableModel::updateModel()
         address.Set(sidechainKey);
 
         object.address = QString::fromStdString(address.ToString());
-        object.privKey = s.sidechainPriv;
+        object.privKey = QString::fromStdString(s.sidechainPriv);
 
         // Get the sidechain CTIP info
         {
             std::vector<COutput> vSidechainCoins;
+            std::vector<unsigned char> vch(ParseHex(s.sidechainHex));
+            CScript scriptPubKey = CScript(vch.begin(), vch.end());
 #ifdef ENABLE_WALLET
-            vpwallets[0]->AvailableSidechainCoins(vSidechainCoins, s.nSidechain);
+            vpwallets[0]->AvailableSidechainCoins(scriptPubKey, s.nSidechain, vSidechainCoins);
 #endif
             if (vSidechainCoins.size()) {
                 object.CTIPIndex = QString::number(vSidechainCoins.front().i);
@@ -188,10 +193,12 @@ void SidechainEscrowTableModel::AddDemoData()
     model.clear();
     endResetModel();
 
-    int nSidechains = ValidSidechains.size();
+    std::vector<Sidechain> vSidechain = scdb.GetActiveSidechains();
+
+    int nSidechains = vSidechain.size();
     beginInsertRows(QModelIndex(), 0, nSidechains - 1);
 
-    for (const Sidechain& s : ValidSidechains) {
+    for (const Sidechain& s : vSidechain) {
         SidechainEscrowTableObject object;
         object.nSidechain = s.nSidechain;
         object.fActive = true; // TODO
@@ -204,7 +211,7 @@ void SidechainEscrowTableModel::AddDemoData()
         address.Set(sidechainKey);
 
         object.address = QString::fromStdString(address.ToString());
-        object.privKey = s.sidechainPriv;
+        object.privKey = QString::fromStdString(s.sidechainPriv);
 
         // Add demo CTIP data
         object.CTIPIndex = QString::number(s.nSidechain % 2 == 0 ? 0 : 1);

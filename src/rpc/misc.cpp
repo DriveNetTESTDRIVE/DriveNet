@@ -797,16 +797,18 @@ UniValue listsidechainctip(const JSONRPCRequest& request)
         strError = "Error: no wallets are available";
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
-#endif
 
     // Is nSidechain valid?
     uint8_t nSidechain = (unsigned int)request.params[0].get_int();
     if (!IsSidechainNumberValid(nSidechain))
         throw std::runtime_error("Invalid sidechain number");
 
+    CScript scriptPubKey;
+    if (!scdb.GetSidechainScript(nSidechain, scriptPubKey))
+        throw std::runtime_error("Invalid sidechain");
+
     std::vector<COutput> vSidechainCoin;
-#ifdef ENABLE_WALLET
-    vpwallets[0]->AvailableSidechainCoins(vSidechainCoin, nSidechain);
+    vpwallets[0]->AvailableSidechainCoins(scriptPubKey, nSidechain, vSidechainCoin);
 #endif
 
     if (vSidechainCoin.empty())
@@ -1014,7 +1016,10 @@ UniValue receivewtprime(const JSONRPCRequest& request)
     // be accepted anyway
     CAmount amount = wtPrime.GetValueOut();
     std::vector<COutput> vSidechainCoin;
-    pwallet->AvailableSidechainCoins(vSidechainCoin, nSidechain);
+    CScript scriptPubKey;
+    if (!scdb.GetSidechainScript(nSidechain, scriptPubKey))
+        throw std::runtime_error("Invalid sidechain!");
+    pwallet->AvailableSidechainCoins(scriptPubKey, nSidechain, vSidechainCoin);
 
     if (vSidechainCoin.empty())
         throw std::runtime_error("Rejecting WT^: No Sidechain CTIP found!");
@@ -1028,7 +1033,7 @@ UniValue receivewtprime(const JSONRPCRequest& request)
 
     // Add WT^ to our local cache so that we can create a WT^ hash commitment
     // in the next block we mine to begin the verification process
-    if (!scdb.CacheWTPrime(nSidechain, wtPrime))
+    if (!scdb.CacheWTPrime(wtPrime))
         throw std::runtime_error("WT^ rejected (duplicate?)");
 
     // Return WT^ hash to verify it has been received
@@ -1217,6 +1222,210 @@ UniValue listpreviousblockhashes(const JSONRPCRequest& request)
     return ret;
 }
 
+UniValue listactivesidechains(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() != 0)
+        throw std::runtime_error(
+            "listactivesidechains\n"
+            "List active sidechains.\n"
+            "\nArguments:\n"
+            "\nExamples:\n"
+            + HelpExampleCli("listactivesidechains", "")
+            + HelpExampleRpc("listactivesidechains", "")
+            );
+
+    std::vector<Sidechain> vActive = scdb.GetActiveSidechains();
+    UniValue ret(UniValue::VARR);
+    for (const Sidechain& s : vActive) {
+        UniValue obj(UniValue::VOBJ);
+        obj.push_back(Pair("title", s.title));
+        obj.push_back(Pair("description", s.description));
+        obj.push_back(Pair("privatekey", s.sidechainPriv));
+        obj.push_back(Pair("keyid", s.sidechainKey));
+        obj.push_back(Pair("hex", s.sidechainHex));
+
+        ret.push_back(obj);
+    }
+
+    return ret;
+}
+
+UniValue listsidechainactivationstatus(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() != 0)
+        throw std::runtime_error(
+            "listsidechainactivationstatus\n"
+            "List activation status of all pending sidechains.\n"
+            "\nArguments:\n"
+            "\nExamples:\n"
+            + HelpExampleCli("listsidechainactivationstatus", "")
+            + HelpExampleRpc("listsidechainactivationstatus", "")
+            );
+
+    std::vector<SidechainActivationStatus> vStatus;
+    vStatus = scdb.GetSidechainActivationStatus();
+
+    UniValue ret(UniValue::VARR);
+    for (const SidechainActivationStatus& s : vStatus) {
+        UniValue obj(UniValue::VOBJ);
+        obj.push_back(Pair("title", s.proposal.title));
+        obj.push_back(Pair("description", s.proposal.description));
+        obj.push_back(Pair("privatekey", s.proposal.sidechainPriv));
+        obj.push_back(Pair("keyid", s.proposal.sidechainKey));
+        obj.push_back(Pair("hex", s.proposal.sidechainHex));
+        obj.push_back(Pair("nage", s.nAge));
+        obj.push_back(Pair("nfail", s.nFail));
+
+        ret.push_back(obj);
+    }
+
+    return ret;
+}
+
+UniValue listsidechainproposals(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() != 0)
+        throw std::runtime_error(
+            "listsidechainproposals\n"
+            "List your own cached sidechain proposals\n"
+            "\nArguments:\n"
+            "\nExamples:\n"
+            + HelpExampleCli("listsidechainproposals", "")
+            + HelpExampleRpc("listsidechainproposals", "")
+            );
+
+    std::vector<SidechainProposal> vProposal = scdb.GetSidechainProposals();
+    UniValue ret(UniValue::VARR);
+    for (const SidechainProposal& s : vProposal) {
+        UniValue obj(UniValue::VOBJ);
+        obj.push_back(Pair("title", s.title));
+        obj.push_back(Pair("description", s.description));
+        obj.push_back(Pair("privatekey", s.sidechainPriv));
+        obj.push_back(Pair("keyid", s.sidechainKey));
+        obj.push_back(Pair("hex", s.sidechainHex));
+
+        ret.push_back(obj);
+    }
+
+    return ret;
+}
+
+UniValue getsidechainactivationstatus(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() != 1)
+        throw std::runtime_error(
+            "getsidechainactivationstatus\n"
+            "List activation status for nSidechain.\n"
+            "\nArguments:\n"
+            "\nExamples:\n"
+            + HelpExampleCli("getsidechainactivationstatus", "")
+            + HelpExampleRpc("getsidechainactivationstatus", "")
+            );
+
+    // TODO
+    std::vector<SidechainActivationStatus> vStatus;
+    vStatus = scdb.GetSidechainActivationStatus();
+
+    UniValue ret(UniValue::VARR);
+    for (const SidechainActivationStatus& s : vStatus) {
+        UniValue obj(UniValue::VOBJ);
+        obj.push_back(Pair("title", s.proposal.title));
+        obj.push_back(Pair("description", s.proposal.description));
+        obj.push_back(Pair("privatekey", s.proposal.sidechainPriv));
+        obj.push_back(Pair("keyid", s.proposal.sidechainKey));
+        obj.push_back(Pair("scripthex", s.proposal.sidechainHex));
+        obj.push_back(Pair("nage", s.nAge));
+        obj.push_back(Pair("nfail", s.nFail));
+        obj.push_back(Pair("proposalhash", s.proposal.GetHash().ToString()));
+
+        ret.push_back(obj);
+    }
+
+    return ret;
+}
+
+UniValue createsidechainproposal(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() != 3)
+        throw std::runtime_error(
+            "createsidechainproposal\n"
+            "Generates a sidechain proposal to be included in the next block " \
+            "mined by this node.\n"\
+            "Note that this will not broadcast the proposal to other nodes. " \
+            "You must mine a block which includes your proposal to complete " \
+            "the process. Pending proposals created by this node will " \
+            "automatically be included in the soonest block mined possible.\n"
+            "\nArguments:\n"
+            "1. \"title\"        (string, required) sidechain title\n"
+            "2. \"description\"  (string, required) sidechain description\n"
+            "3. \"privatekey\"   (string, required) sidechain private key\n"
+            "\nExamples:\n"
+            + HelpExampleCli("createsidechainproposal", "")
+            + HelpExampleRpc("createsidechainproposal", "")
+            );
+
+    std::string strTitle = request.params[0].get_str();
+    std::string strDescription = request.params[1].get_str();
+    std::string strSecret = request.params[2].get_str();
+
+    if (strTitle.empty())
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Sidechain must have a title!");
+
+    // TODO maybe we should allow sidechains with no description? Anyways this
+    // isn't a consensus rule right now
+    if (strDescription.empty())
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Sidechain must have a description!");
+
+    CBitcoinSecret vchSecret;
+    if (!vchSecret.SetString(strSecret))
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid private key encoding");
+
+    CKey key = vchSecret.GetKey();
+    if (!key.IsValid())
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Private key outside allowed range");
+
+    CPubKey pubkey = key.GetPubKey();
+    assert(key.VerifyPubKey(pubkey));
+    CKeyID vchAddress = pubkey.GetID();
+
+    // Generate script hex
+    CScript sidechainScript = CScript() << OP_DUP << OP_HASH160 << ToByteVector(vchAddress) << OP_EQUALVERIFY << OP_CHECKSIG;
+
+    SidechainProposal proposal;
+    proposal.title = strTitle;
+    proposal.description = strDescription;
+    proposal.sidechainPriv = strSecret;
+    proposal.sidechainKey = HexStr(vchAddress);
+    proposal.sidechainHex = HexStr(sidechainScript);
+
+    // Cache proposal so that it can be added to the next block we mine
+    scdb.CacheSidechainProposals(std::vector<SidechainProposal>{proposal});
+
+    UniValue obj(UniValue::VOBJ);
+    obj.push_back(Pair("title", proposal.title));
+    obj.push_back(Pair("description", proposal.description));
+    obj.push_back(Pair("privatekey", proposal.sidechainPriv));
+    obj.push_back(Pair("keyid", proposal.sidechainKey));
+    obj.push_back(Pair("hex", proposal.sidechainHex));
+
+    return obj;
+}
+
+UniValue vote(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() != 0)
+        throw std::runtime_error(
+            "vote\n"
+            "Vote on sidechains and WT^(s) etc.\n"
+            "\nArguments:\n"
+            "1. \"type {}\"        (string, required) sidechain title\n"
+            "\nExamples:\n"
+            + HelpExampleCli("vote", "")
+            + HelpExampleRpc("vote", "")
+            );
+    return NullUniValue;
+}
+
 UniValue echo(const JSONRPCRequest& request)
 {
     if (request.fHelp)
@@ -1268,6 +1477,13 @@ static const CRPCCommand commands[] =
     { "DriveChain",         "receivewtprimeupdate",     &receivewtprimeupdate,      {"height","update"}},
     { "DriveChain",         "getbmmproof",              &getbmmproof,               {"blockhash", "criticalhash"}},
     { "DriveChain",         "listpreviousblockhashes",  &listpreviousblockhashes,   {}},
+    // Drivechain voting / sidechain activation rpc commands
+    { "DriveChain",         "listactivesidechains",          &listactivesidechains,   {}},
+    { "DriveChain",         "listsidechainactivationstatus", &listsidechainactivationstatus,   {}},
+    { "DriveChain",         "listsidechainproposals",        &listsidechainproposals,   {}},
+    { "DriveChain",         "getsidechainactivationstatus",  &getsidechainactivationstatus,   {}},
+    { "DriveChain",         "createsidechainproposal",       &createsidechainproposal,   {"title", "description", "privatekey"}},
+    { "DriveChain",         "vote",                          &vote,   {}},
 };
 
 void RegisterMiscRPCCommands(CRPCTable &t)

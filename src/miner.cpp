@@ -187,9 +187,13 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
 
     bool drivechainsEnabled = IsDrivechainEnabled(pindexPrev, chainparams.GetConsensus());
 
+    std::vector<Sidechain> vActiveSidechain;
+    if (drivechainsEnabled)
+        vActiveSidechain = scdb.GetActiveSidechains();
+
     if (drivechainsEnabled) {
         // Add WT^(s) which have been validated
-        for (const Sidechain& s : ValidSidechains) {
+        for (const Sidechain& s : vActiveSidechain) {
             CMutableTransaction wtx;
             bool fCreated = CreateWTPrimePayout(s.nSidechain, wtx);
             if (fCreated && wtx.vout.size() && wtx.vin.size()) {
@@ -220,7 +224,8 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
         GenerateCriticalHashCommitments(*pblock, chainparams.GetConsensus());
 
         // TODO make interactive - GUI
-        for (const Sidechain& s : ValidSidechains) {
+        // Commit WT^(s) which we have received locally
+        for (const Sidechain& s : vActiveSidechain) {
             std::vector<uint256> vFreshWTPrime;
             vFreshWTPrime = scdb.GetUncommittedWTPrimeCache(s.nSidechain);
 
@@ -230,6 +235,23 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
             // For now, if there are fresh (uncommited, unknown to SCDB) WT^(s)
             // we will commit the most recent in the block we are generating.
             GenerateWTPrimeHashCommitment(*pblock, vFreshWTPrime.back(), s.nSidechain, chainparams.GetConsensus());
+        }
+
+        // Commit the oldest uncommitted sidechain proposal that we have created
+        std::vector<SidechainProposal> vProposal = scdb.GetSidechainProposals();
+        if (!vProposal.empty()) {
+            GenerateSidechainProposalCommitment(*pblock, vProposal.front(), chainparams.GetConsensus());
+        }
+
+        bool fCommitAnySidechain = gArgs.GetBoolArg("-activatesidechains", false);
+
+        // Commit sidechain activation
+        if (fCommitAnySidechain) {
+            std::vector<SidechainActivationStatus> vActivationStatus;
+            vActivationStatus = scdb.GetSidechainActivationStatus();
+            for (const SidechainActivationStatus& s : vActivationStatus) {
+                GenerateSidechainActivationCommitment(*pblock, s.proposal.GetHash(), chainparams.GetConsensus());
+            }
         }
     }
 
@@ -360,7 +382,9 @@ bool BlockAssembler::CreateWTPrimePayout(uint8_t nSidechain, CMutableTransaction
     if (!IsSidechainNumberValid(nSidechain))
         return false;
 
-    const Sidechain& sidechain = ValidSidechains[nSidechain];
+    Sidechain sidechain;
+    if (!scdb.GetSidechain(nSidechain, sidechain))
+        return false;
 
     // Select the highest scoring B-WT^ for sidechain during verification period
     uint256 hashBest = uint256();
@@ -415,9 +439,12 @@ bool BlockAssembler::CreateWTPrimePayout(uint8_t nSidechain, CMutableTransaction
     mtx.vout.push_back(CTxOut(0, sidechainScript));
 
     // Get SCUTXO(s)
+    CScript scriptPubKey;
+    if (!scdb.GetSidechainScript(nSidechain, scriptPubKey))
+        return false; // TODO log
     std::vector<COutput> vSidechainCoins;
     for (CWalletRef pwallet : vpwallets) {
-        pwallet->AvailableSidechainCoins(vSidechainCoins, nSidechain);
+        pwallet->AvailableSidechainCoins(scriptPubKey, nSidechain, vSidechainCoins);
     }
     if (vSidechainCoins.size() != 1)
         return false; // TODO log

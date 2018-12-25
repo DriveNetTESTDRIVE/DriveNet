@@ -230,6 +230,9 @@ void Shutdown()
 
     DumpDepositCache();
     DumpWTPrimeCache();
+    DumpSidechainActivationStatusCache();
+    DumpActiveSidechainCache();
+    DumpSidechainProposalCache();
 
     if (fFeeEstimatesInitialized)
     {
@@ -1638,6 +1641,9 @@ bool AppInitMain()
 
     LoadDepositCache();
     LoadWTPrimeCache();
+    LoadSidechainActivationStatusCache();
+    LoadActiveSidechainCache();
+    LoadSidechainProposalCache();
 
     // As LoadBlockIndex can take several minutes, it's possible the user
     // requested to kill the GUI during the last operation. If so, exit.
@@ -1755,7 +1761,7 @@ bool AppInitMain()
             // Failed to read loaded coins, abort
             // TODO add link to website with setup guide
             std::string strError = "Error reading loading coins!\n\n";
-            strError += "DriveNetTESTDRIVE needs to import a UTXO set (loaded coins) before starting for the first time.";
+            strError += "DriveNet needs to import a UTXO set (loaded coins) before starting for the first time.";
             strError += "\n\n";
             strError += "You must move loaded_coins.dat to your DriveNet datadir.";
             strError += "\n\n";
@@ -1777,8 +1783,9 @@ bool AppInitMain()
 
     // ********************************************************* Step 12: watch sidechain addresses
     uiInterface.InitMessage(_("Watching sidechain deposit addresses"));
-    if (drivechainsEnabled) {
-        if (!vpwallets.empty()) {
+    if (drivechainsEnabled && !vpwallets.empty()) {
+        std::vector<Sidechain> vSidechain = scdb.GetActiveSidechains();
+        if (!vSidechain.empty()) {
             CWalletRef pwallet = vpwallets.front();
 
             LOCK2(cs_main, pwallet->cs_wallet);
@@ -1786,7 +1793,7 @@ bool AppInitMain()
             pwallet->MarkDirty();
 
             // Watch sidechain deposit addresses
-            for (const Sidechain& sidechain : ValidSidechains) {
+            for (const Sidechain& sidechain : vSidechain) {
                 std::vector<unsigned char> data;
                 data = std::vector<unsigned char>(ParseHex(sidechain.sidechainHex));
 

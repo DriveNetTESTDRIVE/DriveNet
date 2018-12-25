@@ -29,6 +29,7 @@
         <file alias="history">res/icons/history.png</file>
         <file alias="overview">res/icons/overview.png</file>
         <file alias="export">res/icons/export.png</file>
+        <file alias="sidechain_default">res/icons/sidechain_default.png</file>
         <file alias="sidechain_one">res/icons/sidechain_one.png</file>
         <file alias="sidechain_payments">res/icons/sidechain_payments.png</file>
         <file alias="synced">res/icons/synced.png</file>

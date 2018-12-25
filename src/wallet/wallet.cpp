@@ -2391,10 +2391,10 @@ const CTxOut& CWallet::FindNonChangeParentOutput(const CTransaction& tx, int out
     return ptx->vout[n];
 }
 
-void CWallet::AvailableSidechainCoins(std::vector<COutput>& vSidechainCoins, const uint8_t nSidechain) const
+void CWallet::AvailableSidechainCoins(const CScript& scriptPubKeyIn, const uint8_t nSidechainIn,  std::vector<COutput>& vSidechainCoins) const
 {
     // Check if sidechain number is valid
-    if (!IsSidechainNumberValid(nSidechain))
+    if (!IsSidechainNumberValid(nSidechainIn))
         return;
 
     // Collect available outputs
@@ -2402,11 +2402,11 @@ void CWallet::AvailableSidechainCoins(std::vector<COutput>& vSidechainCoins, con
     AvailableCoins(vCoins, false); // TODO ?
 
     // Search for available Sidechain outputs
-    const Sidechain& s = ValidSidechains[nSidechain];
     for (const COutput& output : vCoins) {
         CScript scriptPubKey = output.tx->tx->vout[output.i].scriptPubKey;
 
-        if (HexStr(scriptPubKey) == s.sidechainHex) {
+        // TODO drop HexStr
+        if (HexStr(scriptPubKey) == HexStr(scriptPubKeyIn)) {
             const CTransaction tx = *output.tx->tx;
 
             // Check that the output is a valid sidechain deposit
@@ -2426,10 +2426,11 @@ void CWallet::AvailableSidechainCoins(std::vector<COutput>& vSidechainCoins, con
                 CScriptNum nSidechainNum(vchNS, false);
                 nSidechainScript = (unsigned int)nSidechainNum.getint();
 
-                if (!IsSidechainNumberValid(nSidechainScript))
-                    continue;
+                // TODO ?
+                //if (!IsSidechainNumberValid(nSidechainScript))
+                //   continue;
 
-                if (nSidechainScript != nSidechain)
+                if (nSidechainScript != nSidechainIn)
                     continue;
 
                 CScript::const_iterator pkey = depositScript.begin() + 2 + (depositScript.size() == 24);
@@ -3157,7 +3158,7 @@ bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletT
     return true;
 }
 
-bool CWallet::CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, const uint8_t nSidechain, const CAmount& nAmount, const CKeyID& keyID)
+bool CWallet::CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, const CScript& scriptPubKeyIn, const uint8_t nSidechain, const CAmount& nAmount, const CKeyID& keyID)
 {
     if (!IsSidechainNumberValid(nSidechain)) {
         strFail = "Invalid Sidechain number!\n";
@@ -3174,12 +3175,15 @@ bool CWallet::CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, 
     // User deposit data script
     CScript dataScript = CScript() << OP_RETURN << CScriptNum(nSidechain) << ToByteVector(keyID);
 
-    const Sidechain& sidechain = ValidSidechains[nSidechain];
-    std::vector<unsigned char> vch(ParseHex(sidechain.sidechainHex));
+    // TODO change this mess, drop HexStr
+    //const Sidechain& sidechain = ValidSidechains[nSidechain];
+    std::vector<unsigned char> vch(ParseHex(HexStr(scriptPubKeyIn)));
     CScript sidechainScript = CScript(vch.begin(), vch.end());
 
-    if (sidechainScript.empty())
+    if (sidechainScript.empty()) {
+        strFail = "Invalid sidechain deposit script!";
         return false;
+    }
 
     // The deposit transaction
     CMutableTransaction mtx;
@@ -3228,7 +3232,7 @@ bool CWallet::CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, 
 
     // Handle existing sidechain utxo
     std::vector<COutput> vSidechainCoins;
-    AvailableSidechainCoins(vSidechainCoins, nSidechain);
+    AvailableSidechainCoins(sidechainScript, nSidechain, vSidechainCoins);
     CAmount returnAmount = CAmount(0);
     if (vSidechainCoins.size()) {
 
@@ -3277,6 +3281,10 @@ bool CWallet::CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, 
         vin.scriptSig = CScript();
         vin.scriptWitness.SetNull();
     }
+
+    Sidechain sidechain;
+    if (!scdb.GetSidechain(nSidechain, sidechain))
+        return false;
 
     // Sign the sidechain utxo if we need to
     if (vSidechainCoins.size()) {

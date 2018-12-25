@@ -51,6 +51,12 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/thread.hpp>
 
+
+#include <iostream>
+
+
+
+
 #if defined(NDEBUG)
 # error "DriveNet cannot be compiled without assertions."
 #endif
@@ -560,10 +566,11 @@ void GetSidechainValues(CTxMemPool& pool, const CTransaction &tx, CAmount& amtSi
     }
 
     // Count value of inputs
+    uint8_t nSidechain;
     for (const Coin& c : vCoin) {
         const CTxOut& out = c.out;
         CScript scriptPubKey = out.scriptPubKey;
-        if (ValidSidechainField.find(HexStr(scriptPubKey)) != ValidSidechainField.end()) {
+        if (scdb.HasSidechainScript(std::vector<CScript>{scriptPubKey}, nSidechain)) {
             amtSidechainUTXO += out.nValue;
         } else {
             amtUserInput += out.nValue;
@@ -574,7 +581,7 @@ void GetSidechainValues(CTxMemPool& pool, const CTransaction &tx, CAmount& amtSi
     // Count outputs
     for (const CTxOut& out : tx.vout) {
         CScript scriptPubKey = out.scriptPubKey;
-        if (ValidSidechainField.find(HexStr(scriptPubKey)) != ValidSidechainField.end()) {
+        if (scdb.HasSidechainScript(std::vector<CScript>{scriptPubKey}, nSidechain)) {
             amtReturning += out.nValue;
         } else {
             amtWithdrawn += out.nValue;
@@ -669,11 +676,12 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
 
             // Check format & extract sidechain number & deposit outpoint
             uint8_t nSidechainFromScript = -1;
+            uint8_t nSidechain;
             COutPoint outpoint;
             bool fFormatChecked = false;
             for (size_t i = 0; i < tx.vout.size(); i++) {
                 const CScript &scriptPubKey = tx.vout[i].scriptPubKey;
-                if (ValidSidechainField.find(HexStr(scriptPubKey)) != ValidSidechainField.end()) {
+                if (scdb.HasSidechainScript(std::vector<CScript>{scriptPubKey}, nSidechain)) {
                     // Copy output index of deposit and move on
                     outpoint.n = i;
                     outpoint.hash = tx.GetHash();
@@ -717,9 +725,10 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
                 return state.DoS(100, false, REJECT_INVALID, "sidechain-deposit-invalid-sidechain-number");
 
             // Check that CTIP input was spent if there is one
-            if (!mempool.LastSidechainDeposits[nSidechainFromScript].IsNull()) {
+            auto it = mempool.mapLastSidechainDeposit.find(nSidechainFromScript);
+            if (it != mempool.mapLastSidechainDeposit.end()) {
                 int nCTIPSpent = 0;
-                const COutPoint out = mempool.LastSidechainDeposits[nSidechainFromScript];
+                const COutPoint out = it->second;
                 for (const CTxIn& in : tx.vin) {
                     if (in.prevout == out)
                         nCTIPSpent++;
@@ -729,7 +738,7 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
             }
 
             // Track with mempool
-            mempool.LastSidechainDeposits[nSidechainFromScript] = outpoint;
+            mempool.mapLastSidechainDeposit[nSidechainFromScript] = outpoint;
 
         } else if (amtSidechainUTXO > 0) {
             return state.DoS(100, false, REJECT_INVALID, "sidechain-invalid-ctip-spend");
@@ -2113,9 +2122,21 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
                 return state.DoS(100, error("%s: accumulated fee in the block out of range.", __func__),
                                  REJECT_INVALID, "bad-txns-accumulated-fee-outofrange");
             }
-            if (!view.HaveInputs(tx, (drivechainsEnabled ? &fSidechainInputs : NULL), &nSidechain))
+
+            if (!view.HaveInputs(tx))
                 return state.DoS(100, error("ConnectBlock(): inputs missing/spent"),
                                  REJECT_INVALID, "bad-txns-inputs-missingorspent");
+
+
+            // Set fSidechainInputs & nSidechain
+            if (drivechainsEnabled) {
+                std::vector<CScript> vScript;
+                for (const CTxIn& in : tx.vin) {
+                    Coin coin = view.AccessCoin(in.prevout);
+                    vScript.push_back(coin.out.scriptPubKey);
+                }
+                fSidechainInputs = scdb.HasSidechainScript(vScript, nSidechain);
+            }
 
             // Check that transaction is BIP68 final
             // BIP68 lock checks (as opposed to nLockTime checks) must
@@ -2194,9 +2215,10 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
         if (drivechainsEnabled && !tx.IsCoinBase() && !fJustCheck) {
             // Check for sidechain deposits
             bool fSidechainOutput = false;
+            uint8_t nSidechain;
             for (const CTxOut out : tx.vout) {
                 const CScript& scriptPubKey = out.scriptPubKey;
-                if (ValidSidechainField.find(HexStr(scriptPubKey)) != ValidSidechainField.end()) {
+                if (scdb.HasSidechainScript(std::vector<CScript>{scriptPubKey}, nSidechain)) {
                     fSidechainOutput = true;
                 }
             }
@@ -3384,7 +3406,7 @@ void GenerateCriticalHashCommitments(CBlock& block, const Consensus::Params& con
         out.nValue = 0;
         out.scriptPubKey.resize(38);
         out.scriptPubKey[0] = OP_RETURN;
-        out.scriptPubKey[1] = 0x24;
+        out.scriptPubKey[1] = 0x24; // TODO Remove
         out.scriptPubKey[2] = 0xD1;
         out.scriptPubKey[3] = 0x61;
         out.scriptPubKey[4] = 0x73;
@@ -3428,7 +3450,7 @@ void GenerateLNCriticalHashCommitment(CBlock& block, const Consensus::Params& co
         out.nValue = 0;
         out.scriptPubKey.resize(70);
         out.scriptPubKey[0] = OP_RETURN;
-        out.scriptPubKey[1] = 0x44;
+        out.scriptPubKey[1] = 0x44; // TODO Remove
         out.scriptPubKey[2] = 0xD0;
         out.scriptPubKey[3] = 0x52;
         out.scriptPubKey[4] = 0x0C;
@@ -3481,7 +3503,7 @@ void GenerateSCDBHashMerkleRootCommitment(CBlock& block, const uint256& hashSCDB
     // Add script header
     out.scriptPubKey.resize(38);
     out.scriptPubKey[0] = OP_RETURN;
-    out.scriptPubKey[1] = 0x24;
+    out.scriptPubKey[1] = 0x24; // TODO Remove
     out.scriptPubKey[2] = 0xD2;
     out.scriptPubKey[3] = 0x8E;
     out.scriptPubKey[4] = 0x50;
@@ -3518,7 +3540,7 @@ void GenerateBMMHashMerkleRootCommitment(CBlock& block, const Consensus::Params&
     // Add script header
     out.scriptPubKey.resize(38);
     out.scriptPubKey[0] = OP_RETURN;
-    out.scriptPubKey[1] = 0x24;
+    out.scriptPubKey[1] = 0x24; // TODO Remove
     out.scriptPubKey[2] = 0xD3;
     out.scriptPubKey[3] = 0x40;
     out.scriptPubKey[4] = 0x70;
@@ -3552,7 +3574,7 @@ void GenerateWTPrimeHashCommitment(CBlock& block, const uint256& hashWTPrime, co
     // Add script header
     out.scriptPubKey.resize(38);
     out.scriptPubKey[0] = OP_RETURN;
-    out.scriptPubKey[1] = 0x24;
+    out.scriptPubKey[1] = 0x24; // TODO Remove
     out.scriptPubKey[2] = 0xD4;
     out.scriptPubKey[3] = 0x5A;
     out.scriptPubKey[4] = 0xA9;
@@ -3563,6 +3585,55 @@ void GenerateWTPrimeHashCommitment(CBlock& block, const uint256& hashWTPrime, co
 
     // Add nSidechain
     out.scriptPubKey << CScriptNum(nSidechain);
+
+    // Update coinbase in block
+    CMutableTransaction mtx(*block.vtx[0]);
+    mtx.vout.push_back(out);
+    block.vtx[0] = MakeTransactionRef(std::move(mtx));
+}
+
+void GenerateSidechainProposalCommitment(CBlock& block, const SidechainProposal& sidechain, const Consensus::Params& consensusParams)
+{
+    // Check for activation of Drivechains
+    if (!IsDrivechainEnabled(chainActive.Tip(), consensusParams))
+        return;
+
+    CTxOut out;
+    out.nValue = 0;
+
+    // Header
+    // 0xD5;
+    // 0xE0;
+    // 0xC4;
+    // 0xAF;
+
+    // Add serialization of sidechain proposal
+    out.scriptPubKey = sidechain.GetScript();
+
+    // Update coinbase in block
+    CMutableTransaction mtx(*block.vtx[0]);
+    mtx.vout.push_back(out);
+    block.vtx[0] = MakeTransactionRef(std::move(mtx));
+}
+
+void GenerateSidechainActivationCommitment(CBlock& block, const uint256& hash, const Consensus::Params& consensusParams)
+{
+    // Check for activation of Drivechains
+    if (!IsDrivechainEnabled(chainActive.Tip(), consensusParams))
+        return;
+
+    CTxOut out;
+    out.nValue = 0;
+
+    // Add script header
+    out.scriptPubKey.resize(37);
+    out.scriptPubKey[0] = OP_RETURN;
+    out.scriptPubKey[1] = 0xD6;
+    out.scriptPubKey[2] = 0xE1;
+    out.scriptPubKey[3] = 0xC5;
+    out.scriptPubKey[4] = 0xBF;
+
+    memcpy(&out.scriptPubKey[5], &hash, 32);
 
     // Update coinbase in block
     CMutableTransaction mtx(*block.vtx[0]);
@@ -3718,7 +3789,7 @@ static bool ContextualCheckBlock(const CBlock& block, CValidationState& state, c
     if (drivechainsEnabled) {
         // Track existence of BMM h* commit requests per sidechain
         std::vector<bool> vSidechainBMM;
-        vSidechainBMM.resize(ValidSidechains.size());
+        vSidechainBMM.resize(scdb.GetActiveSidechainCount());
 
         for (const auto& tx: block.vtx) {
             // Look for transactions with non-null CCriticalData
@@ -5256,7 +5327,8 @@ void DumpDepositCache()
     // TODO seperate dump & read by nSidechain. Split deposit cache into
     // individual vectors for each sidechain for performance reasons.
     std::vector<SidechainDeposit> vDeposit;
-    for (const Sidechain& s : ValidSidechains) {
+    std::vector<Sidechain> vSidechain = scdb.GetActiveSidechains();
+    for (const Sidechain& s : vSidechain) {
         std::vector<SidechainDeposit> vSidechainDeposit = scdb.GetDeposits(s.nSidechain);
         vDeposit.insert(std::end(vDeposit), std::begin(vSidechainDeposit), std::end(vSidechainDeposit));
     }
@@ -5323,7 +5395,7 @@ bool LoadWTPrimeCache()
     // Add to SCDB
     // TODO nSidechain
     for (const CTransactionRef& tx : vWTPrime) {
-        if (!scdb.CacheWTPrime(SIDECHAIN_ONE, *tx.get()))
+        if (!scdb.CacheWTPrime(*tx.get()))
             return false;
     }
 
@@ -5359,6 +5431,213 @@ void DumpWTPrimeCache()
     }
 }
 
+bool LoadSidechainActivationStatusCache()
+{
+    fs::path path = GetDataDir() / "sidechainactivation.dat";
+    CAutoFile filein(fsbridge::fopen(path, "r"), SER_DISK, CLIENT_VERSION);
+    if (filein.IsNull()) {
+        return false;
+    }
+
+    // TODO log this
+    uint64_t fileSize = fs::file_size(path);
+
+    std::vector<SidechainActivationStatus> vActivationStatus;
+    try {
+        int nVersionRequired, nVersionThatWrote;
+        filein >> nVersionRequired;
+        filein >> nVersionThatWrote;
+        if (nVersionRequired > CLIENT_VERSION) {
+            return false;
+        }
+
+        int count = 0;
+        filein >> count;
+        for (int i = 0; i < count; i++) {
+            SidechainActivationStatus s;
+            filein >> s;
+            vActivationStatus.push_back(s);
+        }
+    }
+    catch (const std::exception& e) {
+        // TODO log this
+        // std::cout << "Exception: " << e.what() << std::endl;
+        return false;
+    }
+
+    // Add to SCDB
+    scdb.CacheSidechainActivationStatus(vActivationStatus);
+
+    return true;
+}
+
+void DumpSidechainActivationStatusCache()
+{
+    std::vector<SidechainActivationStatus> vActivationStatus;
+    vActivationStatus = scdb.GetSidechainActivationStatus();
+
+    int count = vActivationStatus.size();
+
+    // Write the coins
+    fs::path path = GetDataDir() / "sidechainactivation.dat";
+    CAutoFile fileout(fsbridge::fopen(path, "w"), SER_DISK, CLIENT_VERSION);
+    if (fileout.IsNull()) {
+        return;
+    }
+
+    try {
+        fileout << 210000; // version required to read: 0.21.00 or later
+        fileout << CLIENT_VERSION; // version that wrote the file
+        fileout << count; // Number of coins in file
+
+        for (const SidechainActivationStatus& s : vActivationStatus) {
+            fileout << s;
+        }
+    }
+    catch (const std::exception& e) {
+        // TODO log this
+        // std::cout << "Exception: " << e.what() << std::endl;
+        return;
+    }
+}
+
+bool LoadActiveSidechainCache()
+{
+    fs::path path = GetDataDir() / "activesidechains.dat";
+    CAutoFile filein(fsbridge::fopen(path, "r"), SER_DISK, CLIENT_VERSION);
+    if (filein.IsNull()) {
+        return false;
+    }
+
+    // TODO log this
+    uint64_t fileSize = fs::file_size(path);
+
+    std::vector<Sidechain> vSidechain;
+    try {
+        int nVersionRequired, nVersionThatWrote;
+        filein >> nVersionRequired;
+        filein >> nVersionThatWrote;
+        if (nVersionRequired > CLIENT_VERSION) {
+            return false;
+        }
+
+        int count = 0;
+        filein >> count;
+        for (int i = 0; i < count; i++) {
+            Sidechain sidechain;
+            filein >> sidechain;
+            vSidechain.push_back(sidechain);
+        }
+    }
+    catch (const std::exception& e) {
+        // TODO log this
+        // std::cout << "Exception: " << e.what() << std::endl;
+        return false;
+    }
+
+    // Add to SCDB
+    scdb.CacheActiveSidechains(vSidechain);
+
+    return true;
+}
+
+void DumpActiveSidechainCache()
+{
+    std::vector<Sidechain> vSidechain = scdb.GetActiveSidechains();
+
+    int count = vSidechain.size();
+
+    // Write the coins
+    fs::path path = GetDataDir() / "activesidechains.dat";
+    CAutoFile fileout(fsbridge::fopen(path, "w"), SER_DISK, CLIENT_VERSION);
+    if (fileout.IsNull()) {
+        return;
+    }
+
+    try {
+        fileout << 210000; // version required to read: 0.21.00 or later
+        fileout << CLIENT_VERSION; // version that wrote the file
+        fileout << count; // Number of coins in file
+
+        for (const Sidechain& s : vSidechain) {
+            fileout << s;
+        }
+    }
+    catch (const std::exception& e) {
+        // TODO log this
+        // std::cout << "Exception: " << e.what() << std::endl;
+        return;
+    }
+}
+
+bool LoadSidechainProposalCache()
+{
+    fs::path path = GetDataDir() / "sidechainproposals.dat";
+    CAutoFile filein(fsbridge::fopen(path, "r"), SER_DISK, CLIENT_VERSION);
+    if (filein.IsNull()) {
+        return false;
+    }
+
+    // TODO log this
+    uint64_t fileSize = fs::file_size(path);
+
+    std::vector<SidechainProposal> vProposal;
+    try {
+        int nVersionRequired, nVersionThatWrote;
+        filein >> nVersionRequired;
+        filein >> nVersionThatWrote;
+        if (nVersionRequired > CLIENT_VERSION) {
+            return false;
+        }
+
+        int count = 0;
+        filein >> count;
+        for (int i = 0; i < count; i++) {
+            SidechainProposal proposal;
+            filein >> proposal;
+            vProposal.push_back(proposal);
+        }
+    }
+    catch (const std::exception& e) {
+        // TODO log this
+        // std::cout << "Exception: " << e.what() << std::endl;
+        return false;
+    }
+
+    // Add to SCDB
+    scdb.CacheSidechainProposals(vProposal);
+
+    return true;
+}
+
+void DumpSidechainProposalCache()
+{
+    std::vector<SidechainProposal> vProposal = scdb.GetSidechainProposals();
+
+    int count = vProposal.size();
+
+    // Write the coins
+    fs::path path = GetDataDir() / "sidechainproposals.dat";
+    CAutoFile fileout(fsbridge::fopen(path, "w"), SER_DISK, CLIENT_VERSION);
+    if (fileout.IsNull()) {
+        return;
+    }
+
+    try {
+        fileout << 210000; // version required to read: 0.21.00 or later
+        fileout << CLIENT_VERSION; // version that wrote the file
+        fileout << count; // Number of coins in file
+
+        for (const SidechainProposal& s : vProposal) {
+            fileout << s;
+        }
+    }
+    catch (const std::exception& e) {
+        // TODO log this
+        // std::cout << "Exception: " << e.what() << std::endl;
+        return;
+    }
+}
 void PruneCoinbaseCache()
 {
     if (nCoinbaseCached <= COINBASE_CACHE_TARGET)
@@ -5448,6 +5727,11 @@ bool VerifyTxOutProof(const std::string& strProof)
         return false;
 
     return true;
+}
+
+bool IsSidechainNumberValid(uint8_t nSidechain)
+{
+    return scdb.IsSidechainNumberValid(nSidechain);
 }
 
 class CMainCleanup

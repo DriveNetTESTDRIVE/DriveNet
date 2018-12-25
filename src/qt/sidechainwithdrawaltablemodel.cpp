@@ -135,9 +135,11 @@ void SidechainWithdrawalTableModel::updateModel()
     if (!scdb.HasState())
         return;
 
-    int nSidechains = ValidSidechains.size();
+    std::vector<Sidechain> vSidechain = scdb.GetActiveSidechains();
+
+    int nSidechains = vSidechain.size();
     beginInsertColumns(QModelIndex(), model.size(), model.size() + nSidechains);
-    for (const Sidechain& s : ValidSidechains) {
+    for (const Sidechain& s : vSidechain) {
         std::vector<SidechainWTPrimeState> vState = scdb.GetState(s.nSidechain);
         for (const SidechainWTPrimeState& wt : vState) {
             SidechainWithdrawalTableObject object;
@@ -168,7 +170,7 @@ void SidechainWithdrawalTableModel::AddDemoData()
 
     // WT^ 1
     SidechainWithdrawalTableObject object1;
-    object1.sidechain = QString::fromStdString(GetSidechainName(SIDECHAIN_ONE));
+    object1.sidechain = QString::fromStdString("Grin");
     object1.hashWTPrime = QString::fromStdString(GetRandHash().ToString());
     object1.nAcks = 42;
     object1.nAge = 50;
@@ -213,7 +215,7 @@ void SidechainWithdrawalTableModel::AddDemoData()
 
     // WT^ 6
     SidechainWithdrawalTableObject object6;
-    object6.sidechain = QString::fromStdString(GetSidechainName(SIDECHAIN_ONE));
+    object6.sidechain = QString::fromStdString("sofa");
     object6.hashWTPrime = QString::fromStdString(GetRandHash().ToString());
     object6.nAcks = 1256;
     object6.nAge = 1378;

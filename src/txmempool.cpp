@@ -1047,7 +1047,7 @@ void CTxMemPool::SelectBMMRequests()
     setEntries txToRemove;
 
     std::vector<bool> vSidechain;
-    vSidechain.resize(VALID_SIDECHAINS_COUNT);
+    vSidechain.resize(scdb.GetActiveSidechainCount());
 
     for (indexed_transaction_set::const_iterator it = mapTx.begin(); it != mapTx.end(); it++) {
         if (!it->GetTx().criticalData.IsNull()) {

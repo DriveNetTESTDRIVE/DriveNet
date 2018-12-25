@@ -25,7 +25,7 @@ class SidechainPage;
 }
 
 // Sidechain icons
-static const std::array<QString, VALID_SIDECHAINS_COUNT> SidechainIcons =
+static const std::vector<QString> vSidechainIcons =
 {{
     {":/icons/sidechain_one"},
     {":/icons/sidechain_payments"},
@@ -40,6 +40,8 @@ public:
     ~SidechainPage();
 
     void setWalletModel(WalletModel *model);
+
+    QString GetSidechainIconPath(uint8_t nSidechain) const;
 
 public Q_SLOTS:
     void setBalance(const CAmount& balance, const CAmount& unconfirmedBalance,

@@ -22,6 +22,7 @@
 #include <miner.h>
 #include <net.h>
 #include <primitives/block.h>
+#include <sidechaindb.h>
 #include <txdb.h>
 #include <validation.h>
 #include <wallet/coincontrol.h>
@@ -45,15 +46,21 @@ SidechainPage::SidechainPage(QWidget *parent) :
     ui->listWidgetSidechains->setIconSize(QSize(32, 32));
 
     // Setup Sidechains list widget
-    for (const Sidechain& s : ValidSidechains) {
+    std::vector<Sidechain> vSidechain = scdb.GetActiveSidechains();
+
+    // If there are no active sidechains, display message
+    if (vSidechain.empty())
+        ui->stackedWidgetMain->setCurrentIndex(1);
+
+    for (const Sidechain& s : vSidechain) {
         QListWidgetItem *item = new QListWidgetItem(ui->listWidgetSidechains);
 
         // Set icon
-        QIcon icon(SidechainIcons[s.nSidechain]);
+        QIcon icon(GetSidechainIconPath(s.nSidechain));
         item->setIcon(icon);
 
         // Set text
-        item->setText(QString::fromStdString(s.GetSidechainName()));
+        item->setText(QString::fromStdString(scdb.GetSidechainName(s.nSidechain)));
         QFont font = item->font();
         font.setPointSize(16);
         item->setFont(font);
@@ -62,8 +69,8 @@ SidechainPage::SidechainPage(QWidget *parent) :
     }
 
     // Setup sidechain selection combo box
-    for (const Sidechain& s : ValidSidechains) {
-        ui->comboBoxSidechains->addItem(QString::fromStdString(s.GetSidechainName()));
+    for (const Sidechain& s : vSidechain) {
+        ui->comboBoxSidechains->addItem(QString::fromStdString(scdb.GetSidechainName(s.nSidechain)));
     }
 
     // Initialize models
@@ -89,6 +96,12 @@ void SidechainPage::setWalletModel(WalletModel *model)
         connect(model, SIGNAL(balanceChanged(CAmount,CAmount,CAmount,CAmount,CAmount,CAmount)), this,
                 SLOT(setBalance(CAmount,CAmount,CAmount,CAmount,CAmount,CAmount)));
     }
+}
+
+QString SidechainPage::GetSidechainIconPath(uint8_t nSidechain) const
+{
+
+    return ":/icons/sidechain_default";
 }
 
 void SidechainPage::setBalance(const CAmount& balance, const CAmount& unconfirmedBalance,
@@ -197,7 +210,16 @@ void SidechainPage::on_pushButtonDeposit_clicked()
     CTransactionRef tx;
     std::string strFail = "";
     if (!vpwallets.empty()) {
-        if (!vpwallets[0]->CreateSidechainDeposit(tx, strFail, nSidechain, nValue, keyID)) {
+
+        CScript scriptPubKey;
+        if (!scdb.GetSidechainScript(nSidechain, scriptPubKey)) {
+            // Invalid sidechain message box
+            messageBox.setWindowTitle("Invalid Sidechain!");
+            messageBox.setText("The sidechain you're trying to deposit to does not appear to be active!");
+            messageBox.exec();
+            return;
+        }
+        if (!vpwallets[0]->CreateSidechainDeposit(tx, strFail, scriptPubKey, nSidechain, nValue, keyID)) {
             // Create transaction error message box
             messageBox.setWindowTitle("Creating deposit transaction failed!");
             QString createError = "Error creating transaction!\n\n";
@@ -210,7 +232,7 @@ void SidechainPage::on_pushButtonDeposit_clicked()
 
     // Successful deposit message box
     messageBox.setWindowTitle("Deposit transaction created!");
-    QString result = "Deposited to " + QString::fromStdString(GetSidechainName(nSidechain));
+    QString result = "Deposited to " + QString::fromStdString(scdb.GetSidechainName(nSidechain));
     result += "\n";
     result += "txid: " + QString::fromStdString(tx->GetHash().ToString());
     result += "\n";
@@ -247,7 +269,7 @@ void SidechainPage::on_comboBoxSidechains_currentIndexChanged(const int i)
     ui->listWidgetSidechains->setCurrentRow(i);
 
     // Update deposit button text
-    QString strSidechain = QString::fromStdString(GetSidechainName(i));
+    QString strSidechain = QString::fromStdString(scdb.GetSidechainName(i));
     QString str = "Deposit to: " + strSidechain;
     ui->pushButtonDeposit->setText(str);
 }

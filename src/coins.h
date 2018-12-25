@@ -371,8 +371,7 @@ public:
     CAmount GetValueIn(const CTransaction& tx) const;
 
     //! Check whether all prevouts of the transaction are present in the UTXO set represented by this view
-    // Optionally return whether or not any sidechain UTXO inputs are spent by the tx.
-    bool HaveInputs(const CTransaction& tx, bool* fSidechainInputs = NULL, uint8_t* nSidechain = NULL) const;
+    bool HaveInputs(const CTransaction& tx) const;
 
 private:
     CCoinsMap::iterator FetchCoin(const COutPoint &outpoint) const;

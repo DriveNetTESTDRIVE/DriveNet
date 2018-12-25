@@ -446,6 +446,10 @@ void GenerateBMMHashMerkleRootCommitment(CBlock& block, const Consensus::Params&
 /** Produce WT^ hash coinbase commitment for a block */
 void GenerateWTPrimeHashCommitment(CBlock& block, const uint256& hashWTPrime, const uint8_t nSidechain, const Consensus::Params& consensusParams);
 
+void GenerateSidechainProposalCommitment(CBlock& block, const SidechainProposal& sidechain, const Consensus::Params& consensusParams);
+
+void GenerateSidechainActivationCommitment(CBlock& block, const uint256& hash, const Consensus::Params& consensusParams);
+
 /** Return a vector of all of the critical data requests found in a block */
 std::vector<CCriticalData> GetCriticalDataRequests(const CBlock& block, const Consensus::Params& consensusParams);
 
@@ -515,6 +519,8 @@ bool DumpMempool();
 /** Load the mempool from disk. */
 bool LoadMempool();
 
+// TODO replace all of these Drivechain related DAT files with sqlite
+
 // TODO Add startup param to enable this, make disabled by default. The other
 // .dat files aren't created unless the user is BMM mining but this cache needs
 // an extra parameter in order to be made optional.
@@ -530,6 +536,24 @@ bool LoadWTPrimeCache();
 /** Dump the WT^ cache to disk. */
 void DumpWTPrimeCache();
 
+/* Load sidechain activation status cache */
+bool LoadSidechainActivationStatusCache();
+
+/* Dump sidechain activation status cache */
+void DumpSidechainActivationStatusCache();
+
+/* Load active sidechain cache */
+bool LoadActiveSidechainCache();
+
+/* Dump active sidechain cache */
+void DumpActiveSidechainCache();
+
+/* Load sidechain proposal cache */
+bool LoadSidechainProposalCache();
+
+/* Dump sidechain proposal cache */
+void DumpSidechainProposalCache();
+
 /** Tracks validation status of sidechain WT^(s) */
 extern SidechainDB scdb;
 
@@ -541,5 +565,8 @@ bool GetTxOutProof(const uint256& txid, const uint256& hashBlock, std::string& s
 
 /** Verify txout proof */
 bool VerifyTxOutProof(const std::string& strProof);
+
+/** Verify that nSidechain refers to an active sidechain */
+bool IsSidechainNumberValid(uint8_t nSidechain);
 
 #endif // BITCOIN_VALIDATION_H

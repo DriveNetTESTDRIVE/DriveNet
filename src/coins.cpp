@@ -275,24 +275,12 @@ CAmount CCoinsViewCache::GetValueIn(const CTransaction& tx) const
     return nResult;
 }
 
-bool CCoinsViewCache::HaveInputs(const CTransaction& tx, bool* fSidechainInputs, uint8_t* nSidechain) const
+bool CCoinsViewCache::HaveInputs(const CTransaction& tx) const
 {
     if (!tx.IsCoinBase()) {
         for (unsigned int i = 0; i < tx.vin.size(); i++) {
             if (!HaveCoin(tx.vin[i].prevout)) {
                 return false;
-            }
-
-            // Optionally check for Sidechain UTXO inputs
-            if (fSidechainInputs && nSidechain) {
-                const Coin &coin = AccessCoin(tx.vin[i].prevout);
-
-                auto vsf = ValidSidechainField.find(HexStr(coin.out.scriptPubKey));
-                if (vsf != ValidSidechainField.end()) {
-                    *fSidechainInputs = true;
-                    *nSidechain = vsf->second;
-                    break;
-                }
             }
         }
     }

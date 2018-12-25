@@ -130,14 +130,13 @@ BitcoinGUI::BitcoinGUI(const PlatformStyle *_platformStyle, const NetworkStyle *
         move(QApplication::desktop()->availableGeometry().center() - frameGeometry().center());
     }
 
-    QString windowTitle = tr(PACKAGE_NAME) + " - ";
+    QString windowTitle = tr(PACKAGE_NAME) + "  ";
 #ifdef ENABLE_WALLET
     enableWallet = WalletModel::isWalletEnabled();
 #endif // ENABLE_WALLET
     windowTitle += " " + networkStyle->getTitleAddText();
 
-    // Append an additional warning to the window title
-    windowTitle += " Use at your own risk!";
+    windowTitle += "(Bitcoin Core 0.16.99 + Hashrate Escrows + Blind Merged Mining)";
 
 #ifndef Q_OS_MAC
     QApplication::setWindowIcon(networkStyle->getTrayAndWindowIcon());

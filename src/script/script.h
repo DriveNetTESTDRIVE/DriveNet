@@ -648,6 +648,8 @@ public:
     bool IsSCDBHashMerkleRootCommit() const;
     bool IsBMMHashMerkleRootCommit() const;
     bool IsWTPrimeHashCommit() const;
+    bool IsSidechainProposalCommit() const;
+    bool IsSidechainActivationCommit() const;
 
     /** Called by IsStandardTx and P2SH/BIP62 VerifyScript (which makes it consensus-critical). */
     bool IsPushOnly(const_iterator pc) const;

@@ -295,6 +295,7 @@ RES_ICONS = \
   qt/res/icons/receive.png \
   qt/res/icons/remove.png \
   qt/res/icons/send.png \
+  qt/res/icons/sidechain_default.png \
   qt/res/icons/sidechain_one.png \
   qt/res/icons/sidechain_payments.png \
   qt/res/icons/synced.png \

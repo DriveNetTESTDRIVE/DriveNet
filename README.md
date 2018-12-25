@@ -1,4 +1,4 @@
-DriveNetTESTDRIVE
+DriveNet
 ------------------
 Learn more about Drivechains here:
 http://drivechain.info
@@ -9,14 +9,14 @@ https://github.com/drivechain-project/bitcoin/issues
 For an example sidechain implementation, see: https://github.com/drivechain-project/bitcoin/tree/sidechainBMM
 
 
-What is DriveNetTESTDRIVE?
+What is DriveNet?
 --------------------------
 ```TODO```
 
 License
 -------
 
-Bitcoin Core (and DriveNetTESTDRIVE) are released under the terms of the MIT license. See [COPYING](COPYING) for more
+Bitcoin Core (and DriveNet) are released under the terms of the MIT license. See [COPYING](COPYING) for more
 information or see https://opensource.org/licenses/MIT.
 
 Development Process

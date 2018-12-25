@@ -50,7 +50,7 @@ static const int MAX_URI_LENGTH = 255;
 
 #define QAPP_ORG_NAME "DriveNet"
 #define QAPP_ORG_DOMAIN "drivechain.info"
-#define QAPP_APP_NAME_DEFAULT "DriveNetTESTDRIVE"
-#define QAPP_APP_NAME_TESTNET "DriveNetTESTDRIVE-testnet"
+#define QAPP_APP_NAME_DEFAULT "DriveNet"
+#define QAPP_APP_NAME_TESTNET "DriveNet-testnet"
 
 #endif // BITCOIN_QT_GUICONSTANTS_H

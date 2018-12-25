@@ -10,9 +10,8 @@
 
 #include <array>
 
-//! Max number of WT^(s) per sidechain during verification period
-static const int SIDECHAIN_MAX_WT = 32; // TODO remove (CryptAxe wants this, psztorc does not)
-static const size_t VALID_SIDECHAINS_COUNT = 2;
+//! Max number of cached WT^(s) during verification period
+static const int SIDECHAIN_MAX_WT = 2; // TODO remove (CryptAxe wants this, psztorc does not)
 
 // These are the temporary values to speed things up during testing
 static const int SIDECHAIN_VERIFICATION_PERIOD = 300;
@@ -25,28 +24,94 @@ static const int SIDECHAIN_MIN_WORKSCORE = 141;
 //! Sidechain deposit fee (TODO make configurable per sidechain)
 static const CAmount SIDECHAIN_DEPOSIT_FEE = 0.00001 * COIN;
 
-enum SidechainNumber {
-    SIDECHAIN_ONE = 0,
-    SIDECHAIN_PAYMENT = 1,
-};
+//! Maximum number of failures out of 2016 for a sidechain to activate
+static const int SIDECHAIN_ACTIVATION_MAX_FAILURES = 40;
+//! The amount of time a sidechain has to activate
+static const int SIDECHAIN_ACTIVATION_MAX_AGE = 2016;
+//! The number of sidechains which may be signaled for activation at once
+static const int SIDECHAIN_ACTIVATION_MAX_SIGNALS = 32;
+//! The number of sidechains which may be active at once
+static const int SIDECHAIN_ACTIVATION_MAX_ACTIVE = 256;
 
 // Configuration files
-static const std::array<std::pair<std::string, std::string>, VALID_SIDECHAINS_COUNT + 1> ConfigDirectories =
+static const int CONF_COUNT = 3;
+static const std::array<std::pair<std::string, std::string>, CONF_COUNT> ConfigDirectories =
 {{
+    // Note that these may or may not exist and will need to be updated as
+    // sidechains are activated / deactivated for GUI purposes.
+    // TODO come up with a smart way of automating this.
     {".drivenet", "drivenet.conf"},
-    {".sidechain", "sidechain.conf"},
-    {".payment", "payment.conf"},
+    {".testchain", "testchain.conf"},
+    {".paychain", "paychain.conf"},
 }};
+
+struct SidechainProposal {
+    std::string title;
+    std::string description;
+    std::string sidechainKey;
+    std::string sidechainHex;
+    std::string sidechainPriv;
+
+    ADD_SERIALIZE_METHODS
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action) {
+        READWRITE(title);
+        READWRITE(description);
+        READWRITE(sidechainKey);
+        READWRITE(sidechainHex);
+        READWRITE(sidechainPriv);
+    }
+
+    bool DeserializeFromScript(const CScript& script);
+
+    std::vector<unsigned char> GetBytes() const;
+    CScript GetScript() const;
+    uint256 GetHash() const;
+    bool operator==(const SidechainProposal& proposal) const;
+    std::string ToString() const;
+};
+
+struct SidechainActivationStatus
+{
+    int nAge;
+    int nFail;
+    SidechainProposal proposal;
+
+    ADD_SERIALIZE_METHODS
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action) {
+        READWRITE(nAge);
+        READWRITE(nFail);
+        READWRITE(proposal);
+    }
+};
 
 struct Sidechain {
     uint8_t nSidechain;
-    const char* sidechainKey;
-    const char* sidechainPriv;
-    const char* sidechainHex;
+    std::string sidechainKey;
+    std::string sidechainPriv;
+    std::string sidechainHex;
+    std::string title;
+    std::string description;
 
     std::string GetSidechainName() const;
     bool operator==(const Sidechain& a) const;
+    bool operator==(const SidechainProposal& a) const;
     std::string ToString() const;
+
+    ADD_SERIALIZE_METHODS
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action) {
+        READWRITE(nSidechain);
+        READWRITE(sidechainKey);
+        READWRITE(sidechainPriv);
+        READWRITE(sidechainHex);
+        READWRITE(title);
+        READWRITE(description);
+    }
 };
 
 struct SidechainDeposit {
@@ -126,6 +191,7 @@ struct SidechainWTPrimeState {
 
 // TODO refactor all of this for clarity of code
 struct SCDBIndex {
+    uint8_t nSidechain;
     std::array<SidechainWTPrimeState, SIDECHAIN_MAX_WT> members;
     bool IsPopulated() const;
     bool IsFull() const;
@@ -135,34 +201,5 @@ struct SCDBIndex {
     bool Contains(uint256 hashWT) const;
     bool GetMember(uint256 hashWT, SidechainWTPrimeState& wt) const;
 };
-
-static const std::array<Sidechain, VALID_SIDECHAINS_COUNT> ValidSidechains =
-{{
-    //
-    // {nSidechain, sidechain keyID, sidechain private key, public key}
-    //
-    // Sidechain One (test sidechain)
-    {SIDECHAIN_ONE,
-        "51c6eb4891cbb94ca30518b5f8441ea078c849eb",
-        "L4nNEPEuYwNaKMj1RZVsAuXPq5xbhdio43dTRzAr5CZgQHrSpFU8",
-        "76a91451c6eb4891cbb94ca30518b5f8441ea078c849eb88ac"},
-    //
-    // Payments sidechain
-    {SIDECHAIN_PAYMENT,
-        "7c33a3f6d9d5b873f96dba4b12d6aaf6be71fbd2",
-        "L3UjtLhNXKZaDgFtf14EHkxV1p5CKUoyRUT5DcU7aUS1X2yX8hhg",
-        "76a9147c33a3f6d9d5b873f96dba4b12d6aaf6be71fbd288ac"},
-}};
-
-static const std::map<std::string, int> ValidSidechainField =
-{
-    {"76a91451c6eb4891cbb94ca30518b5f8441ea078c849eb88ac", SIDECHAIN_ONE},
-    {"76a9147c33a3f6d9d5b873f96dba4b12d6aaf6be71fbd288ac", SIDECHAIN_PAYMENT},
-};
-
-
-bool IsSidechainNumberValid(uint8_t nSidechain);
-
-std::string GetSidechainName(uint8_t nSidechain);
 
 #endif // BITCOIN_SIDECHAIN_H

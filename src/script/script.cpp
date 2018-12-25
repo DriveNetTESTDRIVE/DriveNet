@@ -310,6 +310,49 @@ bool CScript::IsWTPrimeHashCommit() const
     return true;
 }
 
+bool CScript::IsSidechainProposalCommit() const
+{
+    // Check script size
+    // TODO should we have a max size? Probably not.
+    size_t size = this->size();
+    if (size < 10) // TODO put in exact minimum size of SidechainProposal serialization
+        return false;
+
+    // Check script header
+    if ((*this)[0] != OP_RETURN ||
+            (*this)[1] != 0xD5 ||
+            (*this)[2] != 0xE0 ||
+            (*this)[3] != 0xC4 ||
+            (*this)[4] != 0xAF)
+        return false;
+
+    // TODO deserialize sidechain
+    // TODO check validity of sidechain
+
+    return true;
+}
+
+bool CScript::IsSidechainActivationCommit() const
+{
+    // Check script size
+    size_t size = this->size();
+    if (size < 37) // TODO put in exact minimum size
+        return false;
+
+    // Check script header
+    if ((*this)[0] != OP_RETURN ||
+            (*this)[1] != 0xD6 ||
+            (*this)[2] != 0xE1 ||
+            (*this)[3] != 0xC5 ||
+            (*this)[4] != 0xBF)
+        return false;
+
+    // TODO deserialize sidechain
+    // TODO check validity of sidechain
+
+    return true;
+}
+
 bool CScript::IsPushOnly(const_iterator pc) const
 {
     while (pc < end())

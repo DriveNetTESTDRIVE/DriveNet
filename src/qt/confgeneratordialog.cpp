@@ -51,7 +51,7 @@ void ConfGeneratorDialog::on_pushButtonApply_clicked()
         messageBox.setIcon(QMessageBox::Information);
         messageBox.setWindowTitle("Configuration files created!");
         QString str = "Configuration files created!\n\n";
-        str += "You must restart DriveNetTESTDRIVE and any\n";
+        str += "You must restart DriveNet and any\n";
         str += "sidechains for changes to be applied.";
         messageBox.setText(str);
         messageBox.exec();
@@ -81,7 +81,7 @@ bool ConfGeneratorDialog::WriteConfigFiles(const QString& strUser, const QString
     fs::path pathDriveNet = GetDefaultDataDir();
     if (!fs::exists(pathDriveNet)) {
         // Show error message
-        messageBox.setText("Could not find DriveNetTESTDRIVE directory!");
+        messageBox.setText("Could not find DriveNet directory!");
         messageBox.exec();
         return false;
     }

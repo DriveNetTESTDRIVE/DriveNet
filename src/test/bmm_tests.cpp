@@ -32,8 +32,8 @@ BOOST_AUTO_TEST_CASE(bmm_valid)
     bytes[1] = 0xbf;
     bytes[2] = 0x00;
 
-    bytes << CScriptNum(SIDECHAIN_ONE);
-    bytes << CScriptNum(0);
+    bytes << CScriptNum(0 /* dummy sidechain number */);
+    bytes << CScriptNum(0 /* dummy prevblockref */);
 
     CCriticalData criticalData;
     criticalData.bytes = std::vector<unsigned char>(bytes.begin(), bytes.end());
@@ -91,7 +91,7 @@ BOOST_AUTO_TEST_CASE(bmm_valid)
     // BOOST_CHECK(scdb.HaveLinkingData(SIDECHAIN_ONE, criticalData.hashCritical));
 
     // Reset SCDB after testing
-    scdb.Reset();
+    scdb.ResetWTPrimeState();
 }
 
 BOOST_AUTO_TEST_CASE(bmm_invalid_sidechain)
@@ -162,7 +162,7 @@ BOOST_AUTO_TEST_CASE(bmm_invalid_sidechain)
     scdb.Update(0, hashBlock, commit.vout, strError);
 
     // Verify that h* was rejected
-    BOOST_CHECK(!scdb.HaveLinkingData(SIDECHAIN_ONE, criticalData.hashCritical));
+    BOOST_CHECK(!scdb.HaveLinkingData(0 /* dummy sidechain nubmber */, criticalData.hashCritical));
 }
 
 BOOST_AUTO_TEST_CASE(bmm_invalid_prevblockref_limit)
@@ -233,7 +233,7 @@ BOOST_AUTO_TEST_CASE(bmm_invalid_prevblockref_limit)
     scdb.Update(0, hashBlock, commit.vout, strError);
 
     // Verify that h* was rejected
-    BOOST_CHECK(!scdb.HaveLinkingData(SIDECHAIN_ONE, criticalData.hashCritical));
+    BOOST_CHECK(!scdb.HaveLinkingData(0 /* dummy sidechain number */, criticalData.hashCritical));
 }
 
 BOOST_AUTO_TEST_CASE(bmm_invalid_prevblockref)
@@ -304,7 +304,7 @@ BOOST_AUTO_TEST_CASE(bmm_invalid_prevblockref)
     scdb.Update(0, hashBlock, commit.vout, strError);
 
     // Verify that h* was rejected
-    BOOST_CHECK(!scdb.HaveLinkingData(SIDECHAIN_ONE, criticalData.hashCritical));
+    BOOST_CHECK(!scdb.HaveLinkingData(0 /* dummy sidechain number */, criticalData.hashCritical));
 }
 
 BOOST_AUTO_TEST_CASE(bmm_maturity)

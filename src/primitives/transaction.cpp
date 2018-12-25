@@ -163,20 +163,24 @@ bool CCriticalData::IsBMMRequest(uint8_t& nSidechain, uint16_t& nPrevBlockRef) c
 
     if (bytes.size() == 4) {
         nSidechain = 0;
-        if (!IsSidechainNumberValid(nSidechain))
-            return false;
+        // TODO re-enable? By doing some refactoring we could re-enable this
+        // check here. However, I think it would be better to just do the check
+        // someone else outside of this class.
+        //if (!IsSidechainNumberValid(nSidechain))
+        //    return false;
+        //
 
         std::vector<unsigned char> vch;
         vch.push_back(bytes[3]);
         nPrevBlockRef = CScriptNum(vch, false).getint();
-
     } else {
         std::vector<unsigned char> vch;
         vch.push_back(bytes[3]);
 
         nSidechain = CScriptNum(vch, false).getint();
-        if (!IsSidechainNumberValid(nSidechain))
-            return false;
+        // TODO re-enable?
+        //if (!IsSidechainNumberValid(nSidechain))
+        //    return false;
 
         std::vector<unsigned char> vchPrev;
         vchPrev.push_back(bytes[4]);
