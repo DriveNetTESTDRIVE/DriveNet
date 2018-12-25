@@ -51,12 +51,6 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/thread.hpp>
 
-
-#include <iostream>
-
-
-
-
 #if defined(NDEBUG)
 # error "DriveNet cannot be compiled without assertions."
 #endif

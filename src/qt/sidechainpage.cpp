@@ -100,7 +100,6 @@ void SidechainPage::setWalletModel(WalletModel *model)
 
 QString SidechainPage::GetSidechainIconPath(uint8_t nSidechain) const
 {
-
     return ":/icons/sidechain_default";
 }
 
