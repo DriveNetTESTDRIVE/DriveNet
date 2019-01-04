@@ -233,6 +233,7 @@ void Shutdown()
     DumpSidechainActivationStatusCache();
     DumpActiveSidechainCache();
     DumpSidechainProposalCache();
+    DumpSidechainActivationHashCache();
 
     if (fFeeEstimatesInitialized)
     {
@@ -1644,6 +1645,7 @@ bool AppInitMain()
     LoadSidechainActivationStatusCache();
     LoadActiveSidechainCache();
     LoadSidechainProposalCache();
+    LoadSidechainActivationHashCache();
 
     // As LoadBlockIndex can take several minutes, it's possible the user
     // requested to kill the GUI during the last operation. If so, exit.

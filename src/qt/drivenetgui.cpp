@@ -309,7 +309,7 @@ void BitcoinGUI::createActions()
     tabGroup->addAction(historyAction);
 
     sidechainAction = new QAction(platformStyle->SingleColorIcon(":/icons/tx_inout"), tr("&Sidechains"), this);
-    sidechainAction->setStatusTip(tr("Show overview of Sidechains"));
+    sidechainAction->setStatusTip(tr("Make sidechain transfers and manage sidechain settings"));
     sidechainAction->setToolTip(sidechainAction->statusTip());
     sidechainAction->setCheckable(true);
     sidechainAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_5));

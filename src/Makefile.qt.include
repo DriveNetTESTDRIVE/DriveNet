@@ -112,6 +112,7 @@ QT_FORMS_UI = \
   qt/forms/sendcoinsdialog.ui \
   qt/forms/sendcoinsentry.ui \
   qt/forms/sidechaintabledialog.ui \
+  qt/forms/sidechainminerdialog.ui \
   qt/forms/sidechainpage.ui \
   qt/forms/signverifymessagedialog.ui \
   qt/forms/transactiondescdialog.ui
@@ -152,8 +153,10 @@ QT_MOC_CPP = \
   qt/moc_rpcconsole.cpp \
   qt/moc_sendcoinsdialog.cpp \
   qt/moc_sendcoinsentry.cpp \
+  qt/moc_sidechainactivationtablemodel.cpp \
   qt/moc_sidechaintabledialog.cpp \
   qt/moc_sidechainescrowtablemodel.cpp \
+  qt/moc_sidechainminerdialog.cpp \
   qt/moc_sidechainpage.cpp \
   qt/moc_sidechainwithdrawaltablemodel.cpp \
   qt/moc_signverifymessagedialog.cpp \
@@ -230,8 +233,10 @@ DRIVENET_QT_H = \
   qt/rpcconsole.h \
   qt/sendcoinsdialog.h \
   qt/sendcoinsentry.h \
+  qt/sidechainactivationtablemodel.h \
   qt/sidechaintabledialog.h \
   qt/sidechainescrowtablemodel.h \
+  qt/sidechainminerdialog.h \
   qt/sidechainpage.h \
   qt/sidechainwithdrawaltablemodel.h \
   qt/signverifymessagedialog.h \
@@ -359,8 +364,10 @@ DRIVENET_QT_WALLET_CPP = \
   qt/recentrequeststablemodel.cpp \
   qt/sendcoinsdialog.cpp \
   qt/sendcoinsentry.cpp \
+  qt/sidechainactivationtablemodel.cpp \
   qt/sidechainescrowtablemodel.cpp \
   qt/sidechaintabledialog.cpp \
+  qt/sidechainminerdialog.cpp \
   qt/sidechainpage.cpp \
   qt/sidechainwithdrawaltablemodel.cpp \
   qt/signverifymessagedialog.cpp \

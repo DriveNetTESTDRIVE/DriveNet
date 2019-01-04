@@ -134,6 +134,22 @@ bool SidechainDB::CacheWTPrime(const CTransaction& tx)
     return true;
 }
 
+void SidechainDB::CacheSidechainHashToActivate(const uint256& u)
+{
+    vSidechainHashActivate.push_back(u);
+}
+
+void SidechainDB::RemoveSidechainHashToActivate(const uint256& u)
+{
+    // TODO change container to make this efficient
+    for (size_t i = 0; i < vSidechainHashActivate.size(); i++) {
+        if (vSidechainHashActivate[i] == u) {
+            vSidechainHashActivate[i] = vSidechainHashActivate.back();
+            vSidechainHashActivate.pop_back();
+        }
+    }
+}
+
 int SidechainDB::CountBlocksAtop(const CCriticalData& data) const
 {
     uint8_t nSidechain;
@@ -219,6 +235,18 @@ uint256 SidechainDB::GetSCDBHash() const
         }
     }
     return ComputeMerkleRoot(vLeaf);
+}
+
+bool SidechainDB::GetActivateSidechain(const uint256& u) const
+{
+    // TODO change the container to make this more efficient
+    for (const uint256& hash : vSidechainHashActivate) {
+        if (u == hash) {
+
+            return true;
+        }
+    }
+    return false;
 }
 
 uint256 SidechainDB::GetHashBlockLastSeen()
@@ -798,6 +826,11 @@ std::vector<Sidechain> SidechainDB::GetActiveSidechains() const
 std::vector<SidechainProposal> SidechainDB::GetSidechainProposals() const
 {
     return vSidechainProposal;
+}
+
+std::vector<uint256> SidechainDB::GetSidechainsToActivate() const
+{
+    return vSidechainHashActivate;
 }
 
 std::string SidechainDB::GetSidechainName(uint8_t nSidechain) const

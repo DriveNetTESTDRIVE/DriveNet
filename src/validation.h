@@ -554,6 +554,12 @@ bool LoadSidechainProposalCache();
 /* Dump sidechain proposal cache */
 void DumpSidechainProposalCache();
 
+/* Load sidechain activation hash cache */
+bool LoadSidechainActivationHashCache();
+
+/* Dump sidechain activation hash cache */
+void DumpSidechainActivationHashCache();
+
 /** Tracks validation status of sidechain WT^(s) */
 extern SidechainDB scdb;
 

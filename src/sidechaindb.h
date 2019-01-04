@@ -55,6 +55,13 @@ public:
     /** Add WT^ to the in-memory cache */
     bool CacheWTPrime(const CTransaction& tx);
 
+    /** Add sidechain-to-be-activated hash to cache */
+    void CacheSidechainHashToActivate(const uint256& u);
+
+    /** Remove sidechain-to-be-activated hash from cache,
+     * because the user changed their mind */
+    void RemoveSidechainHashToActivate(const uint256& u);
+
     /** Count ratchet member blocks atop */
     int CountBlocksAtop(const CCriticalData& data) const;
 
@@ -75,6 +82,10 @@ public:
 
     /** Return serialization hash of SCDB latest verification(s) */
     uint256 GetSCDBHash() const;
+
+    /** Check if the hash of the sidechain is in our hashes of sidechains to
+     * activate cache. Return true if it is, or false if not. */
+    bool GetActivateSidechain(const uint256& u) const;
 
     /** Return the hash of the last block SCDB processed */
     uint256 GetHashBlockLastSeen();
@@ -167,6 +178,8 @@ public:
 
     bool IsSidechainNumberValid(uint8_t nSidechain) const;
 
+    std::vector<uint256> GetSidechainsToActivate() const;
+
 private:
     // TODO refactor: rename SCDB, change container, update container member.
     // Should probably be called WTDB or something else.
@@ -178,6 +191,10 @@ private:
 
     /** Activation status of proposed sidechains */
     std::vector<SidechainActivationStatus> vActivationStatus;
+
+    /** Cache of sidechain hashes, for sidechains which this node has
+     * been configured to activate by the user*/
+    std::vector<uint256> vSidechainHashActivate;
 
     /** Cache of proposals created by this node, which should be included in the
      * next block that this node mines. *

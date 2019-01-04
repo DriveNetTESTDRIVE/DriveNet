@@ -5632,6 +5632,77 @@ void DumpSidechainProposalCache()
         return;
     }
 }
+
+bool LoadSidechainActivationHashCache()
+{
+    fs::path path = GetDataDir() / "sidechainhashactivate.dat";
+    CAutoFile filein(fsbridge::fopen(path, "r"), SER_DISK, CLIENT_VERSION);
+    if (filein.IsNull()) {
+        return false;
+    }
+
+    // TODO log this
+    uint64_t fileSize = fs::file_size(path);
+
+    std::vector<uint256> vHash;
+    try {
+        int nVersionRequired, nVersionThatWrote;
+        filein >> nVersionRequired;
+        filein >> nVersionThatWrote;
+        if (nVersionRequired > CLIENT_VERSION) {
+            return false;
+        }
+
+        int count = 0;
+        filein >> count;
+        for (int i = 0; i < count; i++) {
+            uint256 hash;
+            filein >> hash;
+            vHash.push_back(hash);
+        }
+    }
+    catch (const std::exception& e) {
+        // TODO log this
+        // std::cout << "Exception: " << e.what() << std::endl;
+        return false;
+    }
+
+    // Add to SCDB
+    for (const uint256& u : vHash)
+        scdb.CacheSidechainHashToActivate(u);
+
+    return true;
+}
+
+void DumpSidechainActivationHashCache()
+{
+    std::vector<uint256> vHash = scdb.GetSidechainsToActivate();
+
+    int count = vHash.size();
+
+    // Write the coins
+    fs::path path = GetDataDir() / "sidechainhashactivate.dat";
+    CAutoFile fileout(fsbridge::fopen(path, "w"), SER_DISK, CLIENT_VERSION);
+    if (fileout.IsNull()) {
+        return;
+    }
+
+    try {
+        fileout << 210000; // version required to read: 0.21.00 or later
+        fileout << CLIENT_VERSION; // version that wrote the file
+        fileout << count; // Number of coins in file
+
+        for (const uint256& u : vHash) {
+            fileout << u;
+        }
+    }
+    catch (const std::exception& e) {
+        // TODO log this
+        // std::cout << "Exception: " << e.what() << std::endl;
+        return;
+    }
+}
+
 void PruneCoinbaseCache()
 {
     if (nCoinbaseCached <= COINBASE_CACHE_TARGET)

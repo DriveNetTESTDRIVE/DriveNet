@@ -19,6 +19,7 @@ class WalletModel;
 
 class SidechainEscrowTableModel;
 class SidechainWithdrawalTableModel;
+class SidechainMinerDialog;
 
 namespace Ui {
 class SidechainPage;
@@ -54,11 +55,11 @@ public Q_SLOTS:
 
     void on_pushButtonClear_clicked();
 
-    void on_pushButtonGenerateConfig_clicked();
-
     void on_comboBoxSidechains_currentIndexChanged(const int index);
 
     void on_listWidgetSidechains_doubleClicked(const QModelIndex& index);
+
+    void on_pushButtonManageSidechains_clicked();
 
 private:
     Ui::SidechainPage *ui;
@@ -67,11 +68,11 @@ private:
 
     SidechainEscrowTableModel *escrowModel;
     SidechainWithdrawalTableModel *withdrawalModel;
+    SidechainMinerDialog *minerDialog;
 
     void SetupTables();
 
     bool validateDepositAmount();
-
 };
 
 #endif // SIDECHAINPAGE_H

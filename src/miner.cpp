@@ -243,15 +243,18 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
             GenerateSidechainProposalCommitment(*pblock, vProposal.front(), chainparams.GetConsensus());
         }
 
-        bool fCommitAnySidechain = gArgs.GetBoolArg("-activatesidechains", false);
+        // TODO for now, if this is set to 1 (true), activate any sidechain
+        // which has been proposed. Make this behavior the default unless a
+        // list of sha256 hashes of sidechains is also provided to the command
+        // line, in which case only activate those sidechain(s).
+        bool fAnySidechain = gArgs.GetBoolArg("-activatesidechains", false);
 
         // Commit sidechain activation
-        if (fCommitAnySidechain) {
-            std::vector<SidechainActivationStatus> vActivationStatus;
-            vActivationStatus = scdb.GetSidechainActivationStatus();
-            for (const SidechainActivationStatus& s : vActivationStatus) {
+        std::vector<SidechainActivationStatus> vActivationStatus;
+        vActivationStatus = scdb.GetSidechainActivationStatus();
+        for (const SidechainActivationStatus& s : vActivationStatus) {
+            if (fAnySidechain || scdb.GetActivateSidechain(s.proposal.GetHash()))
                 GenerateSidechainActivationCommitment(*pblock, s.proposal.GetHash(), chainparams.GetConsensus());
-            }
         }
     }
 

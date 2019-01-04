@@ -5,13 +5,13 @@
 #include <qt/sidechainpage.h>
 #include <qt/forms/ui_sidechainpage.h>
 
-#include <qt/confgeneratordialog.h>
 #include <qt/drivenetunits.h>
 #include <qt/guiconstants.h>
 #include <qt/guiutil.h>
 #include <qt/optionsmodel.h>
 #include <qt/sidechainescrowtablemodel.h>
 #include <qt/sidechainwithdrawaltablemodel.h>
+#include <qt/sidechainminerdialog.h>
 #include <qt/walletmodel.h>
 
 #include <base58.h>
@@ -50,7 +50,7 @@ SidechainPage::SidechainPage(QWidget *parent) :
 
     // If there are no active sidechains, display message
     if (vSidechain.empty())
-        ui->stackedWidgetMain->setCurrentIndex(1);
+        ui->stackedWidgetSecondary->setCurrentIndex(1);
 
     for (const Sidechain& s : vSidechain) {
         QListWidgetItem *item = new QListWidgetItem(ui->listWidgetSidechains);
@@ -73,9 +73,12 @@ SidechainPage::SidechainPage(QWidget *parent) :
         ui->comboBoxSidechains->addItem(QString::fromStdString(scdb.GetSidechainName(s.nSidechain)));
     }
 
-    // Initialize models
+    // Initialize table models
     escrowModel = new SidechainEscrowTableModel(this);
     withdrawalModel = new SidechainWithdrawalTableModel(this);
+
+    // Initialize miner popup window
+    minerDialog = new SidechainMinerDialog(this);
 
     // Setup the tables
     SetupTables();
@@ -253,12 +256,6 @@ void SidechainPage::on_pushButtonClear_clicked()
     ui->payTo->clear();
 }
 
-void SidechainPage::on_pushButtonGenerateConfig_clicked()
-{
-    // Show configuration generator dialog
-    ConfGeneratorDialog *dialog = new ConfGeneratorDialog(this);
-    dialog->exec();
-}
 
 void SidechainPage::on_comboBoxSidechains_currentIndexChanged(const int i)
 {
@@ -310,4 +307,9 @@ bool SidechainPage::validateDepositAmount()
     }
 
     return true;
+}
+
+void SidechainPage::on_pushButtonManageSidechains_clicked()
+{
+    minerDialog->show();
 }
