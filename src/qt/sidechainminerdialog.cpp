@@ -102,23 +102,26 @@ void SidechainMinerDialog::on_pushButtonCreateSidechainProposal_clicked()
     std::string strHash= ui->lineEditHash->text().toStdString();
 
     if (strTitle.empty()) {
-        // TODO show error message
-        //"Sidechain must have a title!"
+        QMessageBox::critical(this, tr("DriveNet - error"),
+                              tr("Sidechain must have a title!"),
+                              QMessageBox::Ok);
         return;
     }
 
     // TODO maybe we should allow sidechains with no description? Anyways this
     // isn't a consensus rule right now
     if (strDescription.empty()) {
-        // TODO show error message
-        // "Sidechain must have a description!"
+        QMessageBox::critical(this, tr("DriveNet - error"),
+                              tr("Sidechain must have a description!"),
+                              QMessageBox::Ok);
         return;
     }
 
     uint256 uHash = uint256S(strHash);
     if (uHash.IsNull()) {
-        // TODO show error message
-        // "Invalid sidechain release hash!"
+        QMessageBox::critical(this, tr("DriveNet - error"),
+                              tr("Invalid sidechain build commit hash!"),
+                              QMessageBox::Ok);
         return;
     }
 
@@ -127,10 +130,11 @@ void SidechainMinerDialog::on_pushButtonCreateSidechainProposal_clicked()
 
     CBitcoinSecret vchSecret(key);
 
-//    CKey key = vchSecret.GetKey();
     if (!key.IsValid()) {
-        // TODO show error message
-        // "Private key outside allowed range");
+        // Nobody should see this, but we don't want to fail silently
+        QMessageBox::critical(this, tr("DriveNet - error"),
+                              tr("Private key outside allowed range!"),
+                              QMessageBox::Ok);
         return;
     }
 
@@ -151,9 +155,17 @@ void SidechainMinerDialog::on_pushButtonCreateSidechainProposal_clicked()
     // Cache proposal so that it can be added to the next block we mine
     scdb.CacheSidechainProposals(std::vector<SidechainProposal>{proposal});
 
+    QString message = QString("Sidechain proposal created!\n\n");
+    message += QString("Title:\n%1\n\n").arg(QString::fromStdString(strTitle));
+    message += QString("Description:\n%1\n\n").arg(QString::fromStdString(strTitle));
+    message += QString("Private key:\n%1\n\n").arg(QString::fromStdString(proposal.sidechainPriv));
+    message += QString("KeyID:\n%1\n\n").arg(QString::fromStdString(proposal.sidechainKey));
+    message += QString("Deposit script:\n%1\n\n").arg(QString::fromStdString(proposal.sidechainHex));
 
+    QMessageBox::information(this, tr("DriveNet - sidechain proposal created!"),
+                          message,
+                          QMessageBox::Ok);
 
-    // TODO display result message
     // TODO clear out line edits and text box
 }
 
@@ -186,6 +198,7 @@ void SidechainMinerDialog::on_pushButtonClose_clicked()
 
 void SidechainMinerDialog::on_toolButtonACKSidechains_clicked()
 {
+    // TODO move text into static const char *
     QMessageBox::information(this, tr("DriveNet - information"),
                                    tr("Use this page to ACK (acknowledgement) or "
                                       "NACK (negative-acknowledgement) sidechains.\n\n"
@@ -198,6 +211,7 @@ void SidechainMinerDialog::on_toolButtonACKSidechains_clicked()
 
 void SidechainMinerDialog::on_toolButtonReleaseHash_clicked()
 {
+    // TODO move text into static const char *
     QMessageBox::information(this, tr("DriveNet - information"),
                                    tr("The deterministic build release hash is the "
                                       "hash of the original gitian software build "
