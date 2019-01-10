@@ -11,6 +11,7 @@
 #include <sidechain.h>
 #include <uint256.h>
 #include <utilstrencodings.h>
+#include <util.h> // TODO remove, for testing only (access to gArgs)
 
 SidechainDB::SidechainDB()
 {
@@ -864,11 +865,13 @@ void SidechainDB::UpdateActivationStatus(const std::vector<uint256>& vHash)
 {
     // TODO refactor, focusing on clarity over performance right now.
 
+    bool fTestActivation = gArgs.GetBoolArg("-testsidechainactivation", false);
+
     // Increment the age of all sidechains, keep track of which have expired.
     std::vector<std::vector<SidechainActivationStatus>::const_iterator> vExpired;
     for (size_t i = 0; i < vActivationStatus.size(); i++) {
         vActivationStatus[i].nAge++;
-        if (vActivationStatus[i].nAge > SIDECHAIN_ACTIVATION_MAX_AGE) {
+        if (vActivationStatus[i].nAge > (fTestActivation ? 100 : SIDECHAIN_ACTIVATION_MAX_AGE)) {
             vActivationStatus[i] = vActivationStatus.back();
             vActivationStatus.pop_back();
         }
@@ -907,7 +910,7 @@ void SidechainDB::UpdateActivationStatus(const std::vector<uint256>& vHash)
     std::vector<std::vector<SidechainActivationStatus>::const_iterator> vActivated;
     std::vector<std::vector<SidechainProposal>::const_iterator> vActivatedMine;
     for (size_t i = 0; i < vActivationStatus.size(); i++) {
-        if (vActivationStatus[i].nAge == SIDECHAIN_ACTIVATION_MAX_AGE) {
+        if (vActivationStatus[i].nAge == (fTestActivation ? 100 : SIDECHAIN_ACTIVATION_MAX_AGE)) {
             // Create sidechain object
             Sidechain sidechain;
             // TODO this also needs to be replaced

@@ -2,6 +2,7 @@
 
 #include <sidechain.h>
 #include <sidechaindb.h>
+#include <util.h>
 #include <validation.h>
 
 #include <QIcon>
@@ -48,6 +49,8 @@ QVariant SidechainActivationTableModel::data(const QModelIndex &index, int role)
 
     SidechainActivationTableObject object = model.at(row).value<SidechainActivationTableObject>();
 
+    bool fTestActivation = gArgs.GetBoolArg("-testsidechainactivation", false);
+
     switch (role) {
     case Qt::DisplayRole:
     {
@@ -67,7 +70,7 @@ QVariant SidechainActivationTableModel::data(const QModelIndex &index, int role)
         if (col == 3) {
             QString str = QString("%1 / %2")
                     .arg(object.nAge)
-                    .arg(SIDECHAIN_ACTIVATION_MAX_AGE);
+                    .arg(fTestActivation ? 100 : SIDECHAIN_ACTIVATION_MAX_AGE);
             return str;
         }
         // Fails
