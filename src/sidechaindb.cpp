@@ -512,6 +512,9 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const std::vecto
      * Scan for updated SCDB MT hash, and perform MT hash
      * based SCDB update.
      *
+     * Scan for sidechain proposals & sidechain activation
+     * commitments.
+     *
      * Update hashBlockLastSeen to reflect that we have
      * scanned this latest block.
      */
@@ -548,7 +551,29 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const std::vecto
         status.nAge = 0;
         status.proposal = vProposal.front();
 
-        vActivationStatus.push_back(status);
+        // Make sure that the proposal is unique,
+        bool fUnique = true;
+        // check the activation status cache
+        for (const SidechainActivationStatus& s : vActivationStatus) {
+            if (s.proposal == status.proposal) {
+                fUnique = false;
+                break;
+            }
+        }
+        // check the active sidechain list
+        for (const Sidechain& s : vActiveSidechain) {
+            // Note that here we are comparing a Sidechain to a
+            // SidechainProposal. There is a custom operator==. The regular
+            // Sidechain class operator== will compare nSidechain which would
+            // be useless.
+            if (s == status.proposal) {
+                fUnique = false;
+                break;
+            }
+        }
+
+        if (fUnique)
+            vActivationStatus.push_back(status);
     }
 
     // Scan for sidechain activation commitments
@@ -887,6 +912,7 @@ bool SidechainDB::ApplyDefaultUpdate()
 void SidechainDB::UpdateActivationStatus(const std::vector<uint256>& vHash)
 {
     // TODO refactor, focusing on clarity over performance right now.
+    // TODO I would personally prefer to remove use of vector::operator[].
 
     bool fTestActivation = gArgs.GetBoolArg("-testsidechainactivation", false);
 
@@ -955,10 +981,11 @@ void SidechainDB::UpdateActivationStatus(const std::vector<uint256>& vHash)
             index.nSidechain = sidechain.nSidechain;
             SCDB.push_back(index);
 
-            // Did one of our cached proposals activate?
+            // Did one of our cached proposals activate? If it did, remove it
+            // from our proposal cache
             for (size_t j = 0; j < vSidechainProposal.size(); j++) {
                 if (vActivationStatus[i].proposal == vSidechainProposal[j]) {
-                    vSidechainProposal[i] = vSidechainProposal.back();
+                    vSidechainProposal[j] = vSidechainProposal.back();
                     vSidechainProposal.pop_back();
                 }
             }

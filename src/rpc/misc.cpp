@@ -1364,7 +1364,7 @@ UniValue createsidechainproposal(const JSONRPCRequest& request)
             "\nArguments:\n"
             "1. \"title\"        (string, required) sidechain title\n"
             "2. \"description\"  (string, required) sidechain description\n"
-            "3. \"privatekey\"   (string, required) sidechain private key\n"
+            "3. \"build hash\"   (string, required) sidechain build commit hash (to be used as private key)\n"
             "\nExamples:\n"
             + HelpExampleCli("createsidechainproposal", "")
             + HelpExampleRpc("createsidechainproposal", "")
@@ -1372,7 +1372,7 @@ UniValue createsidechainproposal(const JSONRPCRequest& request)
 
     std::string strTitle = request.params[0].get_str();
     std::string strDescription = request.params[1].get_str();
-    std::string strSecret = request.params[2].get_str();
+    std::string strHash = request.params[2].get_str();
 
     if (strTitle.empty())
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Sidechain must have a title!");
@@ -1382,13 +1382,18 @@ UniValue createsidechainproposal(const JSONRPCRequest& request)
     if (strDescription.empty())
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Sidechain must have a description!");
 
-    CBitcoinSecret vchSecret;
-    if (!vchSecret.SetString(strSecret))
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid private key encoding");
+    uint256 hash = uint256S(strHash);
+    if (hash.IsNull())
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Invalid sidechain build commit hash!");
 
-    CKey key = vchSecret.GetKey();
+    CKey key;
+    key.Set(hash.begin(), hash.end(), false);
     if (!key.IsValid())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Private key outside allowed range");
+
+    CBitcoinSecret vchSecret(key);
+    if (vchSecret.IsValid())
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid private key encoding");
 
     CPubKey pubkey = key.GetPubKey();
     assert(key.VerifyPubKey(pubkey));
@@ -1400,7 +1405,7 @@ UniValue createsidechainproposal(const JSONRPCRequest& request)
     SidechainProposal proposal;
     proposal.title = strTitle;
     proposal.description = strDescription;
-    proposal.sidechainPriv = strSecret;
+    proposal.sidechainPriv = vchSecret.ToString();
     proposal.sidechainKey = HexStr(vchAddress);
     proposal.sidechainHex = HexStr(sidechainScript);
 
