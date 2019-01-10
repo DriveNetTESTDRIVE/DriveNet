@@ -833,11 +833,11 @@ UniValue listsidechaindeposits(const JSONRPCRequest& request)
             "limited to count. Note that this does not return all sidechain "
             "deposits, just the most recent deposits in the cache.\n"
             "\nArguments:\n"
-            "1. \"nsidechain\"      (numeric, required) The sidechain number\n"
-            "2. \"count\"           (numeric, optional) The number of most recent deposits to list\n"
+            "1. \"hash\"    (string, required) The sidechain build commit hash\n"
+            "2. \"count\"   (numeric, optional) The number of most recent deposits to list\n"
             "\nExamples:\n"
-            + HelpExampleCli("listsidechaindeposits", "\"nsidechain\", \"count\"")
-            + HelpExampleRpc("listsidechaindeposits", "\"nsidechain\", \"count\"")
+            + HelpExampleCli("listsidechaindeposits", "\"hash\", \"count\"")
+            + HelpExampleRpc("listsidechaindeposits", "\"hash\", \"count\"")
             );
 
 #ifdef ENABLE_WALLET
@@ -849,10 +849,16 @@ UniValue listsidechaindeposits(const JSONRPCRequest& request)
     }
 #endif
 
-    // Is nSidechain valid?
-    uint8_t nSidechain = std::stoi(request.params[0].getValStr());
-    if (!IsSidechainNumberValid(nSidechain))
-        throw std::runtime_error("Invalid sidechain number");
+    // Is sidechain build commit hash valid?
+    std::string strSidechain = request.params[0].get_str();
+    uint256 hashSidechain = uint256S(strSidechain);
+    if (hashSidechain.IsNull())
+        throw std::runtime_error("Invalid sidechain build commit hash!");
+
+    // Figure out the base58 encoding of the private key
+    CKey key;
+    key.Set(hashSidechain.begin(), hashSidechain.end(), false);
+    CBitcoinSecret vchSecret(key);
 
     // Get number of recent deposits to return (default is all cached deposits)
     bool fLimit = false;
@@ -865,7 +871,7 @@ UniValue listsidechaindeposits(const JSONRPCRequest& request)
     UniValue arr(UniValue::VARR);
 
 #ifdef ENABLE_WALLET
-    std::vector<SidechainDeposit> vDeposit = scdb.GetDeposits(nSidechain);
+    std::vector<SidechainDeposit> vDeposit = scdb.GetDeposits(uint256S(vchSecret.ToString()));
     if (!vDeposit.size())
         throw std::runtime_error("No deposits in cache");
 

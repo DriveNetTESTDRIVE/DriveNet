@@ -77,6 +77,9 @@ public:
     /** Return vector of deposits this verification period for nSidechain. */
     std::vector<SidechainDeposit> GetDeposits(uint8_t nSidechain) const;
 
+    /** Return vector of deposits this verification period for the sidechain. */
+    std::vector<SidechainDeposit> GetDeposits(const uint256& hashSidechain) const;
+
     /** Return serialization hash of BMM ratchet data */
     uint256 GetBMMHash() const;
 

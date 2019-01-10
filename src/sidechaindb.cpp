@@ -215,6 +215,29 @@ std::vector<SidechainDeposit> SidechainDB::GetDeposits(uint8_t nSidechain) const
     return vSidechainDeposit;
 }
 
+std::vector<SidechainDeposit> SidechainDB::GetDeposits(const uint256& hashSidechain) const
+{
+    // TODO refactor: only one GetDeposits function in SCDB
+
+    // Make sure that the hash is related to an active sidechain,
+    // and then return the result of the old function call.
+    uint8_t nSidechain = 0;
+    bool fFound = false;
+    for (const Sidechain& s : vActiveSidechain) {
+        if (uint256S(s.sidechainPriv) == hashSidechain) {
+            fFound = true;
+            break;
+        }
+        nSidechain++;
+    }
+
+    if (!fFound)
+        return std::vector<SidechainDeposit> {};
+
+    return GetDeposits(nSidechain);
+}
+
+
 uint256 SidechainDB::GetBMMHash() const
 {
     std::vector<uint256> vLeaf;
