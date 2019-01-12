@@ -189,17 +189,4 @@ struct SidechainWTPrimeState {
     }
 };
 
-// TODO refactor all of this for clarity of code
-struct SCDBIndex {
-    uint8_t nSidechain;
-    std::array<SidechainWTPrimeState, SIDECHAIN_MAX_WT> members;
-    bool IsPopulated() const;
-    bool IsFull() const;
-    bool InsertMember(const SidechainWTPrimeState& member);
-    void ClearMembers();
-    unsigned int CountPopulatedMembers() const;
-    bool Contains(uint256 hashWT) const;
-    bool GetMember(uint256 hashWT, SidechainWTPrimeState& wt) const;
-};
-
 #endif // BITCOIN_SIDECHAIN_H

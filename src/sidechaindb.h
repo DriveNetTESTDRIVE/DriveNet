@@ -25,7 +25,6 @@ struct SidechainProposal;
 struct SidechainUpdateMSG;
 struct SidechainUpdatePackage;
 struct SidechainWTPrimeState;
-struct SCDBIndex;
 
 class SidechainDB
 {
@@ -184,10 +183,8 @@ public:
     std::vector<uint256> GetSidechainsToActivate() const;
 
 private:
-    // TODO refactor: rename SCDB, change container, update container member.
-    // Should probably be called WTDB or something else.
-    /** Sidechain "database" tracks verification status of WT^(s) */
-    std::vector<SCDBIndex> SCDB;
+    /** Tracks verification status of WT^(s) */
+    std::vector<std::vector<SidechainWTPrimeState>> vWTPrimeStatus;
 
     /** Sidechains which are currently active */
     std::vector<Sidechain> vActiveSidechain;

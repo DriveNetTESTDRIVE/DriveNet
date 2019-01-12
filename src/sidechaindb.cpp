@@ -334,12 +334,12 @@ std::vector<SidechainWTPrimeState> SidechainDB::GetState(uint8_t nSidechain) con
         return std::vector<SidechainWTPrimeState>();
 
     std::vector<SidechainWTPrimeState> vState;
-    for (const SCDBIndex& i : SCDB) {
-        for (const SidechainWTPrimeState& member : i.members) {
-            if (!member.IsNull())
-                vState.push_back(member);
+    for (auto i : vWTPrimeStatus) {
+        for (const SidechainWTPrimeState& s : i) {
+            vState.push_back(s);
         }
     }
+
     return vState;
 }
 
@@ -365,12 +365,12 @@ std::vector<uint256> SidechainDB::GetUncommittedWTPrimeCache(uint8_t nSidechain)
 bool SidechainDB::HasState() const
 {
     // Make sure that SCDB is actually initialized
-    if (SCDB.empty() || !GetActiveSidechainCount())
+    if (vWTPrimeStatus.empty() || !GetActiveSidechainCount())
         return false;
 
-    // Check if any SCDBIndex(s) are populated
-    for (const SCDBIndex& i : SCDB) {
-        if (i.IsPopulated())
+    // Check if we have WT^ state
+    for (auto i : vWTPrimeStatus) {
+        if (!i.empty())
             return true;
     }
 
@@ -439,9 +439,9 @@ bool SidechainDB::HaveWTPrimeWorkScore(const uint256& hashWTPrime, uint8_t nSide
 
 void SidechainDB::ResetWTPrimeState()
 {
-    // Clear out SCDB
-    SCDB.clear();
-    SCDB.resize(vActiveSidechain.size());
+    // Clear out WT^ state
+    vWTPrimeStatus.clear();
+    vWTPrimeStatus.resize(vActiveSidechain.size());
 
     // Clear out BMM LD
     ratchet.clear();
@@ -495,8 +495,8 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const std::vecto
 
     // If the verification period ended, clear old data
     if (nHeight > 0 && (nHeight % SIDECHAIN_VERIFICATION_PERIOD) == 0) {
-        SCDB.clear();
-        SCDB.resize(GetActiveSidechainCount());
+        vWTPrimeStatus.clear();
+        vWTPrimeStatus.resize(GetActiveSidechainCount());
         vWTPrimeCache.clear();
     }
 
@@ -679,7 +679,7 @@ bool SidechainDB::UpdateSCDBIndex(const std::vector<SidechainWTPrimeState>& vNew
 {
     if (!vNewScores.size())
         return false;
-    if (SCDB.empty()) {
+    if (vWTPrimeStatus.empty()) {
         return false;
     }
 
@@ -691,13 +691,9 @@ bool SidechainDB::UpdateSCDBIndex(const std::vector<SidechainWTPrimeState>& vNew
     }
 
     // Decrement nBlocksLeft of existing WT^(s)
-    for (auto i : SCDB) {
-        for (SidechainWTPrimeState wt : i.members) {
-            if (!wt.IsNull()) {
-                // wt is a copy
-                wt.nBlocksLeft--;
-                i.InsertMember(wt);
-            }
+    for (size_t x = 0; x < vWTPrimeStatus.size(); x++) {
+        for (size_t y = 0; y < vWTPrimeStatus[x].size(); y++) {
+            vWTPrimeStatus[x][y].nBlocksLeft--;
         }
     }
 
@@ -710,33 +706,39 @@ bool SidechainDB::UpdateSCDBIndex(const std::vector<SidechainWTPrimeState>& vNew
 
     // Apply new work scores
     for (const SidechainWTPrimeState& s : vNewScores) {
-        for (auto i : SCDB) {
-            if (i.nSidechain == s.nSidechain) {
-                SidechainWTPrimeState wt;
-                if (i.GetMember(s.hashWTPrime, wt)) {
-                    // Update an existing WT^
-                    // Check that new work score is valid
-                    if ((wt.nWorkScore == s.nWorkScore) ||
-                        (s.nWorkScore == (wt.nWorkScore + 1)) ||
-                        (s.nWorkScore == (wt.nWorkScore - 1)))
+        bool fFound = false;
+        for (size_t x = 0; x < vWTPrimeStatus.size(); x++) {
+            // TODO change containers, improve efficiency
+            // If we found the WT^, this is an update. Otherwise we are adding
+            // a new one.
+            for (size_t y = 0; y < vWTPrimeStatus[x].size(); y++) {
+                const SidechainWTPrimeState state = vWTPrimeStatus[x][y];
+                if (state.hashWTPrime == s.hashWTPrime) {
+                    fFound = true;
+                    if ((state.nWorkScore == s.nWorkScore) ||
+                            (s.nWorkScore == (state.nWorkScore + 1)) ||
+                            (s.nWorkScore == (state.nWorkScore - 1)))
                     {
-                        bool fInserted = i.InsertMember(s);
-                        // TODO handle fInserted == false
+                        vWTPrimeStatus[x][y].nWorkScore = s.nWorkScore;
                     }
                 }
-                else
-                if (!i.IsFull()) {
-                    // Add a new WT^
-                    if (s.nWorkScore != 1)
-                        continue;
-
-                    int nAge = GetNumBlocksSinceLastSidechainVerificationPeriod(nHeight);
-                    if (s.nBlocksLeft != (SIDECHAIN_VERIFICATION_PERIOD - nAge))
-                        continue;
-
-                    bool fInserted = i.InsertMember(s);
-                }
             }
+        }
+        if (!fFound) {
+            if (s.nWorkScore != 1)
+                continue;
+
+            int nAge = GetNumBlocksSinceLastSidechainVerificationPeriod(nHeight);
+            if (s.nBlocksLeft != (SIDECHAIN_VERIFICATION_PERIOD - nAge))
+                continue;
+
+            if (!IsSidechainNumberValid(s.nSidechain))
+                continue;
+
+            if (s.nSidechain >= vWTPrimeStatus.size())
+                continue;
+
+            vWTPrimeStatus[s.nSidechain].push_back(s);
         }
     }
     return true;
@@ -899,13 +901,12 @@ bool SidechainDB::ApplyDefaultUpdate()
         return true;
 
     // Decrement nBlocksLeft, nothing else changes
-    for (auto i : SCDB) {
-        for (SidechainWTPrimeState wt : i.members) {
-            // wt is a copy
-            wt.nBlocksLeft--;
-            i.InsertMember(wt);
+    for (size_t x = 0; x < vWTPrimeStatus.size(); x++) {
+        for (size_t y = 0; y < vWTPrimeStatus[x].size(); y++) {
+            vWTPrimeStatus[x][y].nBlocksLeft--;
         }
     }
+
     return true;
 }
 
@@ -976,10 +977,8 @@ void SidechainDB::UpdateActivationStatus(const std::vector<uint256>& vHash)
             vActivationStatus.pop_back();
 
 
-            // Add SCDBIndex to SCDB to track this sidechain's WT^(s)
-            SCDBIndex index;
-            index.nSidechain = sidechain.nSidechain;
-            SCDB.push_back(index);
+            // Add blank vector to track this sidechain's WT^(s)
+            vWTPrimeStatus.push_back(std::vector<SidechainWTPrimeState>{});
 
             // Did one of our cached proposals activate? If it did, remove it
             // from our proposal cache
