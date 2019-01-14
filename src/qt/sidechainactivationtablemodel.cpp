@@ -82,7 +82,7 @@ QVariant SidechainActivationTableModel::data(const QModelIndex &index, int role)
         }
         // Key
         if (col == 5) {
-            return object.sidechainKey;
+            return object.sidechainKeyID;
         }
         // Hex
         if (col == 6) {
@@ -228,7 +228,7 @@ void SidechainActivationTableModel::updateModel()
         object.fActivate = scdb.GetActivateSidechain(s.proposal.GetHash());
         object.title = QString::fromStdString(s.proposal.title);
         object.description = QString::fromStdString(s.proposal.description);
-        object.sidechainKey = QString::fromStdString(s.proposal.sidechainKey);
+        object.sidechainKeyID = QString::fromStdString(s.proposal.sidechainKeyID);
         object.sidechainHex = QString::fromStdString(s.proposal.sidechainHex);
         object.sidechainPriv = QString::fromStdString(s.proposal.sidechainPriv);
         object.nAge = s.nAge;

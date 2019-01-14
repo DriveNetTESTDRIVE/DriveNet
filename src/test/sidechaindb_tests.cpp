@@ -27,7 +27,7 @@ bool ActivateSidechain()
     SidechainProposal proposal;
     proposal.title = "test";
     proposal.description = "description";
-    proposal.sidechainKey = ""; // TODO
+    proposal.sidechainKeyID = ""; // TODO
     proposal.sidechainHex = ""; // TODO
     proposal.sidechainPriv = ""; // TODO
 

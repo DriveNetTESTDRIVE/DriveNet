@@ -1247,7 +1247,7 @@ UniValue listactivesidechains(const JSONRPCRequest& request)
         obj.push_back(Pair("title", s.title));
         obj.push_back(Pair("description", s.description));
         obj.push_back(Pair("privatekey", s.sidechainPriv));
-        obj.push_back(Pair("keyid", s.sidechainKey));
+        obj.push_back(Pair("keyid", s.sidechainKeyID));
         obj.push_back(Pair("hex", s.sidechainHex));
 
         ret.push_back(obj);
@@ -1277,7 +1277,7 @@ UniValue listsidechainactivationstatus(const JSONRPCRequest& request)
         obj.push_back(Pair("title", s.proposal.title));
         obj.push_back(Pair("description", s.proposal.description));
         obj.push_back(Pair("privatekey", s.proposal.sidechainPriv));
-        obj.push_back(Pair("keyid", s.proposal.sidechainKey));
+        obj.push_back(Pair("keyid", s.proposal.sidechainKeyID));
         obj.push_back(Pair("hex", s.proposal.sidechainHex));
         obj.push_back(Pair("nage", s.nAge));
         obj.push_back(Pair("nfail", s.nFail));
@@ -1307,8 +1307,11 @@ UniValue listsidechainproposals(const JSONRPCRequest& request)
         obj.push_back(Pair("title", s.title));
         obj.push_back(Pair("description", s.description));
         obj.push_back(Pair("privatekey", s.sidechainPriv));
-        obj.push_back(Pair("keyid", s.sidechainKey));
+        obj.push_back(Pair("keyid", s.sidechainKeyID));
         obj.push_back(Pair("hex", s.sidechainHex));
+        obj.push_back(Pair("nversion", s.nVersion));
+        obj.push_back(Pair("hashid1", s.hashID1.ToString()));
+        obj.push_back(Pair("hashid2", s.hashID2.ToString()));
 
         ret.push_back(obj);
     }
@@ -1338,7 +1341,7 @@ UniValue getsidechainactivationstatus(const JSONRPCRequest& request)
         obj.push_back(Pair("title", s.proposal.title));
         obj.push_back(Pair("description", s.proposal.description));
         obj.push_back(Pair("privatekey", s.proposal.sidechainPriv));
-        obj.push_back(Pair("keyid", s.proposal.sidechainKey));
+        obj.push_back(Pair("keyid", s.proposal.sidechainKeyID));
         obj.push_back(Pair("scripthex", s.proposal.sidechainHex));
         obj.push_back(Pair("nage", s.nAge));
         obj.push_back(Pair("nfail", s.nFail));
@@ -1352,7 +1355,7 @@ UniValue getsidechainactivationstatus(const JSONRPCRequest& request)
 
 UniValue createsidechainproposal(const JSONRPCRequest& request)
 {
-    if (request.fHelp || request.params.size() != 3)
+    if (request.fHelp || request.params.size() < 3 || request.params.size() > 6)
         throw std::runtime_error(
             "createsidechainproposal\n"
             "Generates a sidechain proposal to be included in the next block " \
@@ -1364,7 +1367,10 @@ UniValue createsidechainproposal(const JSONRPCRequest& request)
             "\nArguments:\n"
             "1. \"title\"        (string, required) sidechain title\n"
             "2. \"description\"  (string, required) sidechain description\n"
-            "3. \"build hash\"   (string, required) sidechain build commit hash (to be used as private key)\n"
+            "3. \"keyhash\"      (string, required) any SHA256 hash (used to generate private key)\n"
+            "4. \"version\"      (numeric, optional) sidechain / proposal version\n"
+            "5. \"hashid1\"      (string, optional) SHA256 hash used to identify sidechain\n"
+            "6. \"hashid2\"      (string, optional) SHA256 hash used to identify sidechain\n"
             "\nExamples:\n"
             + HelpExampleCli("createsidechainproposal", "")
             + HelpExampleRpc("createsidechainproposal", "")
@@ -1373,6 +1379,16 @@ UniValue createsidechainproposal(const JSONRPCRequest& request)
     std::string strTitle = request.params[0].get_str();
     std::string strDescription = request.params[1].get_str();
     std::string strHash = request.params[2].get_str();
+
+    int nVersion = -1;
+    std::string strHashID1 = "";
+    std::string strHashID2 = "";
+    if (request.params.size() >= 4)
+        nVersion = request.params[3].get_int();
+    if (request.params.size() >= 5)
+        strHashID1 = request.params[4].get_str();
+    if (request.params.size() == 6)
+        strHashID2 = request.params[5].get_str();
 
     if (strTitle.empty())
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Sidechain must have a title!");
@@ -1384,7 +1400,7 @@ UniValue createsidechainproposal(const JSONRPCRequest& request)
 
     uint256 hash = uint256S(strHash);
     if (hash.IsNull())
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "Invalid sidechain build commit hash!");
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Invalid sidechain key hash!");
 
     CKey key;
     key.Set(hash.begin(), hash.end(), false);
@@ -1392,7 +1408,7 @@ UniValue createsidechainproposal(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Private key outside allowed range");
 
     CBitcoinSecret vchSecret(key);
-    if (vchSecret.IsValid())
+    if (!vchSecret.IsValid())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid private key encoding");
 
     CPubKey pubkey = key.GetPubKey();
@@ -1406,8 +1422,14 @@ UniValue createsidechainproposal(const JSONRPCRequest& request)
     proposal.title = strTitle;
     proposal.description = strDescription;
     proposal.sidechainPriv = vchSecret.ToString();
-    proposal.sidechainKey = HexStr(vchAddress);
+    proposal.sidechainKeyID = HexStr(vchAddress);
     proposal.sidechainHex = HexStr(sidechainScript);
+    if (nVersion >= 0)
+        proposal.nVersion = nVersion;
+    if (!strHashID1.empty())
+        proposal.hashID1 = uint256S(strHashID1);
+    if (!strHashID2.empty())
+        proposal.hashID2 = uint256S(strHashID2);
 
     // Cache proposal so that it can be added to the next block we mine
     scdb.CacheSidechainProposals(std::vector<SidechainProposal>{proposal});
@@ -1416,8 +1438,11 @@ UniValue createsidechainproposal(const JSONRPCRequest& request)
     obj.push_back(Pair("title", proposal.title));
     obj.push_back(Pair("description", proposal.description));
     obj.push_back(Pair("privatekey", proposal.sidechainPriv));
-    obj.push_back(Pair("keyid", proposal.sidechainKey));
+    obj.push_back(Pair("keyid", proposal.sidechainKeyID));
     obj.push_back(Pair("hex", proposal.sidechainHex));
+    obj.push_back(Pair("version", proposal.nVersion));
+    obj.push_back(Pair("hashID1", proposal.hashID1.ToString()));
+    obj.push_back(Pair("hashID2", proposal.hashID2.ToString()));
 
     return obj;
 }
@@ -1493,7 +1518,7 @@ static const CRPCCommand commands[] =
     { "DriveChain",         "listsidechainactivationstatus", &listsidechainactivationstatus,   {}},
     { "DriveChain",         "listsidechainproposals",        &listsidechainproposals,   {}},
     { "DriveChain",         "getsidechainactivationstatus",  &getsidechainactivationstatus,   {}},
-    { "DriveChain",         "createsidechainproposal",       &createsidechainproposal,   {"title", "description", "privatekey"}},
+    { "DriveChain",         "createsidechainproposal",       &createsidechainproposal,   {"title", "description", "keyhash", "nversion", "hashid1", "hashid2"}},
     { "DriveChain",         "vote",                          &vote,   {}},
 };
 

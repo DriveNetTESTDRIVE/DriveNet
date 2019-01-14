@@ -47,11 +47,17 @@ public Q_SLOTS:
 
     void on_toolButtonACKSidechains_clicked();
 
-    void on_toolButtonReleaseHash_clicked();
+    void on_toolButtonKeyHash_clicked();
+
+    void on_toolButtonIDHash1_clicked();
+
+    void on_toolButtonIDHash2_clicked();
 
     void on_pushButtonGenerateConfig_clicked();
 
     void on_pushButtonConfigFiles_clicked();
+
+    void on_pushButtonRandomKeyHash_clicked();
 
 private:
     Ui::SidechainMinerDialog *ui;

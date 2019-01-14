@@ -120,7 +120,8 @@ void SidechainDB::CacheSidechainActivationStatus(const std::vector<SidechainActi
 
 void SidechainDB::CacheSidechainProposals(const std::vector<SidechainProposal>& vSidechainProposalIn)
 {
-    vSidechainProposal = vSidechainProposalIn;
+    for (const SidechainProposal& s : vSidechainProposalIn)
+        vSidechainProposal.push_back(s);
 }
 
 bool SidechainDB::CacheWTPrime(const CTransaction& tx)
@@ -153,6 +154,9 @@ void SidechainDB::RemoveSidechainHashToActivate(const uint256& u)
 
 int SidechainDB::CountBlocksAtop(const CCriticalData& data) const
 {
+    if (ratchet.empty())
+        return 0;
+
     uint8_t nSidechain;
     uint16_t nPrevBlockRef;
     if (!data.IsBMMRequest(nSidechain, nPrevBlockRef))
@@ -169,6 +173,8 @@ int SidechainDB::CountBlocksAtop(const CCriticalData& data) const
 
 int SidechainDB::CountBlocksAtop(const SidechainLD& ld) const
 {
+    if (ratchet.empty())
+        return 0;
     if (!IsSidechainNumberValid(ld.nSidechain))
         return 0;
 
@@ -445,6 +451,7 @@ void SidechainDB::ResetWTPrimeState()
 
     // Clear out BMM LD
     ratchet.clear();
+    ratchet.resize(vActiveSidechain.size());
 
     // Clear out cached WT^(s)
     vWTPrimeCache.clear();
@@ -967,7 +974,7 @@ void SidechainDB::UpdateActivationStatus(const std::vector<uint256>& vHash)
             sidechain.nSidechain = vActiveSidechain.size();
             sidechain.sidechainPriv = vActivationStatus[i].proposal.sidechainPriv;
             sidechain.sidechainHex = vActivationStatus[i].proposal.sidechainHex;
-            sidechain.sidechainKey = vActivationStatus[i].proposal.sidechainKey;
+            sidechain.sidechainKeyID = vActivationStatus[i].proposal.sidechainKeyID;
             sidechain.title = vActivationStatus[i].proposal.title;
             sidechain.description = vActivationStatus[i].proposal.description;
 
@@ -976,9 +983,11 @@ void SidechainDB::UpdateActivationStatus(const std::vector<uint256>& vHash)
             vActivationStatus[i] = vActivationStatus.back();
             vActivationStatus.pop_back();
 
-
             // Add blank vector to track this sidechain's WT^(s)
             vWTPrimeStatus.push_back(std::vector<SidechainWTPrimeState>{});
+
+            // Add a slot to the ratchet for this new sidechain
+            ratchet.push_back(std::vector<SidechainLD>{});
 
             // Did one of our cached proposals activate? If it did, remove it
             // from our proposal cache

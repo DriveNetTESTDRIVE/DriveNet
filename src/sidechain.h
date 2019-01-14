@@ -10,9 +10,6 @@
 
 #include <array>
 
-//! Max number of cached WT^(s) during verification period
-static const int SIDECHAIN_MAX_WT = 2; // TODO remove (CryptAxe wants this, psztorc does not)
-
 // These are the temporary values to speed things up during testing
 static const int SIDECHAIN_VERIFICATION_PERIOD = 300;
 static const int SIDECHAIN_MIN_WORKSCORE = 141;
@@ -33,6 +30,11 @@ static const int SIDECHAIN_ACTIVATION_MAX_SIGNALS = 32;
 //! The number of sidechains which may be active at once
 static const int SIDECHAIN_ACTIVATION_MAX_ACTIVE = 256;
 
+//! The current sidechain version
+static const int SIDECHAIN_VERSION_CURRENT = 0;
+//! The max supported sidechain version
+static const int SIDECHAIN_VERSION_MAX = 0;
+
 // Configuration files
 static const int CONF_COUNT = 3;
 static const std::array<std::pair<std::string, std::string>, CONF_COUNT> ConfigDirectories =
@@ -46,21 +48,27 @@ static const std::array<std::pair<std::string, std::string>, CONF_COUNT> ConfigD
 }};
 
 struct SidechainProposal {
+    int32_t nVersion = SIDECHAIN_VERSION_CURRENT;
     std::string title;
     std::string description;
-    std::string sidechainKey;
+    std::string sidechainKeyID;
     std::string sidechainHex;
     std::string sidechainPriv;
+    uint256 hashID1;
+    uint256 hashID2;
 
     ADD_SERIALIZE_METHODS
 
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
+        READWRITE(nVersion);
         READWRITE(title);
         READWRITE(description);
-        READWRITE(sidechainKey);
+        READWRITE(sidechainKeyID);
         READWRITE(sidechainHex);
         READWRITE(sidechainPriv);
+        READWRITE(hashID1);
+        READWRITE(hashID2);
     }
 
     bool DeserializeFromScript(const CScript& script);
@@ -89,12 +97,15 @@ struct SidechainActivationStatus
 };
 
 struct Sidechain {
+    int32_t nVersion = SIDECHAIN_VERSION_CURRENT;
     uint8_t nSidechain;
-    std::string sidechainKey;
+    std::string sidechainKeyID;
     std::string sidechainPriv;
     std::string sidechainHex;
     std::string title;
     std::string description;
+    uint256 hashID1;
+    uint256 hashID2;
 
     std::string GetSidechainName() const;
     bool operator==(const Sidechain& a) const;
@@ -105,12 +116,15 @@ struct Sidechain {
 
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
+        READWRITE(nVersion);
         READWRITE(nSidechain);
-        READWRITE(sidechainKey);
+        READWRITE(sidechainKeyID);
         READWRITE(sidechainPriv);
         READWRITE(sidechainHex);
         READWRITE(title);
         READWRITE(description);
+        READWRITE(hashID1);
+        READWRITE(hashID2);
     }
 };
 

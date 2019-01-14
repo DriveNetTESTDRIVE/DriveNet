@@ -21,7 +21,7 @@ BOOST_AUTO_TEST_CASE(sidechainproposal_single)
     SidechainProposal proposal;
     proposal.title = "test";
     proposal.description = "description";
-    proposal.sidechainKey = ""; // TODO
+    proposal.sidechainKeyID = ""; // TODO
     proposal.sidechainHex = ""; // TODO
     proposal.sidechainPriv = ""; // TODO
 
@@ -53,7 +53,7 @@ BOOST_AUTO_TEST_CASE(sidechainproposal_multiple)
     SidechainProposal proposal1;
     proposal1.title = "test1";
     proposal1.description = "description";
-    proposal1.sidechainKey = ""; // TODO
+    proposal1.sidechainKeyID = ""; // TODO
     proposal1.sidechainHex = ""; // TODO
     proposal1.sidechainPriv = ""; // TODO
 
@@ -72,7 +72,7 @@ BOOST_AUTO_TEST_CASE(sidechainproposal_multiple)
     SidechainProposal proposal2;
     proposal2.title = "test2";
     proposal2.description = "description";
-    proposal2.sidechainKey = ""; // TODO
+    proposal2.sidechainKeyID = ""; // TODO
     proposal2.sidechainHex = ""; // TODO
     proposal2.sidechainPriv = ""; // TODO
 
@@ -110,7 +110,7 @@ BOOST_AUTO_TEST_CASE(sidechainproposal_perblocklimit)
     SidechainProposal proposal1;
     proposal1.title = "test1";
     proposal1.description = "description";
-    proposal1.sidechainKey = ""; // TODO
+    proposal1.sidechainKeyID = ""; // TODO
     proposal1.sidechainHex = ""; // TODO
     proposal1.sidechainPriv = ""; // TODO
 
@@ -125,7 +125,7 @@ BOOST_AUTO_TEST_CASE(sidechainproposal_perblocklimit)
     SidechainProposal proposal2;
     proposal2.title = "test2";
     proposal2.description = "description";
-    proposal2.sidechainKey = ""; // TODO
+    proposal2.sidechainKeyID = ""; // TODO
     proposal2.sidechainHex = ""; // TODO
     proposal2.sidechainPriv = ""; // TODO
 
@@ -165,7 +165,7 @@ BOOST_AUTO_TEST_CASE(sidechainactivation_activate)
     SidechainProposal proposal;
     proposal.title = "test";
     proposal.description = "description";
-    proposal.sidechainKey = ""; // TODO
+    proposal.sidechainKeyID = ""; // TODO
     proposal.sidechainHex = ""; // TODO
     proposal.sidechainPriv = ""; // TODO
 
@@ -222,7 +222,7 @@ BOOST_AUTO_TEST_CASE(sidechainactivation_activate_multi)
     SidechainProposal proposal;
     proposal.title = "test";
     proposal.description = "description";
-    proposal.sidechainKey = ""; // TODO
+    proposal.sidechainKeyID = ""; // TODO
     proposal.sidechainHex = ""; // TODO
     proposal.sidechainPriv = ""; // TODO
 
@@ -245,7 +245,7 @@ BOOST_AUTO_TEST_CASE(sidechainactivation_activate_multi)
     SidechainProposal proposal2;
     proposal2.title = "test2";
     proposal2.description = "description";
-    proposal2.sidechainKey = ""; // TODO
+    proposal2.sidechainKeyID = ""; // TODO
     proposal2.sidechainHex = ""; // TODO
     proposal2.sidechainPriv = ""; // TODO
 
@@ -301,7 +301,7 @@ BOOST_AUTO_TEST_CASE(sidechainactivation_activate_multi_seperate)
     SidechainProposal proposal;
     proposal.title = "test";
     proposal.description = "description";
-    proposal.sidechainKey = ""; // TODO
+    proposal.sidechainKeyID = ""; // TODO
     proposal.sidechainHex = ""; // TODO
     proposal.sidechainPriv = ""; // TODO
 
@@ -350,7 +350,7 @@ BOOST_AUTO_TEST_CASE(sidechainactivation_activate_multi_seperate)
     SidechainProposal proposal2;
     proposal2.title = "test2";
     proposal2.description = "description";
-    proposal2.sidechainKey = ""; // TODO
+    proposal2.sidechainKeyID = ""; // TODO
     proposal2.sidechainHex = ""; // TODO
     proposal2.sidechainPriv = ""; // TODO
 
@@ -398,7 +398,7 @@ BOOST_AUTO_TEST_CASE(sidechainactivation_failActivation)
     SidechainProposal proposal;
     proposal.title = "test";
     proposal.description = "description";
-    proposal.sidechainKey = ""; // TODO
+    proposal.sidechainKeyID = ""; // TODO
     proposal.sidechainHex = ""; // TODO
     proposal.sidechainPriv = ""; // TODO
 
@@ -452,7 +452,7 @@ BOOST_AUTO_TEST_CASE(sidechainactivation_pruneRejected)
     SidechainProposal proposal;
     proposal.title = "test";
     proposal.description = "description";
-    proposal.sidechainKey = ""; // TODO
+    proposal.sidechainKeyID = ""; // TODO
     proposal.sidechainHex = ""; // TODO
     proposal.sidechainPriv = ""; // TODO
 

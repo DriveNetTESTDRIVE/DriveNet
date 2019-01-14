@@ -153,10 +153,10 @@ void SidechainEscrowTableModel::updateModel()
         object.name = QString::fromStdString(s.GetSidechainName());
 
         // Sidechain deposit address
-        CKeyID sidechainKey;
-        sidechainKey.SetHex(s.sidechainKey);
+        CKeyID sidechainKeyID;
+        sidechainKeyID.SetHex(s.sidechainKeyID);
         CSidechainAddress address;
-        address.Set(sidechainKey);
+        address.Set(sidechainKeyID);
 
         object.address = QString::fromStdString(address.ToString());
         object.privKey = QString::fromStdString(s.sidechainPriv);
@@ -205,10 +205,10 @@ void SidechainEscrowTableModel::AddDemoData()
         object.name = QString::fromStdString(s.GetSidechainName());
 
         // Sidechain deposit address
-        CKeyID sidechainKey;
-        sidechainKey.SetHex(s.sidechainKey);
+        CKeyID sidechainKeyID;
+        sidechainKeyID.SetHex(s.sidechainKeyID);
         CSidechainAddress address;
-        address.Set(sidechainKey);
+        address.Set(sidechainKeyID);
 
         object.address = QString::fromStdString(address.ToString());
         object.privKey = QString::fromStdString(s.sidechainPriv);

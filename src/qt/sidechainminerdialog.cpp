@@ -18,6 +18,7 @@
 
 #include <key.h>
 #include <wallet/wallet.h>
+#include <random.h>
 #include <sidechain.h>
 #include <sidechaindb.h>
 #include <validation.h>
@@ -99,7 +100,10 @@ void SidechainMinerDialog::on_pushButtonCreateSidechainProposal_clicked()
 {
     std::string strTitle = ui->lineEditTitle->text().toStdString();
     std::string strDescription = ui->plainTextEditDescription->toPlainText().toStdString();
-    std::string strHash= ui->lineEditHash->text().toStdString();
+    std::string strHash = ui->lineEditHash->text().toStdString();
+    std::string strHashID1 = ui->lineEditIDHash1->text().toStdString();
+    std::string strHashID2 = ui->lineEditIDHash2->text().toStdString();
+    int nVersion = ui->spinBoxVersion->value();
 
     if (strTitle.empty()) {
         QMessageBox::critical(this, tr("DriveNet - error"),
@@ -113,6 +117,13 @@ void SidechainMinerDialog::on_pushButtonCreateSidechainProposal_clicked()
     if (strDescription.empty()) {
         QMessageBox::critical(this, tr("DriveNet - error"),
                               tr("Sidechain must have a description!"),
+                              QMessageBox::Ok);
+        return;
+    }
+
+    if (nVersion > SIDECHAIN_VERSION_MAX) {
+        QMessageBox::critical(this, tr("DriveNet - error"),
+                              tr("This sidechain has an invalid version number (too high)!"),
                               QMessageBox::Ok);
         return;
     }
@@ -149,24 +160,38 @@ void SidechainMinerDialog::on_pushButtonCreateSidechainProposal_clicked()
     proposal.title = strTitle;
     proposal.description = strDescription;
     proposal.sidechainPriv = vchSecret.ToString();
-    proposal.sidechainKey = HexStr(vchAddress);
+    proposal.sidechainKeyID = HexStr(vchAddress);
     proposal.sidechainHex = HexStr(sidechainScript);
+    proposal.hashID1 = uint256S(strHashID1);
+    proposal.hashID2 = uint256S(strHashID2);
+    proposal.nVersion = nVersion;
 
     // Cache proposal so that it can be added to the next block we mine
     scdb.CacheSidechainProposals(std::vector<SidechainProposal>{proposal});
 
     QString message = QString("Sidechain proposal created!\n\n");
+    message += QString("Version:\n%1\n\n").arg(nVersion);
     message += QString("Title:\n%1\n\n").arg(QString::fromStdString(strTitle));
-    message += QString("Description:\n%1\n\n").arg(QString::fromStdString(strTitle));
+    message += QString("Description:\n%1\n\n").arg(QString::fromStdString(strDescription));
     message += QString("Private key:\n%1\n\n").arg(QString::fromStdString(proposal.sidechainPriv));
-    message += QString("KeyID:\n%1\n\n").arg(QString::fromStdString(proposal.sidechainKey));
+    message += QString("KeyID:\n%1\n\n").arg(QString::fromStdString(proposal.sidechainKeyID));
     message += QString("Deposit script:\n%1\n\n").arg(QString::fromStdString(proposal.sidechainHex));
+    if (!strHashID1.empty())
+        message += QString("Hash ID 1:\n%1\n\n").arg(QString::fromStdString(strHashID1));
+    if (!strHashID2.empty())
+        message += QString("Hash ID 2:\n%1\n\n").arg(QString::fromStdString(strHashID2));
 
     QMessageBox::information(this, tr("DriveNet - sidechain proposal created!"),
                           message,
                           QMessageBox::Ok);
 
     // TODO clear out line edits and text box
+    ui->lineEditTitle->clear();
+    ui->plainTextEditDescription->clear();
+    ui->lineEditHash->clear();
+    ui->lineEditIDHash1->clear();
+    ui->lineEditIDHash2->clear();
+    ui->spinBoxVersion->setValue(0);
 }
 
 void SidechainMinerDialog::on_pushButtonActivate_clicked()
@@ -209,11 +234,23 @@ void SidechainMinerDialog::on_toolButtonACKSidechains_clicked()
                                    QMessageBox::Ok);
 }
 
-void SidechainMinerDialog::on_toolButtonReleaseHash_clicked()
+void SidechainMinerDialog::on_toolButtonKeyHash_clicked()
 {
     // TODO move text into static const char *
     QMessageBox::information(this, tr("DriveNet - information"),
-                                   tr("The deterministic build release hash is the "
+                                   tr("Sidechain key hash:\n\n"
+                                      "Enter any SHA256 hash. This hash will be "
+                                      "used to generate the sidechain private key."
+                                      ),
+                                   QMessageBox::Ok);
+}
+
+void SidechainMinerDialog::on_toolButtonIDHash1_clicked()
+{
+    // TODO display message based on current selected version
+    // TODO move text into static const char *
+    QMessageBox::information(this, tr("DriveNet - information"),
+                                   tr("Releae tarball:\n\n"
                                       "hash of the original gitian software build "
                                       "of this sidechain.\n\n"
                                       "Use the sha256sum utility to generate this "
@@ -224,6 +261,18 @@ void SidechainMinerDialog::on_toolButtonReleaseHash_clicked()
                                       "Result:\n"
                                       "fd9637e427f1e967cc658bfe1a836d537346ce3a6dd0746878129bb5bc646680  DriveNet-12-0.21.00-x86_64-linux-gnu.tar.gz\n\n"
                                       "Paste the resulting hash into the field."
+                                      ),
+                                   QMessageBox::Ok);
+}
+
+void SidechainMinerDialog::on_toolButtonIDHash2_clicked()
+{
+    // TODO display message based on current selected version
+    // TODO move text into static const char *
+    QMessageBox::information(this, tr("DriveNet - information"),
+                                   tr("Build commit hash:\n\n"
+                                      "This is the commit which the gitian "
+                                      "release was built with."
                                       ),
                                    QMessageBox::Ok);
 }
@@ -240,3 +289,8 @@ void SidechainMinerDialog::on_pushButtonConfigFiles_clicked()
     ui->stackedWidget->setCurrentIndex(INDEX_CONFIG);
 }
 
+void SidechainMinerDialog::on_pushButtonRandomKeyHash_clicked()
+{
+    uint256 hash = GetRandHash();
+    ui->lineEditHash->setText(QString::fromStdString(hash.ToString()));
+}

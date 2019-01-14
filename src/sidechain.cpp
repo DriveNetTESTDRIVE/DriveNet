@@ -22,9 +22,12 @@ bool Sidechain::operator==(const SidechainProposal& a) const
 {
     return (sidechainPriv == a.sidechainPriv &&
             sidechainHex == a.sidechainHex &&
-            sidechainKey == a.sidechainKey &&
+            sidechainKeyID == a.sidechainKeyID &&
             title == a.title &&
-            description == a.description);
+            description == a.description &&
+            hashID1 == a.hashID1 &&
+            hashID2 == a.hashID2 &&
+            nVersion == a.nVersion);
 }
 
 std::string Sidechain::GetSidechainName() const
@@ -35,12 +38,15 @@ std::string Sidechain::GetSidechainName() const
 std::string Sidechain::ToString() const
 {
     std::stringstream ss;
+    ss << "nVersion=" << nVersion << std::endl;
     ss << "nSidechain=" << (unsigned int)nSidechain << std::endl;
     ss << "sidechainPriv=" << sidechainPriv << std::endl;
     ss << "sidechainHex=" << sidechainHex << std::endl;
-    ss << "sidechainKey=" << sidechainKey << std::endl;
+    ss << "sidechainKeyID=" << sidechainKeyID << std::endl;
     ss << "title=" << title << std::endl;
     ss << "description=" << description << std::endl;
+    ss << "hashID1=" << hashID1.ToString() << std::endl;
+    ss << "hashID2=" << hashID2.ToString() << std::endl;
     return ss.str();
 }
 
@@ -49,9 +55,12 @@ std::string SidechainProposal::ToString() const
     std::stringstream ss;
     ss << "sidechainPriv=" << sidechainPriv << std::endl;
     ss << "sidechainHex=" << sidechainHex << std::endl;
-    ss << "sidechainKey=" << sidechainKey << std::endl;
+    ss << "sidechainKeyID=" << sidechainKeyID << std::endl;
     ss << "title=" << title << std::endl;
     ss << "description=" << description << std::endl;
+    ss << "hashID1=" << hashID1.ToString() << std::endl;
+    ss << "hashID2=" << hashID2.ToString() << std::endl;
+    ss << "nVersion=" << nVersion << std::endl;
     return ss.str();
 }
 
@@ -66,9 +75,12 @@ bool SidechainProposal::operator==(const SidechainProposal& proposal) const
 {
     return (proposal.title == title &&
             proposal.description == description &&
-            proposal.sidechainKey == sidechainKey &&
+            proposal.sidechainKeyID == sidechainKeyID &&
             proposal.sidechainHex == sidechainHex &&
-            proposal.sidechainPriv == sidechainPriv);
+            proposal.sidechainPriv == sidechainPriv &&
+            proposal.hashID1 == hashID1 &&
+            proposal.hashID2 == hashID2 &&
+            proposal.nVersion == nVersion);
 }
 
 std::string SidechainDeposit::ToString() const
@@ -143,7 +155,7 @@ bool SidechainProposal::DeserializeFromScript(const CScript& script)
 
     title = sidechain.title;
     description = sidechain.description;
-    sidechainKey = sidechain.sidechainKey;
+    sidechainKeyID = sidechain.sidechainKeyID;
     sidechainHex = sidechain.sidechainHex;
     sidechainPriv = sidechain.sidechainPriv;
 

@@ -433,10 +433,10 @@ bool BlockAssembler::CreateWTPrimePayout(uint8_t nSidechain, CMutableTransaction
     }
 
     // Format sidechain change return script
-    CKeyID sidechainKey;
-    sidechainKey.SetHex(sidechain.sidechainKey);
+    CKeyID sidechainKeyID;
+    sidechainKeyID.SetHex(sidechain.sidechainKeyID);
     CScript sidechainScript;
-    sidechainScript << OP_DUP << OP_HASH160 << ToByteVector(sidechainKey) << OP_EQUALVERIFY << OP_CHECKSIG;
+    sidechainScript << OP_DUP << OP_HASH160 << ToByteVector(sidechainKeyID) << OP_EQUALVERIFY << OP_CHECKSIG;
 
     // Add placeholder change return as last output
     mtx.vout.push_back(CTxOut(0, sidechainScript));

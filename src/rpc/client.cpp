@@ -26,8 +26,8 @@ public:
  */
 static const CRPCConvertParam vRPCConvertParams[] =
 {
-    { "setgenerate", 0 },
-    { "setgenerate", 1 },
+    { "setgenerate", 0, "generate" },
+    { "setgenerate", 1, "genproclimit" },
     { "setmocktime", 0, "timestamp" },
     { "generate", 0, "nblocks" },
     { "generate", 1, "maxtries" },
@@ -137,6 +137,7 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "createbmmcriticaldatatx", 1, "height" },
     { "createbmmcriticaldatatx", 3, "nsidechain" },
     { "createbmmcriticaldatatx", 4, "ndag" },
+    { "createsidechainproposal", 3, "nversion" },
     { "listsidechainctip", 0, "nsidechain" },
     { "listsidechaindeposits", 1, "count" },
     { "countsidechaindeposits", 0, "nsidechain" },
