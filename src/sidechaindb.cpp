@@ -922,7 +922,7 @@ void SidechainDB::UpdateActivationStatus(const std::vector<uint256>& vHash)
     // TODO refactor, focusing on clarity over performance right now.
     // TODO I would personally prefer to remove use of vector::operator[].
 
-    bool fTestActivation = gArgs.GetBoolArg("-testsidechainactivation", false);
+    bool fTestActivation = gArgs.GetBoolArg("-testsidechainactivation", true);
 
     // Increment the age of all sidechains, keep track of which have expired.
     std::vector<std::vector<SidechainActivationStatus>::const_iterator> vExpired;

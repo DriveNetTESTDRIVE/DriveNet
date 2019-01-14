@@ -49,7 +49,7 @@ QVariant SidechainActivationTableModel::data(const QModelIndex &index, int role)
 
     SidechainActivationTableObject object = model.at(row).value<SidechainActivationTableObject>();
 
-    bool fTestActivation = gArgs.GetBoolArg("-testsidechainactivation", false);
+    bool fTestActivation = gArgs.GetBoolArg("-testsidechainactivation", true);
 
     switch (role) {
     case Qt::DisplayRole:
