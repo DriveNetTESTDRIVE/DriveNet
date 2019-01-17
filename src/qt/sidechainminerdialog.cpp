@@ -239,8 +239,10 @@ void SidechainMinerDialog::on_toolButtonKeyHash_clicked()
     // TODO move text into static const char *
     QMessageBox::information(this, tr("DriveNet - information"),
                                    tr("Sidechain key hash:\n\n"
-                                      "Enter any SHA256 hash. This hash will be "
-                                      "used to generate the sidechain private key."
+                                      "Enter any SHA256 hash. You need to "
+                                      "decide what this hash is. The private "
+                                      "key for the sidechain (and therefore the "
+                                      "deposit script) will be based on this."
                                       ),
                                    QMessageBox::Ok);
 }
@@ -271,8 +273,12 @@ void SidechainMinerDialog::on_toolButtonIDHash2_clicked()
     // TODO move text into static const char *
     QMessageBox::information(this, tr("DriveNet - information"),
                                    tr("Build commit hash:\n\n"
-                                      "This is the commit which the gitian "
-                                      "release was built with."
+                                      "If the software was developed using "
+                                      "git, the build commit hash should match "
+                                      "the commit hash of the first sidechain "
+                                      "release.\n\n"
+                                      "To verify it later, you can look up "
+                                      "this commit in the repository history."
                                       ),
                                    QMessageBox::Ok);
 }
