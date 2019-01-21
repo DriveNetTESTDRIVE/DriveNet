@@ -16,6 +16,7 @@
 #include <qt/sidechainactivationtablemodel.h>
 #include <qt/walletmodel.h>
 
+#include <core_io.h>
 #include <key.h>
 #include <wallet/wallet.h>
 #include <random.h>
@@ -107,8 +108,8 @@ void SidechainMinerDialog::on_pushButtonCreateSidechainProposal_clicked()
 
     if (strTitle.empty()) {
         QMessageBox::critical(this, tr("DriveNet - error"),
-                              tr("Sidechain must have a title!"),
-                              QMessageBox::Ok);
+            tr("Sidechain must have a title!"),
+            QMessageBox::Ok);
         return;
     }
 
@@ -116,23 +117,23 @@ void SidechainMinerDialog::on_pushButtonCreateSidechainProposal_clicked()
     // isn't a consensus rule right now
     if (strDescription.empty()) {
         QMessageBox::critical(this, tr("DriveNet - error"),
-                              tr("Sidechain must have a description!"),
-                              QMessageBox::Ok);
+            tr("Sidechain must have a description!"),
+            QMessageBox::Ok);
         return;
     }
 
     if (nVersion > SIDECHAIN_VERSION_MAX) {
         QMessageBox::critical(this, tr("DriveNet - error"),
-                              tr("This sidechain has an invalid version number (too high)!"),
-                              QMessageBox::Ok);
+            tr("This sidechain has an invalid version number (too high)!"),
+            QMessageBox::Ok);
         return;
     }
 
     uint256 uHash = uint256S(strHash);
     if (uHash.IsNull()) {
         QMessageBox::critical(this, tr("DriveNet - error"),
-                              tr("Invalid sidechain build commit hash!"),
-                              QMessageBox::Ok);
+            tr("Invalid sidechain key hash!"),
+            QMessageBox::Ok);
         return;
     }
 
@@ -144,8 +145,8 @@ void SidechainMinerDialog::on_pushButtonCreateSidechainProposal_clicked()
     if (!key.IsValid()) {
         // Nobody should see this, but we don't want to fail silently
         QMessageBox::critical(this, tr("DriveNet - error"),
-                              tr("Private key outside allowed range!"),
-                              QMessageBox::Ok);
+            tr("Private key outside allowed range!"),
+            QMessageBox::Ok);
         return;
     }
 
@@ -176,16 +177,21 @@ void SidechainMinerDialog::on_pushButtonCreateSidechainProposal_clicked()
     message += QString("Private key:\n%1\n\n").arg(QString::fromStdString(proposal.sidechainPriv));
     message += QString("KeyID:\n%1\n\n").arg(QString::fromStdString(proposal.sidechainKeyID));
     message += QString("Deposit script:\n%1\n\n").arg(QString::fromStdString(proposal.sidechainHex));
+
+    std::vector<unsigned char> vch(ParseHex(proposal.sidechainHex));
+    CScript scriptPubKey = CScript(vch.begin(), vch.end());
+    message += QString("Deposit script asm:\n%1\n\n").arg(QString::fromStdString(ScriptToAsmStr(scriptPubKey)));
+
     if (!strHashID1.empty())
         message += QString("Hash ID 1:\n%1\n\n").arg(QString::fromStdString(strHashID1));
     if (!strHashID2.empty())
         message += QString("Hash ID 2:\n%1\n\n").arg(QString::fromStdString(strHashID2));
 
+    // Show result message popup
     QMessageBox::information(this, tr("DriveNet - sidechain proposal created!"),
-                          message,
-                          QMessageBox::Ok);
+        message,
+        QMessageBox::Ok);
 
-    // TODO clear out line edits and text box
     ui->lineEditTitle->clear();
     ui->plainTextEditDescription->clear();
     ui->lineEditHash->clear();
@@ -223,64 +229,65 @@ void SidechainMinerDialog::on_pushButtonClose_clicked()
 
 void SidechainMinerDialog::on_toolButtonACKSidechains_clicked()
 {
-    // TODO move text into static const char *
+    // TODO move text into static const
     QMessageBox::information(this, tr("DriveNet - information"),
-                                   tr("Use this page to ACK (acknowledgement) or "
-                                      "NACK (negative-acknowledgement) sidechains.\n\n"
-                                      "Set ACK to activate a proposed sidechain, "
-                                      "and NACK to reject a proposed sidechain.\n\n"
-                                      "Once set, the chosen signal will be included "
-                                      "in blocks mined by this node."),
-                                   QMessageBox::Ok);
+        tr("Sidechain activation signalling:\n\n"
+           "Use this page to ACK (acknowledgement) or NACK "
+           "(negative-acknowledgement) sidechains.\n\n"
+           "Set ACK to activate a proposed sidechain, and NACK to reject a "
+           "proposed sidechain.\n\n"
+           "Once set, the chosen signal will be included in blocks mined by "
+           "this node."),
+        QMessageBox::Ok);
 }
 
 void SidechainMinerDialog::on_toolButtonKeyHash_clicked()
 {
-    // TODO move text into static const char *
+    // TODO move text into static const
     QMessageBox::information(this, tr("DriveNet - information"),
-                                   tr("Sidechain key hash:\n\n"
-                                      "Enter any SHA256 hash. You need to "
-                                      "decide what this hash is. The private "
-                                      "key for the sidechain (and therefore the "
-                                      "deposit script) will be based on this."
-                                      ),
-                                   QMessageBox::Ok);
+        tr("Sidechain address bytes:\n\n"
+           "Deposits to this sidechain must be sent to a specific address "
+           "(really, a specific script). It must be different from the "
+           "addresses in use by active sidechains.\n\n"
+           "Each sidechain must use a unique address or the sidechain software "
+           "will be confused.\n\n"
+           "The address will be based on 256 bits (encoded as 32 bytes of hex) "
+           "- you get to choose what these bits are. Either select them "
+           "yourself or click the random button, and paste these bytes into "
+           "the src/sidechain.h file.\n\n"
+           "Example:\n"
+           "static const std::string SIDECHAIN_ADDRESS_BYTES = \"6e1f86cb9785d4484750970c7f4cd42a142d3c50974a0a3128f562934774b191\";"),
+        QMessageBox::Ok);
 }
 
 void SidechainMinerDialog::on_toolButtonIDHash1_clicked()
 {
     // TODO display message based on current selected version
-    // TODO move text into static const char *
+    // TODO move text into static const
     QMessageBox::information(this, tr("DriveNet - information"),
-                                   tr("Releae tarball:\n\n"
-                                      "hash of the original gitian software build "
-                                      "of this sidechain.\n\n"
-                                      "Use the sha256sum utility to generate this "
-                                      "hash, or copy the hash when it is printed "
-                                      "to the console after gitian builds complete.\n\n"
-                                      "Example:\n"
-                                      "sha256sum DriveNet-12-0.21.00-x86_64-linux-gnu.tar.gz\n\n"
-                                      "Result:\n"
-                                      "fd9637e427f1e967cc658bfe1a836d537346ce3a6dd0746878129bb5bc646680  DriveNet-12-0.21.00-x86_64-linux-gnu.tar.gz\n\n"
-                                      "Paste the resulting hash into the field."
-                                      ),
-                                   QMessageBox::Ok);
+        tr("Release tarball hash:\n\n"
+           "hash of the original gitian software build of this sidechain.\n\n"
+           "Use the sha256sum utility to generate this hash, or copy the hash "
+           "when it is printed to the console after gitian builds complete.\n\n"
+           "Example:\n"
+           "sha256sum DriveNet-12-0.21.00-x86_64-linux-gnu.tar.gz\n\n"
+           "Result:\n"
+           "fd9637e427f1e967cc658bfe1a836d537346ce3a6dd0746878129bb5bc646680  DriveNet-12-0.21.00-x86_64-linux-gnu.tar.gz\n\n"
+           "Paste the resulting hash into this field."),
+        QMessageBox::Ok);
 }
 
 void SidechainMinerDialog::on_toolButtonIDHash2_clicked()
 {
     // TODO display message based on current selected version
-    // TODO move text into static const char *
+    // TODO move text into static const
     QMessageBox::information(this, tr("DriveNet - information"),
-                                   tr("Build commit hash:\n\n"
-                                      "If the software was developed using "
-                                      "git, the build commit hash should match "
-                                      "the commit hash of the first sidechain "
-                                      "release.\n\n"
-                                      "To verify it later, you can look up "
-                                      "this commit in the repository history."
-                                      ),
-                                   QMessageBox::Ok);
+        tr("Build commit hash:\n\n"
+           "If the software was developed using git, the build commit hash "
+           "should match the commit hash of the first sidechain release.\n\n"
+           "To verify it later, you can look up this commit in the repository "
+           "history."),
+        QMessageBox::Ok);
 }
 
 void SidechainMinerDialog::on_pushButtonGenerateConfig_clicked()

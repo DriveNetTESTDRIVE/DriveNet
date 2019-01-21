@@ -306,143 +306,152 @@
               </widget>
              </item>
              <item>
-              <widget class="QLabel" name="label_6">
-               <property name="text">
-                <string>Sidechain key hash</string>
+              <widget class="QGroupBox" name="groupBox">
+               <property name="title">
+                <string>Sidechain identifiers - required by sidechain</string>
                </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QFrame" name="frame_7">
-               <property name="frameShape">
-                <enum>QFrame::NoFrame</enum>
-               </property>
-               <property name="frameShadow">
-                <enum>QFrame::Raised</enum>
-               </property>
-               <layout class="QHBoxLayout" name="horizontalLayout_4">
-                <property name="topMargin">
-                 <number>0</number>
-                </property>
-                <property name="bottomMargin">
-                 <number>6</number>
-                </property>
+               <layout class="QVBoxLayout" name="verticalLayout_12">
                 <item>
-                 <widget class="QLineEdit" name="lineEditHash">
+                 <widget class="QLabel" name="label_6">
                   <property name="text">
-                   <string/>
-                  </property>
-                  <property name="placeholderText">
-                   <string>Sidechain key SHA256 hash</string>
+                   <string>Sidechain address bytes</string>
                   </property>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QPushButton" name="pushButtonRandomKeyHash">
+                 <widget class="QFrame" name="frame_7">
+                  <property name="frameShape">
+                   <enum>QFrame::NoFrame</enum>
+                  </property>
+                  <property name="frameShadow">
+                   <enum>QFrame::Raised</enum>
+                  </property>
+                  <layout class="QHBoxLayout" name="horizontalLayout_4">
+                   <property name="topMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="bottomMargin">
+                    <number>6</number>
+                   </property>
+                   <item>
+                    <widget class="QLineEdit" name="lineEditHash">
+                     <property name="text">
+                      <string/>
+                     </property>
+                     <property name="placeholderText">
+                      <string>Sidechain address bytes</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="pushButtonRandomKeyHash">
+                     <property name="text">
+                      <string>Random</string>
+                     </property>
+                     <property name="icon">
+                      <iconset resource="../drivenet.qrc">
+                       <normaloff>:/icons/refresh</normaloff>:/icons/refresh</iconset>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QToolButton" name="toolButtonKeyHash">
+                     <property name="text">
+                      <string>...</string>
+                     </property>
+                     <property name="icon">
+                      <iconset resource="../drivenet.qrc">
+                       <normaloff>:/icons/transaction_0</normaloff>:/icons/transaction_0</iconset>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="label_11">
                   <property name="text">
-                   <string>Random</string>
-                  </property>
-                  <property name="icon">
-                   <iconset resource="../drivenet.qrc">
-                    <normaloff>:/icons/refresh</normaloff>:/icons/refresh</iconset>
+                   <string>Release tarball hash</string>
                   </property>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QToolButton" name="toolButtonKeyHash">
+                 <widget class="QFrame" name="frame_9">
+                  <property name="frameShape">
+                   <enum>QFrame::NoFrame</enum>
+                  </property>
+                  <property name="frameShadow">
+                   <enum>QFrame::Raised</enum>
+                  </property>
+                  <layout class="QHBoxLayout" name="horizontalLayout_5">
+                   <property name="topMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="bottomMargin">
+                    <number>6</number>
+                   </property>
+                   <item>
+                    <widget class="QLineEdit" name="lineEditIDHash1">
+                     <property name="placeholderText">
+                      <string>Gitian build tarball hash (Linux x86-64)</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QToolButton" name="toolButtonIDHash1">
+                     <property name="text">
+                      <string>...</string>
+                     </property>
+                     <property name="icon">
+                      <iconset resource="../drivenet.qrc">
+                       <normaloff>:/icons/transaction_0</normaloff>:/icons/transaction_0</iconset>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="label_12">
                   <property name="text">
-                   <string>...</string>
-                  </property>
-                  <property name="icon">
-                   <iconset resource="../drivenet.qrc">
-                    <normaloff>:/icons/transaction_0</normaloff>:/icons/transaction_0</iconset>
-                  </property>
-                 </widget>
-                </item>
-               </layout>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLabel" name="label_11">
-               <property name="text">
-                <string>Release tarball hash</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QFrame" name="frame_9">
-               <property name="frameShape">
-                <enum>QFrame::NoFrame</enum>
-               </property>
-               <property name="frameShadow">
-                <enum>QFrame::Raised</enum>
-               </property>
-               <layout class="QHBoxLayout" name="horizontalLayout_5">
-                <property name="topMargin">
-                 <number>0</number>
-                </property>
-                <property name="bottomMargin">
-                 <number>6</number>
-                </property>
-                <item>
-                 <widget class="QLineEdit" name="lineEditIDHash1">
-                  <property name="placeholderText">
-                   <string>Gitian build tarball hash (Linux x86-64)</string>
+                   <string>Build commit hash</string>
                   </property>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QToolButton" name="toolButtonIDHash1">
-                  <property name="text">
-                   <string>...</string>
+                 <widget class="QFrame" name="frame_10">
+                  <property name="frameShape">
+                   <enum>QFrame::NoFrame</enum>
                   </property>
-                  <property name="icon">
-                   <iconset resource="../drivenet.qrc">
-                    <normaloff>:/icons/transaction_0</normaloff>:/icons/transaction_0</iconset>
+                  <property name="frameShadow">
+                   <enum>QFrame::Raised</enum>
                   </property>
-                 </widget>
-                </item>
-               </layout>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLabel" name="label_12">
-               <property name="text">
-                <string>Build commit hash</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QFrame" name="frame_10">
-               <property name="frameShape">
-                <enum>QFrame::NoFrame</enum>
-               </property>
-               <property name="frameShadow">
-                <enum>QFrame::Raised</enum>
-               </property>
-               <layout class="QHBoxLayout" name="horizontalLayout_6">
-                <property name="topMargin">
-                 <number>0</number>
-                </property>
-                <property name="bottomMargin">
-                 <number>6</number>
-                </property>
-                <item>
-                 <widget class="QLineEdit" name="lineEditIDHash2">
-                  <property name="placeholderText">
-                   <string>Gitian build commit hash</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QToolButton" name="toolButtonIDHash2">
-                  <property name="text">
-                   <string>...</string>
-                  </property>
-                  <property name="icon">
-                   <iconset resource="../drivenet.qrc">
-                    <normaloff>:/icons/transaction_0</normaloff>:/icons/transaction_0</iconset>
-                  </property>
+                  <layout class="QHBoxLayout" name="horizontalLayout_6">
+                   <property name="topMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="bottomMargin">
+                    <number>6</number>
+                   </property>
+                   <item>
+                    <widget class="QLineEdit" name="lineEditIDHash2">
+                     <property name="placeholderText">
+                      <string>Gitian build commit hash</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QToolButton" name="toolButtonIDHash2">
+                     <property name="text">
+                      <string>...</string>
+                     </property>
+                     <property name="icon">
+                      <iconset resource="../drivenet.qrc">
+                       <normaloff>:/icons/transaction_0</normaloff>:/icons/transaction_0</iconset>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
                  </widget>
                 </item>
                </layout>
