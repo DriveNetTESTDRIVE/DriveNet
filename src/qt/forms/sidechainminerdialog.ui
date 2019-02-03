@@ -306,6 +306,13 @@
               </widget>
              </item>
              <item>
+              <widget class="Line" name="line_2">
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+              </widget>
+             </item>
+             <item>
               <widget class="QGroupBox" name="groupBox">
                <property name="title">
                 <string>Sidechain identifiers - required by sidechain</string>
@@ -519,6 +526,9 @@
             <layout class="QGridLayout" name="gridLayout">
              <item row="1" column="0">
               <widget class="QCheckBox" name="checkBox">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
                <property name="text">
                 <string>Select all</string>
                </property>
@@ -530,12 +540,15 @@
              <item row="2" column="0">
               <widget class="QListView" name="listView_2">
                <property name="enabled">
-                <bool>true</bool>
+                <bool>false</bool>
                </property>
               </widget>
              </item>
              <item row="0" column="0">
               <widget class="QLabel" name="label_8">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
                <property name="text">
                 <string>Select which sidechain(s) you want to accept BMM requests for</string>
                </property>
