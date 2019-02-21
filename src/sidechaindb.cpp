@@ -272,7 +272,12 @@ bool SidechainDB::GetActivateSidechain(const uint256& u) const
     // TODO change the container to make this more efficient
     for (const uint256& hash : vSidechainHashActivate) {
         if (u == hash) {
-
+            return true;
+        }
+    }
+    // Also check if we created the sidechain proposal, and ACK it
+    for (const SidechainProposal& s : vSidechainProposal) {
+        if (s.GetHash() == u) {
             return true;
         }
     }
@@ -467,6 +472,12 @@ void SidechainDB::ResetSidechains()
 
     // Clear out sidechain activation status
     vActivationStatus.clear();
+
+    // Clear out list of sidechain (hashes) we want to ACK
+    vSidechainHashActivate.clear();
+
+    // Clear out our cache of sidechain proposals
+    vSidechainProposal.clear();
 }
 
 std::string SidechainDB::ToString() const
@@ -919,24 +930,20 @@ bool SidechainDB::ApplyDefaultUpdate()
 
 void SidechainDB::UpdateActivationStatus(const std::vector<uint256>& vHash)
 {
-    // TODO refactor, focusing on clarity over performance right now.
-    // TODO I would personally prefer to remove use of vector::operator[].
+    // TODO refactor
 
-    bool fTestActivation = gArgs.GetBoolArg("-testsidechainactivation", false);
-
-    // Increment the age of all sidechains, keep track of which have expired.
-    std::vector<std::vector<SidechainActivationStatus>::const_iterator> vExpired;
+    // Increment the age of all sidechain proposals, remove expired.
     for (size_t i = 0; i < vActivationStatus.size(); i++) {
         vActivationStatus[i].nAge++;
-        if (vActivationStatus[i].nAge > (fTestActivation ? 100 : SIDECHAIN_ACTIVATION_MAX_AGE)) {
+        if (vActivationStatus[i].nAge > SIDECHAIN_ACTIVATION_MAX_AGE) {
             vActivationStatus[i] = vActivationStatus.back();
             vActivationStatus.pop_back();
         }
     }
 
-    // Calculate failures. Sidechain proposals in the proposal cache which do
-    // not have a sidechain activation commitment in this block will have their
-    // activation failure count incremented by 1.
+    // Calculate failures. Sidechain proposals with activation status will have
+    // their activation failure count increased by 1 if a activation commitment
+    // for them is not found in the block.
     for (size_t i = 0; i < vActivationStatus.size(); i++) {
         bool fFound = false;
         for (const uint256& u : vHash) {
@@ -949,7 +956,7 @@ void SidechainDB::UpdateActivationStatus(const std::vector<uint256>& vHash)
             vActivationStatus[i].nFail++;
     }
 
-    // Make a list of proposals with too many failures to activate
+    // Remove sidechain proposals with too many failures to activate
     std::vector<std::vector<SidechainActivationStatus>::const_iterator> vFail;
     for (size_t i = 0; i < vActivationStatus.size(); i++) {
         if (vActivationStatus[i].nFail >= SIDECHAIN_ACTIVATION_MAX_FAILURES) {
@@ -964,13 +971,14 @@ void SidechainDB::UpdateActivationStatus(const std::vector<uint256>& vHash)
         return;
 
     // Move activated sidechains to vActivatedSidechain
-    std::vector<std::vector<SidechainActivationStatus>::const_iterator> vActivated;
-    std::vector<std::vector<SidechainProposal>::const_iterator> vActivatedMine;
     for (size_t i = 0; i < vActivationStatus.size(); i++) {
-        if (vActivationStatus[i].nAge == (fTestActivation ? 100 : SIDECHAIN_ACTIVATION_MAX_AGE)) {
+        if (vActivationStatus[i].nAge == SIDECHAIN_ACTIVATION_MAX_AGE) {
             // Create sidechain object
             Sidechain sidechain;
             // TODO this also needs to be replaced
+            sidechain.nVersion = vActivationStatus[i].proposal.nVersion;
+            sidechain.hashID1 = vActivationStatus[i].proposal.hashID1;
+            sidechain.hashID2 = vActivationStatus[i].proposal.hashID2;
             sidechain.nSidechain = vActiveSidechain.size();
             sidechain.sidechainPriv = vActivationStatus[i].proposal.sidechainPriv;
             sidechain.sidechainHex = vActivationStatus[i].proposal.sidechainHex;

@@ -237,10 +237,17 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
             GenerateWTPrimeHashCommitment(*pblock, vFreshWTPrime.back(), s.nSidechain, chainparams.GetConsensus());
         }
 
+        // TODO this should loop through sidechains with activation status,
+        // and activated sidechains to figure out which proposals we haven't
+        // proposed yet.
         // Commit the oldest uncommitted sidechain proposal that we have created
+        //
+        // If we commit a proposal, save the hash to easily ACK it later
+        uint256 hashProposal;
         std::vector<SidechainProposal> vProposal = scdb.GetSidechainProposals();
         if (!vProposal.empty()) {
             GenerateSidechainProposalCommitment(*pblock, vProposal.front(), chainparams.GetConsensus());
+            hashProposal = vProposal.front().GetHash();
         }
 
         // TODO for now, if this is set to 1 (true), activate any sidechain
@@ -249,12 +256,17 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
         // line, in which case only activate those sidechain(s).
         bool fAnySidechain = gArgs.GetBoolArg("-activatesidechains", false);
 
-        // Commit sidechain activation
+        // Commit sidechain activation for proposals in activation status cache
+        // which we have configured to ACK
         std::vector<SidechainActivationStatus> vActivationStatus;
         vActivationStatus = scdb.GetSidechainActivationStatus();
         for (const SidechainActivationStatus& s : vActivationStatus) {
             if (fAnySidechain || scdb.GetActivateSidechain(s.proposal.GetHash()))
                 GenerateSidechainActivationCommitment(*pblock, s.proposal.GetHash(), chainparams.GetConsensus());
+        }
+        // If we've proposed a sidechain in this block, ACK it
+        if (!hashProposal.IsNull()) {
+            GenerateSidechainActivationCommitment(*pblock, hashProposal, chainparams.GetConsensus());
         }
     }
 
@@ -436,7 +448,7 @@ bool BlockAssembler::CreateWTPrimePayout(uint8_t nSidechain, CMutableTransaction
     CKeyID sidechainKeyID;
     sidechainKeyID.SetHex(sidechain.sidechainKeyID);
     CScript sidechainScript;
-    sidechainScript << OP_DUP << OP_HASH160 << ToByteVector(sidechainKeyID) << OP_EQUALVERIFY << OP_CHECKSIG;
+    sidechainScript << OP_DUP << OP_HASH160 << ParseHex(sidechain.sidechainKeyID) << OP_EQUALVERIFY << OP_CHECKSIG;
 
     // Add placeholder change return as last output
     mtx.vout.push_back(CTxOut(0, sidechainScript));

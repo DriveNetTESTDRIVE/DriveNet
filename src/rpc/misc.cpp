@@ -829,15 +829,15 @@ UniValue listsidechaindeposits(const JSONRPCRequest& request)
     if (request.fHelp || request.params.size() < 1)
         throw std::runtime_error(
             "listsidechaindeposits\n"
-            "List the most recent cached deposits (for nSidechain). Optionally "
-            "limited to count. Note that this does not return all sidechain "
-            "deposits, just the most recent deposits in the cache.\n"
+            "List the most recent cached deposits for sidechain.\n"
+            "Optionally limited to count. Note that this only has access to "
+            "deposits which are currently cached.\n"
             "\nArguments:\n"
-            "1. \"hash\"    (string, required) The sidechain build commit hash\n"
-            "2. \"count\"   (numeric, optional) The number of most recent deposits to list\n"
+            "1. \"sidechainkey\"  (string, required) The sidechain key\n"
+            "2. \"count\"         (numeric, optional) The number of most recent deposits to list\n"
             "\nExamples:\n"
-            + HelpExampleCli("listsidechaindeposits", "\"hash\", \"count\"")
-            + HelpExampleRpc("listsidechaindeposits", "\"hash\", \"count\"")
+            + HelpExampleCli("listsidechaindeposits", "\"sidechainkey\", \"count\"")
+            + HelpExampleRpc("listsidechaindeposits", "\"sidechainkey\", \"count\"")
             );
 
 #ifdef ENABLE_WALLET
@@ -853,7 +853,7 @@ UniValue listsidechaindeposits(const JSONRPCRequest& request)
     std::string strSidechain = request.params[0].get_str();
     uint256 hashSidechain = uint256S(strSidechain);
     if (hashSidechain.IsNull())
-        throw std::runtime_error("Invalid sidechain build commit hash!");
+        throw std::runtime_error("Invalid sidechain key!");
 
     // Figure out the base58 encoding of the private key
     CKey key;
@@ -873,7 +873,7 @@ UniValue listsidechaindeposits(const JSONRPCRequest& request)
 #ifdef ENABLE_WALLET
     std::vector<SidechainDeposit> vDeposit = scdb.GetDeposits(uint256S(vchSecret.ToString()));
     if (!vDeposit.size())
-        throw std::runtime_error("No deposits in cache");
+        throw std::runtime_error("No deposits in cache for this sidechain!");
 
     for (auto rit = vDeposit.crbegin(); rit != vDeposit.crend(); rit++) {
         const SidechainDeposit d = *rit;
@@ -1249,6 +1249,9 @@ UniValue listactivesidechains(const JSONRPCRequest& request)
         obj.push_back(Pair("privatekey", s.sidechainPriv));
         obj.push_back(Pair("keyid", s.sidechainKeyID));
         obj.push_back(Pair("hex", s.sidechainHex));
+        obj.push_back(Pair("nversion", s.nVersion));
+        obj.push_back(Pair("hashid1", s.hashID1.ToString()));
+        obj.push_back(Pair("hashid2", s.hashID2.ToString()));
 
         ret.push_back(obj);
     }

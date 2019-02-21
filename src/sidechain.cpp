@@ -146,18 +146,20 @@ bool SidechainProposal::DeserializeFromScript(const CScript& script)
     if (vch.empty())
         return false;
 
-    //std::vector<unsigned char> vch(script.begin(), script.end());
     const char *vch0 = (const char *) &vch.begin()[0];
     CDataStream ds(vch0, vch0+vch.size(), SER_DISK, CLIENT_VERSION);
 
     SidechainProposal sidechain;
     sidechain.Unserialize(ds);
 
+    nVersion = sidechain.nVersion;
     title = sidechain.title;
     description = sidechain.description;
     sidechainKeyID = sidechain.sidechainKeyID;
     sidechainHex = sidechain.sidechainHex;
     sidechainPriv = sidechain.sidechainPriv;
+    hashID1 = sidechain.hashID1;
+    hashID2 = sidechain.hashID2;
 
     return true;
 }
