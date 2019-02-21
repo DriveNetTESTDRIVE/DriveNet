@@ -11,7 +11,6 @@
 #include <sidechain.h>
 #include <uint256.h>
 #include <utilstrencodings.h>
-#include <util.h> // TODO remove, for testing only (access to gArgs)
 
 SidechainDB::SidechainDB()
 {
@@ -478,6 +477,18 @@ void SidechainDB::ResetSidechains()
 
     // Clear out our cache of sidechain proposals
     vSidechainProposal.clear();
+
+    // Since vWTPrimeStatus and ratchet are based on active sidechains, we will
+    // also reset them if all sidechains are reset.
+
+    // Clear out WT^ state
+    vWTPrimeStatus.clear();
+    vWTPrimeStatus.resize(vActiveSidechain.size());
+
+    // Clear out BMM LD
+    ratchet.clear();
+    ratchet.resize(vActiveSidechain.size());
+
 }
 
 std::string SidechainDB::ToString() const

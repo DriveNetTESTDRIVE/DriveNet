@@ -3175,8 +3175,6 @@ bool CWallet::CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, 
     // User deposit data script
     CScript dataScript = CScript() << OP_RETURN << CScriptNum(nSidechain) << ToByteVector(keyID);
 
-    // TODO change this mess, drop HexStr
-    //const Sidechain& sidechain = ValidSidechains[nSidechain];
     std::vector<unsigned char> vch(ParseHex(HexStr(scriptPubKeyIn)));
     CScript sidechainScript = CScript(vch.begin(), vch.end());
 
