@@ -21,6 +21,10 @@ class SidechainEscrowTableModel;
 class SidechainWithdrawalTableModel;
 class SidechainMinerDialog;
 
+QT_BEGIN_NAMESPACE
+class QTimer;
+QT_END_NAMESPACE
+
 namespace Ui {
 class SidechainPage;
 }
@@ -61,18 +65,26 @@ public Q_SLOTS:
 
     void on_pushButtonManageSidechains_clicked();
 
+    void CheckForSidechainUpdates();
+
 private:
     Ui::SidechainPage *ui;
 
     WalletModel *walletModel;
 
-    SidechainEscrowTableModel *escrowModel;
-    SidechainWithdrawalTableModel *withdrawalModel;
-    SidechainMinerDialog *minerDialog;
+    QTimer *pollTimer;
 
+    SidechainEscrowTableModel *escrowModel = nullptr;
+    SidechainWithdrawalTableModel *withdrawalModel = nullptr;
+    SidechainMinerDialog *minerDialog = nullptr;
+
+    void SetupSidechainList();
     void SetupTables();
 
     bool validateDepositAmount();
+
+    // The sidechains that are currently cached for the list widget
+    std::vector<Sidechain> vSidechain;
 };
 
 #endif // SIDECHAINPAGE_H

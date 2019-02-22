@@ -34,6 +34,7 @@
 #include <QMessageBox>
 #include <QScrollBar>
 #include <QStackedWidget>
+#include <QTimer>
 
 #include <sstream>
 
@@ -45,45 +46,19 @@ SidechainPage::SidechainPage(QWidget *parent) :
 
     ui->listWidgetSidechains->setIconSize(QSize(32, 32));
 
-    // Setup Sidechains list widget
-    std::vector<Sidechain> vSidechain = scdb.GetActiveSidechains();
-
-    // If there are no active sidechains, display message
-    if (vSidechain.empty())
-        ui->stackedWidgetSecondary->setCurrentIndex(1);
-
-    for (const Sidechain& s : vSidechain) {
-        QListWidgetItem *item = new QListWidgetItem(ui->listWidgetSidechains);
-
-        // Set icon
-        QIcon icon(GetSidechainIconPath(s.nSidechain));
-        item->setIcon(icon);
-
-        // Set text
-        item->setText(QString::fromStdString(scdb.GetSidechainName(s.nSidechain)));
-        QFont font = item->font();
-        font.setPointSize(16);
-        item->setFont(font);
-
-        ui->listWidgetSidechains->addItem(item);
-    }
-
-    // Setup sidechain selection combo box
-    for (const Sidechain& s : vSidechain) {
-        ui->comboBoxSidechains->addItem(QString::fromStdString(scdb.GetSidechainName(s.nSidechain)));
-    }
-
-    // Initialize table models
-    escrowModel = new SidechainEscrowTableModel(this);
-    withdrawalModel = new SidechainWithdrawalTableModel(this);
-
-    // Initialize miner popup window
-    minerDialog = new SidechainMinerDialog(this);
+    // Setup sidechain list widget & combo box
+    SetupSidechainList();
 
     // Setup the tables
     SetupTables();
 
-    ui->listWidgetSidechains->setCurrentRow(0);
+    // Initialize miner popup window. We want users to be able to keep this
+    // window open while using the rest of the software.
+    minerDialog = new SidechainMinerDialog(this);
+
+    pollTimer = new QTimer(this);
+    connect(pollTimer, SIGNAL(timeout()), this, SLOT(CheckForSidechainUpdates()));
+    pollTimer->start(MODEL_UPDATE_DELAY);
 }
 
 SidechainPage::~SidechainPage()
@@ -116,8 +91,59 @@ void SidechainPage::setBalance(const CAmount& balance, const CAmount& unconfirme
     //ui->pending->setText(BitcoinUnits::formatWithUnit(unit, pending, false, BitcoinUnits::separatorAlways));
 }
 
+void SidechainPage::SetupSidechainList()
+{
+    // Setup Sidechains list widget
+    std::vector<Sidechain> vSidechain = scdb.GetActiveSidechains();
+
+    // If there are no active sidechains, display message
+    if (vSidechain.empty())
+        ui->stackedWidgetSecondary->setCurrentIndex(1);
+    else
+        ui->stackedWidgetSecondary->setCurrentIndex(0);
+
+    // Remove any existing list widget items
+    ui->listWidgetSidechains->clear();
+
+    // Update the list widget with new sidechains
+    for (const Sidechain& s : vSidechain) {
+        QListWidgetItem *item = new QListWidgetItem(ui->listWidgetSidechains);
+
+        // Set icon
+        QIcon icon(GetSidechainIconPath(s.nSidechain));
+        item->setIcon(icon);
+
+        // Set text
+        item->setText(QString::fromStdString(scdb.GetSidechainName(s.nSidechain)));
+        QFont font = item->font();
+        font.setPointSize(16);
+        item->setFont(font);
+
+        ui->listWidgetSidechains->addItem(item);
+    }
+
+    // Remove any existing sidechains from the selection box
+    ui->comboBoxSidechains->clear();
+
+    // Setup sidechain selection combo box
+    for (const Sidechain& s : vSidechain) {
+        ui->comboBoxSidechains->addItem(QString::fromStdString(scdb.GetSidechainName(s.nSidechain)));
+    }
+
+    ui->listWidgetSidechains->setCurrentRow(0);
+}
+
 void SidechainPage::SetupTables()
 {
+    if (escrowModel)
+        delete escrowModel;
+    if (withdrawalModel)
+        delete withdrawalModel;
+
+    // Initialize table models
+    escrowModel = new SidechainEscrowTableModel(this);
+    withdrawalModel = new SidechainWithdrawalTableModel(this);
+
     // Add models to table views
     ui->tableViewEscrow->setModel(escrowModel);
     ui->tableViewWT->setModel(withdrawalModel);
@@ -153,6 +179,7 @@ void SidechainPage::SetupTables()
     ui->tableViewEscrow->setWordWrap(false);
     ui->tableViewWT->setWordWrap(false);
 }
+
 void SidechainPage::on_pushButtonDeposit_clicked()
 {
     QMessageBox messageBox;
@@ -256,7 +283,6 @@ void SidechainPage::on_pushButtonClear_clicked()
     ui->payTo->clear();
 }
 
-
 void SidechainPage::on_comboBoxSidechains_currentIndexChanged(const int i)
 {
     if (!IsSidechainNumberValid(i))
@@ -312,4 +338,15 @@ bool SidechainPage::validateDepositAmount()
 void SidechainPage::on_pushButtonManageSidechains_clicked()
 {
     minerDialog->show();
+}
+
+void SidechainPage::CheckForSidechainUpdates()
+{
+    std::vector<Sidechain> vSidechainNew = scdb.GetActiveSidechains();
+    if (vSidechainNew != vSidechain) {
+        vSidechain = vSidechainNew;
+
+        SetupSidechainList();
+        SetupTables();
+    }
 }
