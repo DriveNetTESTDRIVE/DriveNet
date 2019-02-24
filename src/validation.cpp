@@ -728,7 +728,7 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
                         nCTIPSpent++;
                 }
                 if (nCTIPSpent != 1)
-                    return state.DoS(100, false, REJECT_INVALID, "sidechain-deposit-invalid-no-ctip-spent");
+                    return state.DoS(100, false, REJECT_INVALID, "sidechain-deposit-invalid-ctip-unspent");
             }
 
             // Track with mempool
@@ -2261,6 +2261,9 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
 
     if (drivechainsEnabled && vDepositTx.size())
         scdb.AddDeposits(vDepositTx, block.GetHash());
+
+    if (drivechainsEnabled)
+        mempool.UpdateCTIP(scdb.GetCTIP());
 
     if (drivechainsEnabled) {
         // Update / synchronize SCDB
@@ -5312,6 +5315,8 @@ bool LoadDepositCache()
     // TODO nSidechain
     if (!vDeposit.empty())
         scdb.AddDeposits(vDeposit);
+
+    mempool.UpdateCTIP(scdb.GetCTIP());
 
     return true;
 }

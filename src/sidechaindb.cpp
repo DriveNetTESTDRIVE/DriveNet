@@ -22,12 +22,14 @@ void SidechainDB::AddDeposits(const std::vector<CTransaction>& vtx, const uint25
     for (const CTransaction& tx : vtx) {
         // Create sidechain deposit objects from transaction outputs
         SidechainDeposit deposit;
+        bool fBurnFound = false;
         for (size_t i = 0; i < tx.vout.size(); i++) {
             const CScript &scriptPubKey = tx.vout[i].scriptPubKey;
             uint8_t nSidechainTmp;
             if (HasSidechainScript(std::vector<CScript>{scriptPubKey}, nSidechainTmp)) {
                 // Copy output index of deposit burn and move on
                 deposit.n = i;
+                fBurnFound = true;
                 continue;
             }
 
@@ -60,21 +62,25 @@ void SidechainDB::AddDeposits(const std::vector<CTransaction>& vtx, const uint25
         }
         // TODO Confirm that deposit.nSidechain is correct by comparing deposit
         // output KeyID with sidechain KeyID before adding deposit to cache.
-        if (CTransaction(deposit.tx) == tx) {
+        // TODO Confirm single burn
+        if (CTransaction(deposit.tx) == tx && fBurnFound) {
             vDeposit.push_back(deposit);
         }
     }
 
     // Add deposits to cache
-    for (const SidechainDeposit& d : vDeposit) {
-        if (!HaveDepositCached(d))
-            vDepositCache.push_back(d);
-    }
+    AddDeposits(vDeposit);
 }
 
 void SidechainDB::AddDeposits(const std::vector<SidechainDeposit>& vDeposit)
 {
     for (const SidechainDeposit& d : vDeposit) {
+        if (!IsSidechainNumberValid(d.nSidechain))
+            continue;
+        if (HaveDepositCached(d))
+            continue;
+
+        mapCTIP[d.nSidechain] = COutPoint(d.tx.GetHash(), d.n);
         vDepositCache.push_back(d);
     }
 }
@@ -211,13 +217,12 @@ int SidechainDB::GetActiveSidechainCount() const
 
 std::vector<SidechainDeposit> SidechainDB::GetDeposits(uint8_t nSidechain) const
 {
-    // TODO C++11 const for loop
-    std::vector<SidechainDeposit> vSidechainDeposit;
-    for (size_t i = 0; i < vDepositCache.size(); i++) {
-        if (vDepositCache[i].nSidechain == nSidechain)
-            vSidechainDeposit.push_back(vDepositCache[i]);
+    std::vector<SidechainDeposit> vDeposit;
+    for (const SidechainDeposit& d : vDepositCache) {
+        if (d.nSidechain == nSidechain)
+            vDeposit.push_back(d);
     }
-    return vSidechainDeposit;
+    return vDeposit;
 }
 
 std::vector<SidechainDeposit> SidechainDB::GetDeposits(const uint256& hashSidechain) const
@@ -311,17 +316,14 @@ bool SidechainDB::GetLinkingData(uint8_t nSidechain, std::vector<SidechainLD>& l
 
 bool SidechainDB::GetSidechainScript(const uint8_t nSidechain, CScript& scriptPubKey) const
 {
-    if (!IsSidechainNumberValid(nSidechain))
+    Sidechain sidechain;
+    if (!GetSidechain(nSidechain, sidechain))
         return false;
 
-    for (const Sidechain& s : vActiveSidechain) {
-        if (s.nSidechain == nSidechain) {
-            std::vector<unsigned char> vch(ParseHex(s.sidechainHex));
-            scriptPubKey = CScript(vch.begin(), vch.end());
-            return true;
-        }
-    }
-    return false;
+    std::vector<unsigned char> vch(ParseHex(sidechain.sidechainHex));
+    scriptPubKey = CScript(vch.begin(), vch.end());
+
+    return true;
 }
 
 bool SidechainDB::GetSidechain(const uint8_t nSidechain, Sidechain& sidechain) const
@@ -478,6 +480,9 @@ void SidechainDB::ResetSidechains()
     // Clear out our cache of sidechain proposals
     vSidechainProposal.clear();
 
+    // Clear out our cache of sidechain deposits
+    vDepositCache.clear();
+
     // Since vWTPrimeStatus and ratchet are based on active sidechains, we will
     // also reset them if all sidechains are reset.
 
@@ -488,7 +493,6 @@ void SidechainDB::ResetSidechains()
     // Clear out BMM LD
     ratchet.clear();
     ratchet.resize(vActiveSidechain.size());
-
 }
 
 std::string SidechainDB::ToString() const
@@ -911,6 +915,25 @@ std::vector<SidechainProposal> SidechainDB::GetSidechainProposals() const
 std::vector<uint256> SidechainDB::GetSidechainsToActivate() const
 {
     return vSidechainHashActivate;
+}
+
+bool SidechainDB::GetCTIP(uint8_t nSidechain, COutPoint& out) const
+{
+    if (!IsSidechainNumberValid(nSidechain))
+        return false;
+
+    std::map<uint8_t, COutPoint>::const_iterator it = mapCTIP.find(nSidechain);
+    if (it != mapCTIP.end()) {
+        out = it->second;
+        return true;
+    }
+
+    return false;
+}
+
+std::map<uint8_t, COutPoint> SidechainDB::GetCTIP() const
+{
+    return mapCTIP;
 }
 
 std::string SidechainDB::GetSidechainName(uint8_t nSidechain) const

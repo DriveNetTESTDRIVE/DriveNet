@@ -1056,11 +1056,14 @@ void CTxMemPool::SelectBMMRequests()
             uint16_t nPrevBlockRef;
 
             if (it->GetTx().criticalData.IsBMMRequest(nSidechain, nPrevBlockRef)) {
+                if (!scdb.IsSidechainNumberValid(nSidechain))
+                    continue;
+
                 if (nSidechain > vSidechain.size()) {
                     txToRemove.insert(it);
                     continue;
                 }
-
+                else
                 if (vSidechain[nSidechain] == false)
                     vSidechain[nSidechain] = true;
                 else
@@ -1070,6 +1073,11 @@ void CTxMemPool::SelectBMMRequests()
     }
 
     RemoveStaged(txToRemove, false, MemPoolRemovalReason::EXPIRY);
+}
+
+void CTxMemPool::UpdateCTIP(const std::map<uint8_t, COutPoint>& mapCTIP)
+{
+    mapLastSidechainDeposit = mapCTIP;
 }
 
 CFeeRate CTxMemPool::GetMinFee(size_t sizelimit) const {

@@ -21,9 +21,11 @@ BOOST_AUTO_TEST_CASE(sidechainproposal_single)
     SidechainProposal proposal;
     proposal.title = "test";
     proposal.description = "description";
-    proposal.sidechainKeyID = "95fa3714e79a7823f91b1956b1fb922e4e5cd5bdc5941c3efbf521a6b5ce64bc";
-    proposal.sidechainHex = "95fa3714e79a7823f91b1956b1fb922e4e5cd5bdc5941c3efbf521a6b5ce64bc";
-    proposal.sidechainPriv = "95fa3714e79a7823f91b1956b1fb922e4e5cd5bdc5941c3efbf521a6b5ce64bc";
+    proposal.sidechainKeyID = "80dca759b4ff2c9e9b65ec790703ad09fba844cd";
+    proposal.sidechainHex = "76a91480dca759b4ff2c9e9b65ec790703ad09fba844cd88ac";
+    proposal.sidechainPriv = "5Jf2vbdzdCccKApCrjmwL5EFc4f1cUm5Ah4L4LGimEuFyqYpa9r";
+    proposal.hashID1 = uint256S("b55d224f1fda033d930c92b1b40871f209387355557dd5e0d2b5dd9bb813c33f");
+    proposal.hashID2 = uint256S("9fafdd046727ada4612cf9a860dd3e72ec0187bda31b1ef6fe84207b36537222");
 
     // Create transaction output with sidechain proposal
     CTxOut out;
@@ -53,9 +55,11 @@ BOOST_AUTO_TEST_CASE(sidechainproposal_multiple)
     SidechainProposal proposal1;
     proposal1.title = "test1";
     proposal1.description = "description";
-    proposal1.sidechainKeyID = "95fa3714e79a7823f91b1956b1fb922e4e5cd5bdc5941c3efbf521a6b5ce64bc";
-    proposal1.sidechainHex = "95fa3714e79a7823f91b1956b1fb922e4e5cd5bdc5941c3efbf521a6b5ce64bc";
-    proposal1.sidechainPriv = "95fa3714e79a7823f91b1956b1fb922e4e5cd5bdc5941c3efbf521a6b5ce64bc";
+    proposal1.sidechainKeyID = "80dca759b4ff2c9e9b65ec790703ad09fba844cd";
+    proposal1.sidechainHex = "76a91480dca759b4ff2c9e9b65ec790703ad09fba844cd88ac";
+    proposal1.sidechainPriv = "5Jf2vbdzdCccKApCrjmwL5EFc4f1cUm5Ah4L4LGimEuFyqYpa9r";
+    proposal1.hashID1 = uint256S("b55d224f1fda033d930c92b1b40871f209387355557dd5e0d2b5dd9bb813c33f");
+    proposal1.hashID2 = uint256S("9fafdd046727ada4612cf9a860dd3e72ec0187bda31b1ef6fe84207b36537222");
 
     // Create transaction output with sidechain proposal
     CTxOut out;
@@ -72,9 +76,11 @@ BOOST_AUTO_TEST_CASE(sidechainproposal_multiple)
     SidechainProposal proposal2;
     proposal2.title = "test2";
     proposal2.description = "description";
-    proposal2.sidechainKeyID = "95fa3714e79a7823f91b1956b1fb922e4e5cd5bdc5941c3efbf521a6b5ce64bc";
-    proposal2.sidechainHex = "95fa3714e79a7823f91b1956b1fb922e4e5cd5bdc5941c3efbf521a6b5ce64bc";
-    proposal2.sidechainPriv = "95fa3714e79a7823f91b1956b1fb922e4e5cd5bdc5941c3efbf521a6b5ce64bc";
+    proposal2.sidechainKeyID = "80dca759b4ff2c9e9b65ec790703ad09fba844cd";
+    proposal2.sidechainHex = "76a91480dca759b4ff2c9e9b65ec790703ad09fba844cd88ac";
+    proposal2.sidechainPriv = "5Jf2vbdzdCccKApCrjmwL5EFc4f1cUm5Ah4L4LGimEuFyqYpa9r";
+    proposal2.hashID1 = uint256S("b55d224f1fda033d930c92b1b40871f209387355557dd5e0d2b5dd9bb813c33f");
+    proposal2.hashID2 = uint256S("9fafdd046727ada4612cf9a860dd3e72ec0187bda31b1ef6fe84207b36537222");
 
     // Create transaction output with sidechain proposal
     CTxOut out2;
@@ -110,9 +116,11 @@ BOOST_AUTO_TEST_CASE(sidechainproposal_perblocklimit)
     SidechainProposal proposal1;
     proposal1.title = "test1";
     proposal1.description = "description";
-    proposal1.sidechainKeyID = "95fa3714e79a7823f91b1956b1fb922e4e5cd5bdc5941c3efbf521a6b5ce64bc";
-    proposal1.sidechainHex = "95fa3714e79a7823f91b1956b1fb922e4e5cd5bdc5941c3efbf521a6b5ce64bc";
-    proposal1.sidechainPriv = "95fa3714e79a7823f91b1956b1fb922e4e5cd5bdc5941c3efbf521a6b5ce64bc";
+    proposal1.sidechainKeyID = "80dca759b4ff2c9e9b65ec790703ad09fba844cd";
+    proposal1.sidechainHex = "76a91480dca759b4ff2c9e9b65ec790703ad09fba844cd88ac";
+    proposal1.sidechainPriv = "5Jf2vbdzdCccKApCrjmwL5EFc4f1cUm5Ah4L4LGimEuFyqYpa9r";
+    proposal1.hashID1 = uint256S("b55d224f1fda033d930c92b1b40871f209387355557dd5e0d2b5dd9bb813c33f");
+    proposal1.hashID2 = uint256S("9fafdd046727ada4612cf9a860dd3e72ec0187bda31b1ef6fe84207b36537222");
 
     // Create transaction output with sidechain proposal
     CTxOut out;
@@ -125,9 +133,11 @@ BOOST_AUTO_TEST_CASE(sidechainproposal_perblocklimit)
     SidechainProposal proposal2;
     proposal2.title = "test2";
     proposal2.description = "description";
-    proposal2.sidechainKeyID = "95fa3714e79a7823f91b1956b1fb922e4e5cd5bdc5941c3efbf521a6b5ce64bc";
-    proposal2.sidechainHex = "95fa3714e79a7823f91b1956b1fb922e4e5cd5bdc5941c3efbf521a6b5ce64bc";
-    proposal2.sidechainPriv = "95fa3714e79a7823f91b1956b1fb922e4e5cd5bdc5941c3efbf521a6b5ce64bc";
+    proposal2.sidechainKeyID = "80dca759b4ff2c9e9b65ec790703ad09fba844cd";
+    proposal2.sidechainHex = "76a91480dca759b4ff2c9e9b65ec790703ad09fba844cd88ac";
+    proposal2.sidechainPriv = "5Jf2vbdzdCccKApCrjmwL5EFc4f1cUm5Ah4L4LGimEuFyqYpa9r";
+    proposal2.hashID1 = uint256S("b55d224f1fda033d930c92b1b40871f209387355557dd5e0d2b5dd9bb813c33f");
+    proposal2.hashID2 = uint256S("9fafdd046727ada4612cf9a860dd3e72ec0187bda31b1ef6fe84207b36537222");
 
     // Create transaction output with sidechain proposal
     CTxOut out2;
@@ -165,9 +175,11 @@ BOOST_AUTO_TEST_CASE(sidechainactivation_activate)
     SidechainProposal proposal;
     proposal.title = "test";
     proposal.description = "description";
-    proposal.sidechainKeyID = "95fa3714e79a7823f91b1956b1fb922e4e5cd5bdc5941c3efbf521a6b5ce64bc";
-    proposal.sidechainHex = "95fa3714e79a7823f91b1956b1fb922e4e5cd5bdc5941c3efbf521a6b5ce64bc";
-    proposal.sidechainPriv = "95fa3714e79a7823f91b1956b1fb922e4e5cd5bdc5941c3efbf521a6b5ce64bc";
+    proposal.sidechainKeyID = "80dca759b4ff2c9e9b65ec790703ad09fba844cd";
+    proposal.sidechainHex = "76a91480dca759b4ff2c9e9b65ec790703ad09fba844cd88ac";
+    proposal.sidechainPriv = "5Jf2vbdzdCccKApCrjmwL5EFc4f1cUm5Ah4L4LGimEuFyqYpa9r";
+    proposal.hashID1 = uint256S("b55d224f1fda033d930c92b1b40871f209387355557dd5e0d2b5dd9bb813c33f");
+    proposal.hashID2 = uint256S("9fafdd046727ada4612cf9a860dd3e72ec0187bda31b1ef6fe84207b36537222");
 
     // Create transaction output with sidechain proposal
     CTxOut out;
@@ -222,9 +234,11 @@ BOOST_AUTO_TEST_CASE(sidechainactivation_activate_multi)
     SidechainProposal proposal;
     proposal.title = "test";
     proposal.description = "description";
-    proposal.sidechainKeyID = "95fa3714e79a7823f91b1956b1fb922e4e5cd5bdc5941c3efbf521a6b5ce64bc";
-    proposal.sidechainHex = "95fa3714e79a7823f91b1956b1fb922e4e5cd5bdc5941c3efbf521a6b5ce64bc";
-    proposal.sidechainPriv = "95fa3714e79a7823f91b1956b1fb922e4e5cd5bdc5941c3efbf521a6b5ce64bc";
+    proposal.sidechainKeyID = "80dca759b4ff2c9e9b65ec790703ad09fba844cd";
+    proposal.sidechainHex = "76a91480dca759b4ff2c9e9b65ec790703ad09fba844cd88ac";
+    proposal.sidechainPriv = "5Jf2vbdzdCccKApCrjmwL5EFc4f1cUm5Ah4L4LGimEuFyqYpa9r";
+    proposal.hashID1 = uint256S("b55d224f1fda033d930c92b1b40871f209387355557dd5e0d2b5dd9bb813c33f");
+    proposal.hashID2 = uint256S("9fafdd046727ada4612cf9a860dd3e72ec0187bda31b1ef6fe84207b36537222");
 
     // Create transaction output with sidechain proposal
     CTxOut out;
@@ -245,9 +259,11 @@ BOOST_AUTO_TEST_CASE(sidechainactivation_activate_multi)
     SidechainProposal proposal2;
     proposal2.title = "test2";
     proposal2.description = "description";
-    proposal2.sidechainKeyID = "95fa3714e79a7823f91b1956b1fb922e4e5cd5bdc5941c3efbf521a6b5ce64bc";
-    proposal2.sidechainHex = "95fa3714e79a7823f91b1956b1fb922e4e5cd5bdc5941c3efbf521a6b5ce64bc";
-    proposal2.sidechainPriv = "95fa3714e79a7823f91b1956b1fb922e4e5cd5bdc5941c3efbf521a6b5ce64bc";
+    proposal2.sidechainKeyID = "80dca759b4ff2c9e9b65ec790703ad09fba844cd";
+    proposal2.sidechainHex = "76a91480dca759b4ff2c9e9b65ec790703ad09fba844cd88ac";
+    proposal2.sidechainPriv = "5Jf2vbdzdCccKApCrjmwL5EFc4f1cUm5Ah4L4LGimEuFyqYpa9r";
+    proposal2.hashID1 = uint256S("b55d224f1fda033d930c92b1b40871f209387355557dd5e0d2b5dd9bb813c33f");
+    proposal2.hashID2 = uint256S("9fafdd046727ada4612cf9a860dd3e72ec0187bda31b1ef6fe84207b36537222");
 
     // Create transaction output with sidechain proposal
     out.scriptPubKey = proposal2.GetScript();
@@ -301,9 +317,11 @@ BOOST_AUTO_TEST_CASE(sidechainactivation_activate_multi_seperate)
     SidechainProposal proposal;
     proposal.title = "test";
     proposal.description = "description";
-    proposal.sidechainKeyID = "95fa3714e79a7823f91b1956b1fb922e4e5cd5bdc5941c3efbf521a6b5ce64bc";
-    proposal.sidechainHex = "95fa3714e79a7823f91b1956b1fb922e4e5cd5bdc5941c3efbf521a6b5ce64bc";
-    proposal.sidechainPriv = "95fa3714e79a7823f91b1956b1fb922e4e5cd5bdc5941c3efbf521a6b5ce64bc";
+    proposal.sidechainKeyID = "80dca759b4ff2c9e9b65ec790703ad09fba844cd";
+    proposal.sidechainHex = "76a91480dca759b4ff2c9e9b65ec790703ad09fba844cd88ac";
+    proposal.sidechainPriv = "5Jf2vbdzdCccKApCrjmwL5EFc4f1cUm5Ah4L4LGimEuFyqYpa9r";
+    proposal.hashID1 = uint256S("b55d224f1fda033d930c92b1b40871f209387355557dd5e0d2b5dd9bb813c33f");
+    proposal.hashID2 = uint256S("9fafdd046727ada4612cf9a860dd3e72ec0187bda31b1ef6fe84207b36537222");
 
     // Create transaction output with sidechain proposal
     CTxOut out;
@@ -350,9 +368,11 @@ BOOST_AUTO_TEST_CASE(sidechainactivation_activate_multi_seperate)
     SidechainProposal proposal2;
     proposal2.title = "test2";
     proposal2.description = "description";
-    proposal2.sidechainKeyID = "95fa3714e79a7823f91b1956b1fb922e4e5cd5bdc5941c3efbf521a6b5ce64bc";
-    proposal2.sidechainHex = "95fa3714e79a7823f91b1956b1fb922e4e5cd5bdc5941c3efbf521a6b5ce64bc";
-    proposal2.sidechainPriv = "95fa3714e79a7823f91b1956b1fb922e4e5cd5bdc5941c3efbf521a6b5ce64bc";
+    proposal2.sidechainKeyID = "80dca759b4ff2c9e9b65ec790703ad09fba844cd";
+    proposal2.sidechainHex = "76a91480dca759b4ff2c9e9b65ec790703ad09fba844cd88ac";
+    proposal2.sidechainPriv = "5Jf2vbdzdCccKApCrjmwL5EFc4f1cUm5Ah4L4LGimEuFyqYpa9r";
+    proposal2.hashID1 = uint256S("b55d224f1fda033d930c92b1b40871f209387355557dd5e0d2b5dd9bb813c33f");
+    proposal2.hashID2 = uint256S("9fafdd046727ada4612cf9a860dd3e72ec0187bda31b1ef6fe84207b36537222");
 
     // Create transaction output with sidechain proposal
     out.scriptPubKey = proposal2.GetScript();
@@ -398,9 +418,11 @@ BOOST_AUTO_TEST_CASE(sidechainactivation_failActivation)
     SidechainProposal proposal;
     proposal.title = "test";
     proposal.description = "description";
-    proposal.sidechainKeyID = "95fa3714e79a7823f91b1956b1fb922e4e5cd5bdc5941c3efbf521a6b5ce64bc";
-    proposal.sidechainHex = "95fa3714e79a7823f91b1956b1fb922e4e5cd5bdc5941c3efbf521a6b5ce64bc";
-    proposal.sidechainPriv = "95fa3714e79a7823f91b1956b1fb922e4e5cd5bdc5941c3efbf521a6b5ce64bc";
+    proposal.sidechainKeyID = "80dca759b4ff2c9e9b65ec790703ad09fba844cd";
+    proposal.sidechainHex = "76a91480dca759b4ff2c9e9b65ec790703ad09fba844cd88ac";
+    proposal.sidechainPriv = "5Jf2vbdzdCccKApCrjmwL5EFc4f1cUm5Ah4L4LGimEuFyqYpa9r";
+    proposal.hashID1 = uint256S("b55d224f1fda033d930c92b1b40871f209387355557dd5e0d2b5dd9bb813c33f");
+    proposal.hashID2 = uint256S("9fafdd046727ada4612cf9a860dd3e72ec0187bda31b1ef6fe84207b36537222");
 
     // Create transaction output with sidechain proposal
     CTxOut out;
@@ -452,9 +474,11 @@ BOOST_AUTO_TEST_CASE(sidechainactivation_pruneRejected)
     SidechainProposal proposal;
     proposal.title = "test";
     proposal.description = "description";
-    proposal.sidechainKeyID = "95fa3714e79a7823f91b1956b1fb922e4e5cd5bdc5941c3efbf521a6b5ce64bc";
-    proposal.sidechainHex = "95fa3714e79a7823f91b1956b1fb922e4e5cd5bdc5941c3efbf521a6b5ce64bc";
-    proposal.sidechainPriv = "95fa3714e79a7823f91b1956b1fb922e4e5cd5bdc5941c3efbf521a6b5ce64bc";
+    proposal.sidechainKeyID = "80dca759b4ff2c9e9b65ec790703ad09fba844cd";
+    proposal.sidechainHex = "76a91480dca759b4ff2c9e9b65ec790703ad09fba844cd88ac";
+    proposal.sidechainPriv = "5Jf2vbdzdCccKApCrjmwL5EFc4f1cUm5Ah4L4LGimEuFyqYpa9r";
+    proposal.hashID1 = uint256S("b55d224f1fda033d930c92b1b40871f209387355557dd5e0d2b5dd9bb813c33f");
+    proposal.hashID2 = uint256S("9fafdd046727ada4612cf9a860dd3e72ec0187bda31b1ef6fe84207b36537222");
 
     // Create transaction output with sidechain proposal
     CTxOut out;

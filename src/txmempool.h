@@ -507,6 +507,8 @@ public:
 
     void SelectBMMRequests();
 
+    void UpdateCTIP(const std::map<uint8_t, COutPoint>& mapCTIP);
+
 private:
     typedef std::map<txiter, setEntries, CompareIteratorByHash> cacheMap;
 

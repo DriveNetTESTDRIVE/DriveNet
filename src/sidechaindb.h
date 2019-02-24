@@ -12,6 +12,7 @@
 #include <uint256.h>
 
 class CCriticalData;
+class COutPoint;
 class CScript;
 class CTransaction;
 class CTxOut;
@@ -182,6 +183,10 @@ public:
 
     std::vector<uint256> GetSidechainsToActivate() const;
 
+    bool GetCTIP(uint8_t nSidechain, COutPoint& out) const;
+
+    std::map<uint8_t, COutPoint> GetCTIP() const;
+
 private:
     /** Tracks verification status of WT^(s) */
     std::vector<std::vector<SidechainWTPrimeState>> vWTPrimeStatus;
@@ -211,11 +216,14 @@ private:
     std::vector<SidechainDeposit> vDepositCache;
 
     // TODO remove
-    /** Cache of WT^ update messages.
-    *  TODO This is here to enable testing, remove
-    *  when RPC calls are replaced with network messages.
-    */
+    /** Cache of WT^ update messages. */
     std::vector<SidechainUpdatePackage> vSidechainUpdateCache;
+
+    /*
+     * The CTIP of nSidechain up to the latest connected block (does not
+     * include mempool txns).
+     */
+    std::map<uint8_t, COutPoint> mapCTIP;
 
     /** The most recent block that SCDB has processed */
     uint256 hashBlockLastSeen;

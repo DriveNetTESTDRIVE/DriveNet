@@ -87,9 +87,10 @@ std::string SidechainDeposit::ToString() const
 {
     std::stringstream ss;
     ss << "nsidechain=" << (unsigned int)nSidechain << std::endl;
-    ss << "keyID=" << keyID.ToString() << std::endl;
-    ss << "hashWTPrime=" << tx.GetHash().ToString() << std::endl;
+    ss << "keyid=" << keyID.ToString() << std::endl;
+    ss << "txid=" << tx.GetHash().ToString() << std::endl;
     ss << "n=" << n << std::endl;
+    ss << "hashblock=" << hashBlock.ToString() << std::endl;
     return ss.str();
 }
 
