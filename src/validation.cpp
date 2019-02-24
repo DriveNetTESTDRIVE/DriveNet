@@ -712,11 +712,11 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
             }
 
             if (!fFormatChecked)
-                return state.DoS(100, false, REJECT_INVALID, "sidechain-deposit-invalid-format");
+                return state.DoS(0, false, REJECT_INVALID, "sidechain-deposit-invalid-format");
 
             // Check nSidechain again
             if (!IsSidechainNumberValid(nSidechainFromScript))
-                return state.DoS(100, false, REJECT_INVALID, "sidechain-deposit-invalid-sidechain-number");
+                return state.DoS(0, false, REJECT_INVALID, "sidechain-deposit-invalid-sidechain-number");
 
             // Check that CTIP input was spent if there is one
             auto it = mempool.mapLastSidechainDeposit.find(nSidechainFromScript);
@@ -728,7 +728,7 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
                         nCTIPSpent++;
                 }
                 if (nCTIPSpent != 1)
-                    return state.DoS(100, false, REJECT_INVALID, "sidechain-deposit-invalid-ctip-unspent");
+                    return state.DoS(0, false, REJECT_INVALID, "sidechain-deposit-invalid-ctip-unspent");
             }
 
             // Track with mempool
