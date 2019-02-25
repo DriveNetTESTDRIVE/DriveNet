@@ -1009,10 +1009,10 @@ void SidechainDB::UpdateActivationStatus(const std::vector<uint256>& vHash)
         if (vActivationStatus[i].nAge == SIDECHAIN_ACTIVATION_MAX_AGE) {
             // Create sidechain object
             Sidechain sidechain;
-            // TODO this also needs to be replaced
             sidechain.nVersion = vActivationStatus[i].proposal.nVersion;
             sidechain.hashID1 = vActivationStatus[i].proposal.hashID1;
             sidechain.hashID2 = vActivationStatus[i].proposal.hashID2;
+            // TODO Get nSidechain in a smarter way
             sidechain.nSidechain = vActiveSidechain.size();
             sidechain.sidechainPriv = vActivationStatus[i].proposal.sidechainPriv;
             sidechain.sidechainHex = vActivationStatus[i].proposal.sidechainHex;
@@ -1021,6 +1021,9 @@ void SidechainDB::UpdateActivationStatus(const std::vector<uint256>& vHash)
             sidechain.description = vActivationStatus[i].proposal.description;
 
             vActiveSidechain.push_back(sidechain);
+
+            // Save proposal for later
+            SidechainProposal proposal = vActivationStatus[i].proposal;
 
             vActivationStatus[i] = vActivationStatus.back();
             vActivationStatus.pop_back();
@@ -1031,10 +1034,9 @@ void SidechainDB::UpdateActivationStatus(const std::vector<uint256>& vHash)
             // Add a slot to the ratchet for this new sidechain
             ratchet.push_back(std::vector<SidechainLD>{});
 
-            // Did one of our cached proposals activate? If it did, remove it
-            // from our proposal cache
+            // Remove proposal from our cache if it has activated
             for (size_t j = 0; j < vSidechainProposal.size(); j++) {
-                if (vActivationStatus[i].proposal == vSidechainProposal[j]) {
+                if (proposal == vSidechainProposal[j]) {
                     vSidechainProposal[j] = vSidechainProposal.back();
                     vSidechainProposal.pop_back();
                 }
