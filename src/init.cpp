@@ -1413,7 +1413,17 @@ bool AppInitMain()
         nMaxOutboundLimit = gArgs.GetArg("-maxuploadtarget", DEFAULT_MAX_UPLOAD_TARGET)*1024*1024;
     }
 
-    // ********************************************************* Step 7: load block chain
+    // ********************************************************* Step 7: load caches
+
+    // TODO remove
+    LoadActiveSidechainCache();
+    LoadDepositCache();
+    LoadWTPrimeCache();
+    LoadSidechainActivationStatusCache();
+    LoadSidechainProposalCache();
+    LoadSidechainActivationHashCache();
+
+    // ********************************************************* Step 8: load block chain
 
     fReindex = gArgs.GetBoolArg("-reindex", false);
     bool fReindexChainState = gArgs.GetBoolArg("-reindex-chainstate", false);
@@ -1641,13 +1651,6 @@ bool AppInitMain()
         }
     }
 
-    LoadDepositCache();
-    LoadWTPrimeCache();
-    LoadSidechainActivationStatusCache();
-    LoadActiveSidechainCache();
-    LoadSidechainProposalCache();
-    LoadSidechainActivationHashCache();
-
     // As LoadBlockIndex can take several minutes, it's possible the user
     // requested to kill the GUI during the last operation. If so, exit.
     // As the program has not fully started yet, Shutdown() is possibly overkill.
@@ -1667,7 +1670,7 @@ bool AppInitMain()
         ::feeEstimator.Read(est_filein);
     fFeeEstimatesInitialized = true;
 
-    // ********************************************************* Step 8: load wallet
+    // ********************************************************* Step 9: load wallet
 #ifdef ENABLE_WALLET
     if (!OpenWallets())
         return false;
@@ -1675,7 +1678,7 @@ bool AppInitMain()
     LogPrintf("No wallet support compiled in!\n");
 #endif
 
-    // ********************************************************* Step 9: data directory maintenance
+    // ********************************************************* Step 10: data directory maintenance
 
     // if pruning, unset the service bit and perform the initial blockstore prune
     // after any wallet rescanning has taken place.
@@ -1697,7 +1700,7 @@ bool AppInitMain()
         nLocalServices = ServiceFlags(nLocalServices | NODE_WITNESS);
     }
 
-    // ********************************************************* Step 10: import blocks
+    // ********************************************************* Step 11: import blocks
 
     if (!CheckDiskSpace())
         return false;
@@ -1739,7 +1742,7 @@ bool AppInitMain()
 #ifdef ENABLE_WALLET
     StartWallets(scheduler);
 
-    // ********************************************************* Step 11: load coins
+    // ********************************************************* Step 12: load coins
 
     bool fReadLoadedCoins = gArgs.GetBoolArg("-loadedcoins", false);
 
@@ -1782,36 +1785,6 @@ bool AppInitMain()
         LOCK2(cs_main, pwallet->cs_wallet);
         vLoadedCoin = pcoinsTip->ReadMyLoadedCoins();
         pwallet->AddLoadedCoins(vLoadedCoin);
-    }
-
-    // ********************************************************* Step 12: watch sidechain addresses
-    uiInterface.InitMessage(_("Watching sidechain deposit addresses"));
-    if (drivechainsEnabled && !vpwallets.empty()) {
-        std::vector<Sidechain> vSidechain = scdb.GetActiveSidechains();
-        if (!vSidechain.empty()) {
-            CWalletRef pwallet = vpwallets.front();
-
-            LOCK2(cs_main, pwallet->cs_wallet);
-
-            pwallet->MarkDirty();
-
-            // Watch sidechain deposit addresses
-            for (const Sidechain& sidechain : vSidechain) {
-                std::vector<unsigned char> data;
-                data = std::vector<unsigned char>(ParseHex(sidechain.sidechainHex));
-
-                CScript script(data.begin(), data.end());
-
-                if (!pwallet->HaveWatchOnly(script)) {
-                    pwallet->AddWatchOnly(script, 0 /* nCreateTime */);
-                }
-
-                CTxDestination destination;
-                if (ExtractDestination(script, destination)) {
-                    pwallet->SetAddressBook(destination, sidechain.GetSidechainName(), "receive");
-                }
-            }
-        }
     }
 #endif
 

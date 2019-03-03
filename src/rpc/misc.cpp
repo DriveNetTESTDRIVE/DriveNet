@@ -790,36 +790,19 @@ UniValue listsidechainctip(const JSONRPCRequest& request)
             + HelpExampleRpc("listsidechainctip", "\"nsidechain\"")
             );
 
-#ifdef ENABLE_WALLET
-    // Check for active wallet
-    std::string strError;
-    if (vpwallets.empty()) {
-        strError = "Error: no wallets are available";
-        throw JSONRPCError(RPC_WALLET_ERROR, strError);
-    }
-
     // Is nSidechain valid?
     uint8_t nSidechain = (unsigned int)request.params[0].get_int();
     if (!IsSidechainNumberValid(nSidechain))
-        throw std::runtime_error("Invalid sidechain number");
+        throw std::runtime_error("Invalid sidechain number!");
 
-    CScript scriptPubKey;
-    if (!scdb.GetSidechainScript(nSidechain, scriptPubKey))
-        throw std::runtime_error("Invalid sidechain");
-
-    std::vector<COutput> vSidechainCoin;
-    vpwallets[0]->AvailableSidechainCoins(scriptPubKey, nSidechain, vSidechainCoin);
-#endif
-
-    if (vSidechainCoin.empty())
-        throw std::runtime_error("No Sidechain CTIP found");
-
-    if (vSidechainCoin.size() != 1)
-        throw std::runtime_error("Invalid Sidechain CTIP (multiple CTIP found)");
+    SidechainCTIP ctip;
+    if (!scdb.GetCTIP(nSidechain, ctip))
+        throw std::runtime_error("No CTIP found for sidechain!");
 
     UniValue obj(UniValue::VOBJ);
-    obj.push_back(Pair("txid", vSidechainCoin.front().tx->GetHash().ToString()));
-    obj.push_back(Pair("n", vSidechainCoin.front().i));
+    obj.push_back(Pair("txid", ctip.out.hash.ToString()));
+    obj.push_back(Pair("n", (int64_t)ctip.out.n));
+    obj.push_back(Pair("amount", ctip.amount));
 
     return obj;
 }
@@ -871,7 +854,7 @@ UniValue listsidechaindeposits(const JSONRPCRequest& request)
     UniValue arr(UniValue::VARR);
 
 #ifdef ENABLE_WALLET
-    std::vector<SidechainDeposit> vDeposit = scdb.GetDeposits(uint256S(vchSecret.ToString()));
+    std::vector<SidechainDeposit> vDeposit = scdb.GetDeposits(vchSecret.ToString());
     if (!vDeposit.size())
         throw std::runtime_error("No deposits in cache for this sidechain!");
 
@@ -1017,7 +1000,6 @@ UniValue receivewtprime(const JSONRPCRequest& request)
     if (wtPrime.IsNull())
         throw std::runtime_error("Invalid WT^ hex");
 
-#ifdef ENABLE_WALLET
     // Reject the WT^ if it spends more than the sidechain's CTIP as it won't
     // be accepted anyway
     CAmount amount = wtPrime.GetValueOut();
@@ -1025,17 +1007,13 @@ UniValue receivewtprime(const JSONRPCRequest& request)
     CScript scriptPubKey;
     if (!scdb.GetSidechainScript(nSidechain, scriptPubKey))
         throw std::runtime_error("Invalid sidechain!");
-    pwallet->AvailableSidechainCoins(scriptPubKey, nSidechain, vSidechainCoin);
 
-    if (vSidechainCoin.empty())
-        throw std::runtime_error("Rejecting WT^: No Sidechain CTIP found!");
+    SidechainCTIP ctip;
+    if (!scdb.GetCTIP(nSidechain, ctip))
+        throw std::runtime_error("Rejecting WT^: No CTIP found!");
 
-    if (vSidechainCoin.size() != 1)
-        throw std::runtime_error("Rejecting WT^: Invalid Sidechain CTIP (multiple CTIP found!)");
-
-    if (amount > vSidechainCoin.front().tx->GetAvailableWatchOnlyCredit())
+    if (amount > ctip.amount)
         throw std::runtime_error("Rejecting WT^: Withdrawn amount greater than CTIP amount!");
-#endif
 
     // Add WT^ to our local cache so that we can create a WT^ hash commitment
     // in the next block we mine to begin the verification process

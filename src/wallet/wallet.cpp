@@ -2391,69 +2391,6 @@ const CTxOut& CWallet::FindNonChangeParentOutput(const CTransaction& tx, int out
     return ptx->vout[n];
 }
 
-void CWallet::AvailableSidechainCoins(const CScript& scriptPubKeyIn, const uint8_t nSidechainIn,  std::vector<COutput>& vSidechainCoins) const
-{
-    // Check if sidechain number is valid
-    if (!IsSidechainNumberValid(nSidechainIn))
-        return;
-
-    // Collect available outputs
-    std::vector<COutput> vCoins;
-    AvailableCoins(vCoins, false); // TODO ?
-
-    // Search for available Sidechain outputs
-    for (const COutput& output : vCoins) {
-        CScript scriptPubKey = output.tx->tx->vout[output.i].scriptPubKey;
-
-        // TODO drop HexStr
-        if (HexStr(scriptPubKey) == HexStr(scriptPubKeyIn)) {
-            const CTransaction tx = *output.tx->tx;
-
-            // Check that the output is a valid sidechain deposit
-            size_t nValidDeposit = 0;
-            for (size_t i = 0; i < tx.vout.size(); i++) {
-                CScript depositScript = tx.vout[i].scriptPubKey;
-                // scriptPubKey must contain keyID
-                if (depositScript.size() != 23 && depositScript.size() != 24)
-                    continue;
-                if (depositScript.front() != OP_RETURN)
-                    continue;
-
-                uint8_t nSidechainScript = -1;
-                std::vector<unsigned char> vchNS;
-                vchNS.push_back(depositScript[1]);
-
-                CScriptNum nSidechainNum(vchNS, false);
-                nSidechainScript = (unsigned int)nSidechainNum.getint();
-
-                // TODO ?
-                //if (!IsSidechainNumberValid(nSidechainScript))
-                //   continue;
-
-                if (nSidechainScript != nSidechainIn)
-                    continue;
-
-                CScript::const_iterator pkey = depositScript.begin() + 2 + (depositScript.size() == 24);
-                opcodetype opcode;
-                std::vector<unsigned char> vch;
-                if (!depositScript.GetOp(pkey, opcode, vch))
-                    continue;
-                if (vch.size() != sizeof(uint160))
-                    continue;
-
-                CKeyID keyID = CKeyID(uint160(vch));
-                if (keyID.IsNull())
-                    continue;
-
-                nValidDeposit++;
-            }
-
-            if (nValidDeposit == 1)
-                vSidechainCoins.push_back(output);
-        }
-    }
-}
-
 static void ApproximateBestSubset(const std::vector<CInputCoin>& vValue, const CAmount& nTotalLower, const CAmount& nTargetValue,
                                   std::vector<char>& vfBest, CAmount& nBest, int iterations = 1000)
 {
@@ -3160,6 +3097,8 @@ bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletT
 
 bool CWallet::CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, const CScript& scriptPubKeyIn, const uint8_t nSidechain, const CAmount& nAmount, const CKeyID& keyID)
 {
+    strFail = "Unknown error!";
+
     if (!IsSidechainNumberValid(nSidechain)) {
         strFail = "Invalid Sidechain number!\n";
         return false;
@@ -3228,25 +3167,22 @@ bool CWallet::CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, 
     mtx.vout.push_back(CTxOut(nAmount, sidechainScript));
     size_t nDepositIndex = mtx.vout.size() - 1;
 
-    // Handle existing sidechain utxo
-    std::vector<COutput> vSidechainCoins;
-    AvailableSidechainCoins(sidechainScript, nSidechain, vSidechainCoins);
+    // Handle existing sidechain utxo. We will look at our local mempool, and
+    // create a deposit based on the latest CTIP for the sidechain. It will be
+    // rejected if other nodes have seen a newer CTIP.
+    SidechainCTIP ctip;
     CAmount returnAmount = CAmount(0);
-    if (vSidechainCoins.size()) {
-
-        for (const COutput& output : vSidechainCoins) {
-            mtx.vin.push_back(CTxIn(output.tx->GetHash(), output.i));
-            returnAmount += output.tx->tx->vout[output.i].nValue;
-        }
+    if (::mempool.GetMemPoolCTIP(nSidechain, ctip)) {
+        returnAmount = ctip.amount;
+        // Amount returning to sidechain
         mtx.vout.back().nValue += returnAmount;
-     }
+        // Spend the existing CTIP
+        mtx.vin.push_back(CTxIn(ctip.out));
+    }
 
     // Dummy sign the transaction to calculate fee
     std::set<CInputCoin> setCoinsTemp = setCoins;
     // TODO also dummy sign the sidechain UTXO input
-    //for (const COutput& c : vSidechainCoins)
-    //    setCoinsTemp.emplace(CInputCoin(c.tx, c.i));
-
     if (!DummySignTx(mtx, setCoins)) {
         strFail = "Dummy signing transaction for fee calculation failed";
         return false;
@@ -3285,7 +3221,7 @@ bool CWallet::CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, 
         return false;
 
     // Sign the sidechain utxo if we need to
-    if (vSidechainCoins.size()) {
+    if (returnAmount > CAmount(0)) {
         CBitcoinSecret vchSecret;
         bool fGood = vchSecret.SetString(sidechain.sidechainPriv);
         if (!fGood) {

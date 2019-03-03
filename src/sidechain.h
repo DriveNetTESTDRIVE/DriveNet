@@ -203,4 +203,9 @@ struct SidechainWTPrimeState {
     }
 };
 
+struct SidechainCTIP {
+    COutPoint out;
+    CAmount amount;
+};
+
 #endif // BITCOIN_SIDECHAIN_H

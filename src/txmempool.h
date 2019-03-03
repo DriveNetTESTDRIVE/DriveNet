@@ -507,7 +507,9 @@ public:
 
     void SelectBMMRequests();
 
-    void UpdateCTIP(const std::map<uint8_t, COutPoint>& mapCTIP);
+    void UpdateCTIP(const std::map<uint8_t, SidechainCTIP>& mapCTIP);
+
+    bool GetMemPoolCTIP(uint8_t nSidechain, SidechainCTIP& ctip) const;
 
 private:
     typedef std::map<txiter, setEntries, CompareIteratorByHash> cacheMap;
@@ -525,12 +527,11 @@ private:
 
     std::vector<indexed_transaction_set::const_iterator> GetSortedDepthAndScore() const;
 
-
 public:
     indirectmap<COutPoint, const CTransaction*> mapNextTx;
     std::map<uint256, CAmount> mapDeltas;
 
-    std::map<uint8_t, COutPoint> mapLastSidechainDeposit;
+    std::map<uint8_t, SidechainCTIP> mapLastSidechainDeposit;
 
     /** Create a new CTxMemPool.
      */

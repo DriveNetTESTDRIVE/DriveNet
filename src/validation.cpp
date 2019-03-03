@@ -569,7 +569,6 @@ void GetSidechainValues(CTxMemPool& pool, const CTransaction &tx, CAmount& amtSi
         } else {
             amtUserInput += out.nValue;
         }
-
     }
 
     // Count outputs
@@ -722,7 +721,7 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
             auto it = mempool.mapLastSidechainDeposit.find(nSidechainFromScript);
             if (it != mempool.mapLastSidechainDeposit.end()) {
                 int nCTIPSpent = 0;
-                const COutPoint out = it->second;
+                const COutPoint out = it->second.out;
                 for (const CTxIn& in : tx.vin) {
                     if (in.prevout == out)
                         nCTIPSpent++;
@@ -731,8 +730,11 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
                     return state.DoS(0, false, REJECT_INVALID, "sidechain-deposit-invalid-ctip-unspent");
             }
 
-            // Track with mempool
-            mempool.mapLastSidechainDeposit[nSidechainFromScript] = outpoint;
+            // Track new sidechain CTIP in mempool
+            SidechainCTIP ctip;
+            ctip.out = outpoint;
+            ctip.amount = amtReturning;
+            mempool.mapLastSidechainDeposit[nSidechainFromScript] = ctip;
 
         } else if (amtSidechainUTXO > 0) {
             return state.DoS(100, false, REJECT_INVALID, "sidechain-invalid-ctip-spend");

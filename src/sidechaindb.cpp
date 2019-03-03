@@ -80,7 +80,14 @@ void SidechainDB::AddDeposits(const std::vector<SidechainDeposit>& vDeposit)
         if (HaveDepositCached(d))
             continue;
 
-        mapCTIP[d.nSidechain] = COutPoint(d.tx.GetHash(), d.n);
+        COutPoint out(d.tx.GetHash(), d.n);
+        CAmount amount = d.tx.vout[d.n].nValue;
+
+        SidechainCTIP ctip;
+        ctip.out = out;
+        ctip.amount = amount;
+
+        mapCTIP[d.nSidechain] = ctip;
         vDepositCache.push_back(d);
     }
 }
@@ -225,7 +232,7 @@ std::vector<SidechainDeposit> SidechainDB::GetDeposits(uint8_t nSidechain) const
     return vDeposit;
 }
 
-std::vector<SidechainDeposit> SidechainDB::GetDeposits(const uint256& hashSidechain) const
+std::vector<SidechainDeposit> SidechainDB::GetDeposits(const std::string& sidechainPriv) const
 {
     // TODO refactor: only one GetDeposits function in SCDB
 
@@ -234,7 +241,7 @@ std::vector<SidechainDeposit> SidechainDB::GetDeposits(const uint256& hashSidech
     uint8_t nSidechain = 0;
     bool fFound = false;
     for (const Sidechain& s : vActiveSidechain) {
-        if (uint256S(s.sidechainPriv) == hashSidechain) {
+        if (s.sidechainPriv == sidechainPriv) {
             fFound = true;
             break;
         }
@@ -917,12 +924,12 @@ std::vector<uint256> SidechainDB::GetSidechainsToActivate() const
     return vSidechainHashActivate;
 }
 
-bool SidechainDB::GetCTIP(uint8_t nSidechain, COutPoint& out) const
+bool SidechainDB::GetCTIP(uint8_t nSidechain, SidechainCTIP& out) const
 {
     if (!IsSidechainNumberValid(nSidechain))
         return false;
 
-    std::map<uint8_t, COutPoint>::const_iterator it = mapCTIP.find(nSidechain);
+    std::map<uint8_t, SidechainCTIP>::const_iterator it = mapCTIP.find(nSidechain);
     if (it != mapCTIP.end()) {
         out = it->second;
         return true;
@@ -931,7 +938,7 @@ bool SidechainDB::GetCTIP(uint8_t nSidechain, COutPoint& out) const
     return false;
 }
 
-std::map<uint8_t, COutPoint> SidechainDB::GetCTIP() const
+std::map<uint8_t, SidechainCTIP> SidechainDB::GetCTIP() const
 {
     return mapCTIP;
 }

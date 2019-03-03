@@ -391,10 +391,10 @@ BOOST_AUTO_TEST_CASE(sidechaindb_wallet_ctip)
     std::cout << "vDeposit size: " << vDeposit.size() << std::endl;
 
     // Compare with SCDB CTIP
-    COutPoint out;
-    BOOST_CHECK(scdb.GetCTIP(0, out));
-    BOOST_CHECK(out.hash == mtx.GetHash());
-    BOOST_CHECK(out.n == 1);
+    SidechainCTIP ctip;
+    BOOST_CHECK(scdb.GetCTIP(0, ctip));
+    BOOST_CHECK(ctip.out.hash == mtx.GetHash());
+    BOOST_CHECK(ctip.out.n == 1);
 
     // Reset SCDB after testing
     scdb.ResetWTPrimeState();
@@ -454,10 +454,10 @@ BOOST_AUTO_TEST_CASE(sidechaindb_wallet_ctip_multi_deposits)
     std::cout << "vDeposit size: " << vDeposit.size() << std::endl;
 
     // Compare with SCDB CTIP
-    COutPoint out;
-    BOOST_CHECK(scdb.GetCTIP(0, out));
-    BOOST_CHECK(out.hash == mtx.GetHash());
-    BOOST_CHECK(out.n == 1);
+    SidechainCTIP ctip;
+    BOOST_CHECK(scdb.GetCTIP(0, ctip));
+    BOOST_CHECK(ctip.out.hash == mtx.GetHash());
+    BOOST_CHECK(ctip.out.n == 1);
 
     // Create another deposit
     CMutableTransaction mtx2;
@@ -486,10 +486,10 @@ BOOST_AUTO_TEST_CASE(sidechaindb_wallet_ctip_multi_deposits)
     BOOST_CHECK(vDeposit.size() == 2 && vDeposit.back().tx == mtx2);
 
     // Compare with SCDB CTIP
-    COutPoint out2;
-    BOOST_CHECK(scdb.GetCTIP(0, out2));
-    BOOST_CHECK(out2.hash == mtx2.GetHash());
-    BOOST_CHECK(out2.n == 1);
+    SidechainCTIP ctip2;
+    BOOST_CHECK(scdb.GetCTIP(0, ctip2));
+    BOOST_CHECK(ctip2.out.hash == mtx2.GetHash());
+    BOOST_CHECK(ctip2.out.n == 1);
 
     // Reset SCDB after testing
     scdb.ResetWTPrimeState();
