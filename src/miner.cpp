@@ -429,7 +429,7 @@ bool BlockAssembler::CreateWTPrimePayout(uint8_t nSidechain, CMutableTransaction
             break;
         }
     }
-    if (!mtx.vout.size() || !mtx.vin.size())
+    if (!mtx.vout.size())
         return false;
 
     // Calculate the amount to be withdrawn by WT^

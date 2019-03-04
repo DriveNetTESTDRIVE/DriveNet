@@ -2202,8 +2202,9 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
                 GetSidechainValues(mempool, tx, amtSidechainUTXO, amtUserInput, amtReturning, amtWithdrawn);
 
                 if (amtSidechainUTXO > amtReturning) {
-                    if (!scdb.CheckWorkScore(nSidechain, hashBWT))
+                    if (!scdb.CheckWorkScore(nSidechain, hashBWT)) {
                         return error("ConnectBlock(): CheckWorkScore failed (blind WT^ hash : txid): %s : %s", hashBWT.ToString(), tx.GetHash().ToString());
+                    }
                 }
             }
         }

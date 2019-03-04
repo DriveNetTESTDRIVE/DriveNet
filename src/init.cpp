@@ -1419,9 +1419,6 @@ bool AppInitMain()
     LoadActiveSidechainCache();
     LoadDepositCache();
     LoadWTPrimeCache();
-    LoadSidechainActivationStatusCache();
-    LoadSidechainProposalCache();
-    LoadSidechainActivationHashCache();
 
     // ********************************************************* Step 8: load block chain
 
@@ -1669,6 +1666,10 @@ bool AppInitMain()
     if (!est_filein.IsNull())
         ::feeEstimator.Read(est_filein);
     fFeeEstimatesInitialized = true;
+
+    LoadSidechainActivationStatusCache();
+    LoadSidechainProposalCache();
+    LoadSidechainActivationHashCache();
 
     // ********************************************************* Step 9: load wallet
 #ifdef ENABLE_WALLET

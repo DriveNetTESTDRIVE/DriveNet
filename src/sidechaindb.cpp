@@ -466,9 +466,6 @@ void SidechainDB::ResetWTPrimeState()
     ratchet.clear();
     ratchet.resize(vActiveSidechain.size());
 
-    // Clear out cached WT^(s)
-    vWTPrimeCache.clear();
-
     // Reset hashBlockLastSeen
     hashBlockLastSeen.SetNull();
 }
@@ -537,7 +534,6 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const std::vecto
     if (nHeight > 0 && (nHeight % SIDECHAIN_VERIFICATION_PERIOD) == 0) {
         vWTPrimeStatus.clear();
         vWTPrimeStatus.resize(GetActiveSidechainCount());
-        vWTPrimeCache.clear();
     }
 
     /*

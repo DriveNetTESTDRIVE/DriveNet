@@ -87,6 +87,8 @@ bool CTransaction::GetBWTHash(uint256& hashRet) const
         return false;
 
     // Remove the CTIP scriptSig (set to OP_0 as the sidechain must orignally)
+    mtx.vin.clear();
+    mtx.vin.resize(1);
     mtx.vin[0].scriptSig = CScript() << OP_0;
 
     // Remove the sidechain change return
