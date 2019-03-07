@@ -42,7 +42,7 @@ public:
     void AddSidechainNetworkUpdatePackage(const SidechainUpdatePackage& update);
 
     /** Add a new WT^ to the database */
-    bool AddWTPrime(uint8_t nSidechain, const uint256& hashWTPrime, int nHeight);
+    bool AddWTPrime(uint8_t nSidechain, const uint256& hashWTPrime, int nHeight, bool fDebug = false);
 
     /** Add active sidechains to the in-memory cache */
     void CacheActiveSidechains(const std::vector<Sidechain>& vSidechainIn);
@@ -70,7 +70,7 @@ public:
     int CountBlocksAtop(const SidechainLD& ld) const;
 
     /** Check SCDB WT^ verification status */
-    bool CheckWorkScore(uint8_t nSidechain, const uint256& hashWTPrime) const;
+    bool CheckWorkScore(uint8_t nSidechain, const uint256& hashWTPrime, bool fDebug = false) const;
 
     /** Return number of active sidechains */
     int GetActiveSidechainCount() const;
@@ -149,10 +149,10 @@ public:
     /**
      * Update the DB state.
      */
-    bool Update(int nHeight, const uint256& hashBlock, const std::vector<CTxOut>& vout, std::string& strError);
+    bool Update(int nHeight, const uint256& hashBlock, const std::vector<CTxOut>& vout, std::string& strError, bool fDebug = false);
 
     /** Update / add multiple SCDB WT^(s) to SCDB */
-    bool UpdateSCDBIndex(const std::vector<SidechainWTPrimeState>& vNewScores, int nHeight);
+    bool UpdateSCDBIndex(const std::vector<SidechainWTPrimeState>& vNewScores, int nHeight, bool fDebug = false);
 
     /** Read the SCDB hash in a new block and try to synchronize our SCDB
      *  by testing possible work score updates until the SCDB hash of our

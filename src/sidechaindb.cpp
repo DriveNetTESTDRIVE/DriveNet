@@ -10,6 +10,7 @@
 #include <script/script.h>
 #include <sidechain.h>
 #include <uint256.h>
+#include <util.h> // For LogPrintf TODO move LogPrintf
 #include <utilstrencodings.h>
 
 SidechainDB::SidechainDB()
@@ -97,13 +98,20 @@ void SidechainDB::AddSidechainNetworkUpdatePackage(const SidechainUpdatePackage&
     vSidechainUpdateCache.push_back(update);
 }
 
-bool SidechainDB::AddWTPrime(uint8_t nSidechain, const uint256& hashWTPrime, int nHeight)
+bool SidechainDB::AddWTPrime(uint8_t nSidechain, const uint256& hashWTPrime, int nHeight, bool fDebug)
 {
-    if (!IsSidechainNumberValid(nSidechain))
+    if (!IsSidechainNumberValid(nSidechain)) {
+        LogPrintf("SidechainDB::AddWTPrime(): Rejected WT^: %s. Invalid " \
+                "sidechain number: %u\n",
+                hashWTPrime.ToString());
         return false;
+    }
 
-    if (HaveWTPrimeWorkScore(hashWTPrime, nSidechain))
+    if (HaveWTPrimeWorkScore(hashWTPrime, nSidechain)) {
+        LogPrintf("SidechainDB::AddWTPrime(): Rejected WT^: %s already known\n",
+        hashWTPrime.ToString());
         return false;
+    }
 
     std::vector<SidechainWTPrimeState> vWT;
 
@@ -117,7 +125,17 @@ bool SidechainDB::AddWTPrime(uint8_t nSidechain, const uint256& hashWTPrime, int
 
     vWT.push_back(wt);
 
-    return UpdateSCDBIndex(vWT, nHeight);
+    if (fDebug)
+        LogPrintf("SidechainDB::AddWTPrime(): Cached WT^: %s\n",
+                hashWTPrime.ToString());
+
+    bool fUpdated = UpdateSCDBIndex(vWT, nHeight, true /* fDebug */);
+
+    if (!fUpdated && fDebug)
+        LogPrintf("SidechainDB::AddWTPrime(): Failed to update SCDBIndex.\n");
+
+    return fUpdated;
+
 }
 
 void SidechainDB::CacheActiveSidechains(const std::vector<Sidechain>& vActiveSidechainIn)
@@ -199,7 +217,7 @@ int SidechainDB::CountBlocksAtop(const SidechainLD& ld) const
     return 0;
 }
 
-bool SidechainDB::CheckWorkScore(uint8_t nSidechain, const uint256& hashWTPrime) const
+bool SidechainDB::CheckWorkScore(uint8_t nSidechain, const uint256& hashWTPrime, bool fDebug) const
 {
     if (!IsSidechainNumberValid(nSidechain))
         return false;
@@ -208,12 +226,22 @@ bool SidechainDB::CheckWorkScore(uint8_t nSidechain, const uint256& hashWTPrime)
     for (const SidechainWTPrimeState& state : vState) {
         if (state.hashWTPrime == hashWTPrime) {
             if (state.nWorkScore >= SIDECHAIN_MIN_WORKSCORE) {
+                if (fDebug)
+                    LogPrintf("SidechainDB::CheckWorkScore(): Approved: %s\n",
+                            hashWTPrime.ToString());
                 return true;
             } else {
+                if (fDebug)
+                    LogPrintf("SidechainDB::CheckWorkScore(): Rejected " \
+                            "(insufficient work score): %s\n",
+                            hashWTPrime.ToString());
                 return false;
             }
         }
     }
+    if (fDebug)
+        LogPrintf("SidechainDB::CheckWorkScore(): Rejected (WT^ state not " \
+            "found): %s\n", hashWTPrime.ToString());
     return false;
 }
 
@@ -461,13 +489,6 @@ void SidechainDB::ResetWTPrimeState()
     // Clear out WT^ state
     vWTPrimeStatus.clear();
     vWTPrimeStatus.resize(vActiveSidechain.size());
-
-    // Clear out BMM LD
-    ratchet.clear();
-    ratchet.resize(vActiveSidechain.size());
-
-    // Reset hashBlockLastSeen
-    hashBlockLastSeen.SetNull();
 }
 
 void SidechainDB::ResetSidechains()
@@ -523,17 +544,16 @@ std::string SidechainDB::ToString() const
     return str;
 }
 
-bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const std::vector<CTxOut>& vout, std::string& strError)
+bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const std::vector<CTxOut>& vout, std::string& strError, bool fDebug)
 {
     if (hashBlock.IsNull())
         return false;
     if (!vout.size())
         return false;
 
-    // If the verification period ended, clear old data
+    // If the WT^ verification period ended, clear old data
     if (nHeight > 0 && (nHeight % SIDECHAIN_VERIFICATION_PERIOD) == 0) {
-        vWTPrimeStatus.clear();
-        vWTPrimeStatus.resize(GetActiveSidechainCount());
+        ResetWTPrimeState();
     }
 
     /*
@@ -672,13 +692,26 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const std::vecto
             uint256 hashWTPrime = uint256(std::vector<unsigned char>(scriptPubKey.begin() + 6, scriptPubKey.begin() + 38));
 
             // Get sidechain number
-            std::vector<unsigned char> vchNS;
-            vchNS.push_back(scriptPubKey[39]);
+            uint8_t nSidechain = scriptPubKey[38];
+            if (!IsSidechainNumberValid(nSidechain)) {
+                if (fDebug)
+                    LogPrintf("SidechainDB::Update(): Skipping new WT^: %s, " \
+                            "invalid sidechain number: %u\n",
+                            hashWTPrime.ToString(),
+                            nSidechain);
+                continue;
+            }
 
-            CScriptNum nSidechain(vchNS, false);
-
-            if (!AddWTPrime(nSidechain.getint(), hashWTPrime, nHeight)) {
-                // TODO handle failure or at least log something
+            if (!AddWTPrime(nSidechain, hashWTPrime, nHeight, fDebug)) {
+                // TODO handle failure
+                // TODO fix log message error
+                if (fDebug) {
+                    LogPrintf("SidechainDB::Update(): Failed to cache WT^: %s" \
+                            " for sidechain number: %u at height: %u\n",
+                            hashWTPrime.ToString(),
+                            nSidechain,
+                            nHeight);
+                }
                 continue;
             }
         }
@@ -711,17 +744,27 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const std::vecto
     return true;
 }
 
-bool SidechainDB::UpdateSCDBIndex(const std::vector<SidechainWTPrimeState>& vNewScores, int nHeight)
+bool SidechainDB::UpdateSCDBIndex(const std::vector<SidechainWTPrimeState>& vNewScores, int nHeight, bool fDebug)
 {
-    if (!vNewScores.size())
+    if (!vNewScores.size()) {
+        if (fDebug)
+            LogPrintf("SidechainDB::UpdateSCDBIndex: Update failed! No new " \
+                    "scores at height: %u\n", nHeight);
         return false;
+    }
     if (vWTPrimeStatus.empty()) {
+        if (fDebug)
+            LogPrintf("SidechainDB::UpdateSCDBIndex: Update failed! Cannot " \
+                    "update because vWTPrimeStatus is empty.\n");
         return false;
     }
 
     // First check that sidechain numbers are valid
     for (const SidechainWTPrimeState& s : vNewScores) {
         if (!IsSidechainNumberValid(s.nSidechain)) {
+            if (fDebug)
+                LogPrintf("SidechainDB::UpdateSCDBIndex: Update failed! " \
+                        "Invalid sidechain number: %u\n", s.nSidechain);
             return false;
         }
     }
@@ -755,26 +798,60 @@ bool SidechainDB::UpdateSCDBIndex(const std::vector<SidechainWTPrimeState>& vNew
                             (s.nWorkScore == (state.nWorkScore + 1)) ||
                             (s.nWorkScore == (state.nWorkScore - 1)))
                     {
+                        if (fDebug)
+                            LogPrintf("SidechainDB::UpdateSCDBIndex: WT^ work" \
+                                    " score updated: %s %u->%u\n",
+                                    state.hashWTPrime.ToString(),
+                                    vWTPrimeStatus[x][y].nWorkScore,
+                                    s.nWorkScore);
                         vWTPrimeStatus[x][y].nWorkScore = s.nWorkScore;
                     }
                 }
             }
         }
         if (!fFound) {
-            if (s.nWorkScore != 1)
+            if (s.nWorkScore != 1) {
+                if (fDebug)
+                    LogPrintf("SidechainDB::UpdateSCDBIndex: Rejected new " \
+                            " WT^: %s. Invalid initial workscore (not 1): %u\n",
+                            s.hashWTPrime.ToString(), s.nWorkScore);
                 continue;
+            }
 
             int nAge = GetNumBlocksSinceLastSidechainVerificationPeriod(nHeight);
-            if (s.nBlocksLeft != (SIDECHAIN_VERIFICATION_PERIOD - nAge))
+            if (s.nBlocksLeft != (SIDECHAIN_VERIFICATION_PERIOD - nAge)) {
+                if (fDebug)
+                    LogPrintf("SidechainDB::UpdateSCDBIndex: Rejected new " \
+                            "WT^: %s. Invalid initial nBlocksLeft (not %u): %u\n",
+                            s.hashWTPrime.ToString(),
+                            SIDECHAIN_VERIFICATION_PERIOD - nAge,
+                            s.nBlocksLeft);
                 continue;
+            }
 
-            if (!IsSidechainNumberValid(s.nSidechain))
+            if (!IsSidechainNumberValid(s.nSidechain)) {
+                if (fDebug)
+                    LogPrintf("SidechainDB::UpdateSCDBIndex: Rejected new " \
+                            "WT^: %s. Invalid sidechain number: %u\n",
+                            s.hashWTPrime.ToString(),
+                            s.nSidechain);
                 continue;
+            }
 
-            if (s.nSidechain >= vWTPrimeStatus.size())
+            if (s.nSidechain >= vWTPrimeStatus.size()) {
+                if (fDebug)
+                    LogPrintf("SidechainDB::UpdateSCDBIndex: Rejected new " \
+                            "WT^: %s. Invalid sidechain number (too large): %u\n",
+                            s.hashWTPrime.ToString(),
+                            s.nSidechain);
                 continue;
+            }
 
             vWTPrimeStatus[s.nSidechain].push_back(s);
+
+            if (fDebug)
+                LogPrintf("SidechainDB::UpdateSCDBIndex: Cached new WT^: %s\n",
+                        s.hashWTPrime.ToString());
         }
     }
     return true;
@@ -789,19 +866,19 @@ bool SidechainDB::UpdateSCDBMatchMT(int nHeight, const uint256& hashMerkleRoot)
     // Try testing out most likely updates
     std::vector<SidechainWTPrimeState> vUpvote = GetUpvotes();
     if (GetSCDBHashIfUpdate(vUpvote, nHeight) == hashMerkleRoot) {
-        UpdateSCDBIndex(vUpvote, nHeight);
+        UpdateSCDBIndex(vUpvote, nHeight, true /* fDebug */);
         return (GetSCDBHash() == hashMerkleRoot);
     }
 
     std::vector<SidechainWTPrimeState> vAbstain = GetAbstainVotes();
     if (GetSCDBHashIfUpdate(vAbstain, nHeight) == hashMerkleRoot) {
-        UpdateSCDBIndex(vAbstain, nHeight);
+        UpdateSCDBIndex(vAbstain, nHeight, true /* fDebug */);
         return (GetSCDBHash() == hashMerkleRoot);
     }
 
     std::vector<SidechainWTPrimeState> vDownvote = GetDownvotes();
     if (GetSCDBHashIfUpdate(vDownvote, nHeight) == hashMerkleRoot) {
-        UpdateSCDBIndex(vDownvote, nHeight);
+        UpdateSCDBIndex(vDownvote, nHeight, true /* fDebug */);
         return (GetSCDBHash() == hashMerkleRoot);
     }
 
@@ -840,7 +917,7 @@ bool SidechainDB::UpdateSCDBMatchMT(int nHeight, const uint256& hashMerkleRoot)
         // Test out updating SCDB copy with this update package
         // if it worked, apply the update
         if (GetSCDBHashIfUpdate(vWT, nHeight) == hashMerkleRoot) {
-            UpdateSCDBIndex(vWT, nHeight);
+            UpdateSCDBIndex(vWT, nHeight, true /* fDebug */);
             return (GetSCDBHash() == hashMerkleRoot);
         }
     }
