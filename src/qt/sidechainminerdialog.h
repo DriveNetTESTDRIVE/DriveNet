@@ -53,6 +53,8 @@ public Q_SLOTS:
 
     void on_toolButtonIDHash2_clicked();
 
+    void on_toolButtonSoftwareHashes_clicked();
+
     void on_pushButtonGenerateConfig_clicked();
 
     void on_pushButtonConfigFiles_clicked();

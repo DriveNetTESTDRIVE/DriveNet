@@ -290,6 +290,17 @@ void SidechainMinerDialog::on_toolButtonIDHash2_clicked()
         QMessageBox::Ok);
 }
 
+void SidechainMinerDialog::on_toolButtonSoftwareHashes_clicked()
+{
+    // TODO display message based on current selected version
+    // TODO move text into static const
+    QMessageBox::information(this, tr("DriveNet - information"),
+        tr("These help users find the sidechain node software. "
+           "Only this software can filter out invalid WT^s. \n\n"
+           "These fields are optional but highly recommended."),
+        QMessageBox::Ok);
+}
+
 void SidechainMinerDialog::on_pushButtonGenerateConfig_clicked()
 {
     // Show configuration generator dialog
