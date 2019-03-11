@@ -543,19 +543,6 @@ void CTxMemPool::removeForReorg(const CCoinsViewCache *pcoins, unsigned int nMem
                     txToRemove.insert(it);
                     break;
                 }
-
-                // Check BMM ratchet maturity
-                if (!coin.hashCritical.IsNull()) {
-                    SidechainLD ld;
-                    ld.nSidechain = coin.nSidechain;
-                    ld.nPrevBlockRef = coin.nPrevBlockRef;
-                    ld.hashCritical = coin.hashCritical;
-
-                    if (scdb.CountBlocksAtop(ld) < CRITICAL_DATA_MATURITY) {
-                        txToRemove.insert(it);
-                        break;
-                    }
-                }
             }
         }
         if (!validLP) {

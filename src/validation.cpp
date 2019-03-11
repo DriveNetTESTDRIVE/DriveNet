@@ -1571,14 +1571,6 @@ bool CheckInputs(const CTransaction& tx, CValidationState &state, const CCoinsVi
                         if (coin.hashCritical.IsNull()) {
                             if ((chainActive.Height() - coin.nHeight) < CRITICAL_DATA_MATURITY)
                                 return state.Invalid(false, REJECT_INVALID, "bad-block-txn-immature-critical-data");
-                        } else {
-                            // BMM request critical data
-                            SidechainLD ld;
-                            ld.nSidechain = coin.nSidechain;
-                            ld.nPrevBlockRef = coin.nPrevBlockRef;
-                            ld.hashCritical = coin.hashCritical;
-                            if (scdb.CountBlocksAtop(ld) < CRITICAL_DATA_MATURITY)
-                                return state.Invalid(false, REJECT_INVALID, "bad-block-txn-immature-bmm-request");
                         }
                     }
                 }

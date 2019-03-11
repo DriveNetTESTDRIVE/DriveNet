@@ -63,12 +63,6 @@ public:
      * because the user changed their mind */
     void RemoveSidechainHashToActivate(const uint256& u);
 
-    /** Count ratchet member blocks atop */
-    int CountBlocksAtop(const CCriticalData& data) const;
-
-    /** Count ratchet member blocks atop (overload) */
-    int CountBlocksAtop(const SidechainLD& ld) const;
-
     /** Check SCDB WT^ verification status */
     bool CheckWorkScore(uint8_t nSidechain, const uint256& hashWTPrime, bool fDebug = false) const;
 

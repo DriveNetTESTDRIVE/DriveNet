@@ -182,41 +182,6 @@ void SidechainDB::RemoveSidechainHashToActivate(const uint256& u)
     }
 }
 
-int SidechainDB::CountBlocksAtop(const CCriticalData& data) const
-{
-    if (ratchet.empty())
-        return 0;
-
-    uint8_t nSidechain;
-    uint16_t nPrevBlockRef;
-    if (!data.IsBMMRequest(nSidechain, nPrevBlockRef))
-        return 0;
-
-    // Translate critical data into LD
-    SidechainLD ld;
-    ld.nSidechain = nSidechain;
-    ld.nPrevBlockRef = nPrevBlockRef;
-    ld.hashCritical = data.hashCritical;
-
-    return CountBlocksAtop(ld);
-}
-
-int SidechainDB::CountBlocksAtop(const SidechainLD& ld) const
-{
-    if (ratchet.empty())
-        return 0;
-    if (!IsSidechainNumberValid(ld.nSidechain))
-        return 0;
-
-    // Count blocks atop (side:block confirmations in ratchet)
-    for (size_t i = 0; i < ratchet[ld.nSidechain].size(); i++) {
-        if (ratchet[ld.nSidechain][i] == ld) {
-            return ratchet[ld.nSidechain].size() - i;
-        }
-    }
-    return 0;
-}
-
 bool SidechainDB::CheckWorkScore(uint8_t nSidechain, const uint256& hashWTPrime, bool fDebug) const
 {
     if (!IsSidechainNumberValid(nSidechain))
