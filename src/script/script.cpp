@@ -295,7 +295,7 @@ bool CScript::IsWTPrimeHashCommit() const
 {
     // Check script size
     size_t size = this->size();
-    if (size < 39) // sha256 hash + nSidechain + opcodes
+    if (size != 39) // sha256 hash + nSidechain + opcodes
         return false;
 
     // Check script header

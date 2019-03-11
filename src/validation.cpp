@@ -569,7 +569,6 @@ void GetSidechainValues(CTxMemPool& pool, const CTransaction &tx, CAmount& amtSi
         } else {
             amtUserInput += out.nValue;
         }
-
     }
 
     // Count outputs
@@ -722,7 +721,7 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
             auto it = mempool.mapLastSidechainDeposit.find(nSidechainFromScript);
             if (it != mempool.mapLastSidechainDeposit.end()) {
                 int nCTIPSpent = 0;
-                const COutPoint out = it->second;
+                const COutPoint out = it->second.out;
                 for (const CTxIn& in : tx.vin) {
                     if (in.prevout == out)
                         nCTIPSpent++;
@@ -731,8 +730,11 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
                     return state.DoS(0, false, REJECT_INVALID, "sidechain-deposit-invalid-ctip-unspent");
             }
 
-            // Track with mempool
-            mempool.mapLastSidechainDeposit[nSidechainFromScript] = outpoint;
+            // Track new sidechain CTIP in mempool
+            SidechainCTIP ctip;
+            ctip.out = outpoint;
+            ctip.amount = amtReturning;
+            mempool.mapLastSidechainDeposit[nSidechainFromScript] = ctip;
 
         } else if (amtSidechainUTXO > 0) {
             return state.DoS(100, false, REJECT_INVALID, "sidechain-invalid-ctip-spend");
@@ -2200,8 +2202,9 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
                 GetSidechainValues(mempool, tx, amtSidechainUTXO, amtUserInput, amtReturning, amtWithdrawn);
 
                 if (amtSidechainUTXO > amtReturning) {
-                    if (!scdb.CheckWorkScore(nSidechain, hashBWT))
+                    if (!scdb.CheckWorkScore(nSidechain, hashBWT, true /* fDebug */)) {
                         return error("ConnectBlock(): CheckWorkScore failed (blind WT^ hash : txid): %s : %s", hashBWT.ToString(), tx.GetHash().ToString());
+                    }
                 }
             }
         }
@@ -2268,7 +2271,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
     if (drivechainsEnabled) {
         // Update / synchronize SCDB
         std::string strError = "";
-        if (!scdb.Update(pindex->nHeight, block.GetHash(), block.vtx[0]->vout, strError))
+        if (!scdb.Update(pindex->nHeight, block.GetHash(), block.vtx[0]->vout, strError, true /* fDebug */))
             LogPrintf("SCDB failed to update with block: %s\n", block.GetHash().ToString());
         if (strError != "")
             LogPrintf("SCDB update error: %s\n", strError);
@@ -3569,7 +3572,7 @@ void GenerateWTPrimeHashCommitment(CBlock& block, const uint256& hashWTPrime, co
     out.nValue = 0;
 
     // Add script header
-    out.scriptPubKey.resize(38);
+    out.scriptPubKey.resize(39);
     out.scriptPubKey[0] = OP_RETURN;
     out.scriptPubKey[1] = 0x24; // TODO Remove
     out.scriptPubKey[2] = 0xD4;
@@ -3581,7 +3584,7 @@ void GenerateWTPrimeHashCommitment(CBlock& block, const uint256& hashWTPrime, co
     memcpy(&out.scriptPubKey[6], &hashWTPrime, 32);
 
     // Add nSidechain
-    out.scriptPubKey << CScriptNum(nSidechain);
+    out.scriptPubKey[38] = nSidechain;
 
     // Update coinbase in block
     CMutableTransaction mtx(*block.vtx[0]);

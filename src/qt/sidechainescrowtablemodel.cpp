@@ -162,20 +162,13 @@ void SidechainEscrowTableModel::updateModel()
         object.privKey = QString::fromStdString(s.sidechainPriv);
 
         // Get the sidechain CTIP info
-        {
-            std::vector<COutput> vSidechainCoins;
-            std::vector<unsigned char> vch(ParseHex(s.sidechainHex));
-            CScript scriptPubKey = CScript(vch.begin(), vch.end());
-#ifdef ENABLE_WALLET
-            vpwallets[0]->AvailableSidechainCoins(scriptPubKey, s.nSidechain, vSidechainCoins);
-#endif
-            if (vSidechainCoins.size()) {
-                object.CTIPIndex = QString::number(vSidechainCoins.front().i);
-                object.CTIPTxID = QString::fromStdString(vSidechainCoins.front().tx->GetHash().ToString());
-            } else {
+        SidechainCTIP ctip;
+        if (scdb.GetCTIP(s.nSidechain, ctip)) {
+                object.CTIPIndex = QString::number(ctip.out.n);
+                object.CTIPTxID = QString::fromStdString(ctip.out.hash.ToString());
+        } else {
                 object.CTIPIndex = "NA";
                 object.CTIPTxID = "NA";
-            }
         }
         model.append(QVariant::fromValue(object));
     }

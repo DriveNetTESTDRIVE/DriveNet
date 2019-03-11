@@ -873,11 +873,6 @@ public:
     const CTxOut& FindNonChangeParentOutput(const CTransaction& tx, int output) const;
 
     /**
-     * populate vSidechainCoins with vector of available sidechain COutputs.
-     */
-    void AvailableSidechainCoins(const CScript& scriptPubKeyIn, const uint8_t nSidechainIn, std::vector<COutput>& vSidechainCoins) const;
-
-    /**
      * Shuffle and select coins until nTargetValue is reached while avoiding
      * small change; This method is stochastic for some inputs and upon
      * completion the coin set and corresponding actual target value is

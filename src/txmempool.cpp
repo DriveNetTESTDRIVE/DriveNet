@@ -1075,9 +1075,19 @@ void CTxMemPool::SelectBMMRequests()
     RemoveStaged(txToRemove, false, MemPoolRemovalReason::EXPIRY);
 }
 
-void CTxMemPool::UpdateCTIP(const std::map<uint8_t, COutPoint>& mapCTIP)
+void CTxMemPool::UpdateCTIP(const std::map<uint8_t, SidechainCTIP>& mapCTIP)
 {
     mapLastSidechainDeposit = mapCTIP;
+}
+
+bool CTxMemPool::GetMemPoolCTIP(uint8_t nSidechain, SidechainCTIP& ctip) const
+{
+    auto it = mapLastSidechainDeposit.find(nSidechain);
+    if (it != mapLastSidechainDeposit.end()) {
+        ctip = it->second;
+        return true;
+    }
+    return false;
 }
 
 CFeeRate CTxMemPool::GetMinFee(size_t sizelimit) const {

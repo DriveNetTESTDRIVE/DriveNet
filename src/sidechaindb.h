@@ -20,6 +20,7 @@ class uint256;
 
 struct Sidechain;
 struct SidechainActivationStatus;
+struct SidechainCTIP;
 struct SidechainDeposit;
 struct SidechainLD;
 struct SidechainProposal;
@@ -41,7 +42,7 @@ public:
     void AddSidechainNetworkUpdatePackage(const SidechainUpdatePackage& update);
 
     /** Add a new WT^ to the database */
-    bool AddWTPrime(uint8_t nSidechain, const uint256& hashWTPrime, int nHeight);
+    bool AddWTPrime(uint8_t nSidechain, const uint256& hashWTPrime, int nHeight, bool fDebug = false);
 
     /** Add active sidechains to the in-memory cache */
     void CacheActiveSidechains(const std::vector<Sidechain>& vSidechainIn);
@@ -69,7 +70,7 @@ public:
     int CountBlocksAtop(const SidechainLD& ld) const;
 
     /** Check SCDB WT^ verification status */
-    bool CheckWorkScore(uint8_t nSidechain, const uint256& hashWTPrime) const;
+    bool CheckWorkScore(uint8_t nSidechain, const uint256& hashWTPrime, bool fDebug = false) const;
 
     /** Return number of active sidechains */
     int GetActiveSidechainCount() const;
@@ -78,7 +79,7 @@ public:
     std::vector<SidechainDeposit> GetDeposits(uint8_t nSidechain) const;
 
     /** Return vector of deposits this verification period for the sidechain. */
-    std::vector<SidechainDeposit> GetDeposits(const uint256& hashSidechain) const;
+    std::vector<SidechainDeposit> GetDeposits(const std::string& sidechainPriv) const;
 
     /** Return serialization hash of BMM ratchet data */
     uint256 GetBMMHash() const;
@@ -148,10 +149,10 @@ public:
     /**
      * Update the DB state.
      */
-    bool Update(int nHeight, const uint256& hashBlock, const std::vector<CTxOut>& vout, std::string& strError);
+    bool Update(int nHeight, const uint256& hashBlock, const std::vector<CTxOut>& vout, std::string& strError, bool fDebug = false);
 
     /** Update / add multiple SCDB WT^(s) to SCDB */
-    bool UpdateSCDBIndex(const std::vector<SidechainWTPrimeState>& vNewScores, int nHeight);
+    bool UpdateSCDBIndex(const std::vector<SidechainWTPrimeState>& vNewScores, int nHeight, bool fDebug = false);
 
     /** Read the SCDB hash in a new block and try to synchronize our SCDB
      *  by testing possible work score updates until the SCDB hash of our
@@ -183,9 +184,9 @@ public:
 
     std::vector<uint256> GetSidechainsToActivate() const;
 
-    bool GetCTIP(uint8_t nSidechain, COutPoint& out) const;
+    bool GetCTIP(uint8_t nSidechain, SidechainCTIP& out) const;
 
-    std::map<uint8_t, COutPoint> GetCTIP() const;
+    std::map<uint8_t, SidechainCTIP> GetCTIP() const;
 
 private:
     /** Tracks verification status of WT^(s) */
@@ -223,7 +224,7 @@ private:
      * The CTIP of nSidechain up to the latest connected block (does not
      * include mempool txns).
      */
-    std::map<uint8_t, COutPoint> mapCTIP;
+    std::map<uint8_t, SidechainCTIP> mapCTIP;
 
     /** The most recent block that SCDB has processed */
     uint256 hashBlockLastSeen;
