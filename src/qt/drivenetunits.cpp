@@ -116,7 +116,15 @@ QString BitcoinUnits::format(int unit, const CAmount& nIn, bool fPlus, Separator
         quotient_str.insert(0, '-');
     else if (fPlus && n > 0)
         quotient_str.insert(0, '+');
-    return quotient_str + QString(".") + remainder_str;
+
+    QString final = quotient_str + QString(".") + remainder_str;
+
+    // Insert comma if needed
+    if (unit == BTC && remainder_str.size() == 8) {
+        final.insert(final.size() - 4, ",");
+    }
+
+    return final;
 }
 
 
@@ -163,9 +171,24 @@ bool BitcoinUnits::parse(int unit, const QString &value, CAmount *val_out)
     }
     if(decimals.size() > num_decimals)
     {
-        return false; // Exceeds max precision
+        if (unit != BTC)
+            return false; // Exceeds max precision
+
+        // Check if decimals contains valid comma
+        if (decimals.size() > num_decimals + 1 || decimals.count(",") != 1)
+            return false;
     }
     bool ok = false;
+
+    // Remove commas
+    if (unit == BTC)
+    {
+        for (int i = 0; i < decimals.size(); i++) {
+            if (decimals[i] == ",")
+                decimals.remove(i, 1);
+        }
+    }
+
     QString str = whole + decimals.leftJustified(num_decimals, '0');
 
     if(str.size() > 18)
