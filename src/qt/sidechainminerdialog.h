@@ -55,10 +55,6 @@ public Q_SLOTS:
 
     void on_toolButtonSoftwareHashes_clicked();
 
-    void on_pushButtonGenerateConfig_clicked();
-
-    void on_pushButtonConfigFiles_clicked();
-
     void on_pushButtonRandomKeyHash_clicked();
 
 private:

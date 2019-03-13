@@ -8,7 +8,6 @@
 #include <QMessageBox>
 #include <QScrollBar>
 
-#include <qt/confgeneratordialog.h>
 #include <qt/drivenetunits.h>
 #include <qt/guiconstants.h>
 #include <qt/guiutil.h>
@@ -28,7 +27,6 @@ static const unsigned int INDEX_VOTE_SIDECHAIN = 0;
 static const unsigned int INDEX_PROPOSE_SIDECHAIN = 1;
 static const unsigned int INDEX_VOTE_WTPRIME = 2;
 static const unsigned int INDEX_BMM_SETTINGS = 3;
-static const unsigned int INDEX_CONFIG = 4;
 
 SidechainMinerDialog::SidechainMinerDialog(QWidget *parent) :
     QDialog(parent),
@@ -299,18 +297,6 @@ void SidechainMinerDialog::on_toolButtonSoftwareHashes_clicked()
            "Only this software can filter out invalid WT^s. \n\n"
            "These fields are optional but highly recommended."),
         QMessageBox::Ok);
-}
-
-void SidechainMinerDialog::on_pushButtonGenerateConfig_clicked()
-{
-    // Show configuration generator dialog
-    ConfGeneratorDialog *dialog = new ConfGeneratorDialog(this);
-    dialog->exec();
-}
-
-void SidechainMinerDialog::on_pushButtonConfigFiles_clicked()
-{
-    ui->stackedWidget->setCurrentIndex(INDEX_CONFIG);
 }
 
 void SidechainMinerDialog::on_pushButtonRandomKeyHash_clicked()

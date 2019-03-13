@@ -35,18 +35,6 @@ static const int SIDECHAIN_VERSION_CURRENT = 0;
 //! The max supported sidechain version
 static const int SIDECHAIN_VERSION_MAX = 0;
 
-// Configuration files
-static const int CONF_COUNT = 3;
-static const std::array<std::pair<std::string, std::string>, CONF_COUNT> ConfigDirectories =
-{{
-    // Note that these may or may not exist and will need to be updated as
-    // sidechains are activated / deactivated for GUI purposes.
-    // TODO come up with a smart way of automating this.
-    {".drivenet", "drivenet.conf"},
-    {".testchain", "testchain.conf"},
-    {".paychain", "paychain.conf"},
-}};
-
 struct SidechainProposal {
     int32_t nVersion = SIDECHAIN_VERSION_CURRENT;
     std::string title;
