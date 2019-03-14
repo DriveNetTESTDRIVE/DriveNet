@@ -184,7 +184,7 @@ bool BitcoinUnits::parse(int unit, const QString &value, CAmount *val_out)
     if (unit == BTC)
     {
         for (int i = 0; i < decimals.size(); i++) {
-            if (decimals[i] == ",")
+            if (decimals[i] ==',')
                 decimals.remove(i, 1);
         }
     }
