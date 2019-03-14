@@ -185,6 +185,10 @@ void SidechainMinerDialog::on_pushButtonCreateSidechainProposal_clicked()
     if (!strHashID2.empty())
         message += QString("Hash ID 2:\n%1\n\n").arg(QString::fromStdString(strHashID2));
 
+    message += "Note: you can use the RPC command 'listsidechainproposals' to" \
+    " view your pending sidechain proposals or 'listactivesidechains' to view" \
+    " active sidechains.\n";
+
     // Show result message popup
     QMessageBox::information(this, tr("DriveNet - sidechain proposal created!"),
         message,

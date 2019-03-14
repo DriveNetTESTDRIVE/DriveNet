@@ -89,20 +89,6 @@
             <widget class="QWidget" name="page_3">
              <layout class="QVBoxLayout" name="verticalLayout_11">
               <item>
-               <widget class="QLabel" name="label">
-                <property name="text">
-                 <string>Selected Sidechain:</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QComboBox" name="comboBoxSidechains">
-                <property name="currentText">
-                 <string/>
-                </property>
-               </widget>
-              </item>
-              <item>
                <widget class="QTabWidget" name="tabWidget">
                 <property name="tabShape">
                  <enum>QTabWidget::Rounded</enum>
@@ -116,171 +102,153 @@
                  </attribute>
                  <layout class="QVBoxLayout" name="verticalLayout_3">
                   <item>
-                   <widget class="QLabel" name="label_4">
-                    <property name="text">
-                     <string>Create sidechain deposit</string>
+                   <widget class="QComboBox" name="comboBoxSidechains">
+                    <property name="currentText">
+                     <string/>
                     </property>
                    </widget>
                   </item>
                   <item>
-                   <widget class="QFrame" name="frame_2">
-                    <property name="frameShape">
-                     <enum>QFrame::StyledPanel</enum>
+                   <widget class="QLabel" name="label_2">
+                    <property name="text">
+                     <string>Note:  The Sidechain address should be an address that you own on the Sidechain you are depositing to.</string>
                     </property>
-                    <property name="frameShadow">
-                     <enum>QFrame::Raised</enum>
+                    <property name="textFormat">
+                     <enum>Qt::AutoText</enum>
                     </property>
-                    <layout class="QVBoxLayout" name="verticalLayout_2">
-                     <item>
-                      <widget class="QLabel" name="label_2">
-                       <property name="text">
-                        <string>Note:  The Sidechain address should be an address that you own on the Sidechain you are depositing to.</string>
-                       </property>
-                       <property name="textFormat">
-                        <enum>Qt::AutoText</enum>
-                       </property>
-                       <property name="scaledContents">
-                        <bool>false</bool>
-                       </property>
-                       <property name="wordWrap">
-                        <bool>true</bool>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <layout class="QHBoxLayout" name="payToLayout">
-                       <property name="spacing">
-                        <number>0</number>
-                       </property>
-                       <item>
-                        <widget class="QValidatedLineEdit" name="payTo">
-                         <property name="toolTip">
-                          <string>The DriveNet address to send the payment to</string>
-                         </property>
-                         <property name="text">
-                          <string/>
-                         </property>
-                         <property name="placeholderText">
-                          <string>Sidechain address (deposit recipient)</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QPushButton" name="pushButtonPaste">
-                         <property name="text">
-                          <string>Paste</string>
-                         </property>
-                         <property name="icon">
-                          <iconset resource="../drivenet.qrc">
-                           <normaloff>:/icons/editpaste</normaloff>:/icons/editpaste</iconset>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QPushButton" name="pushButtonClear">
-                         <property name="text">
-                          <string>Clear</string>
-                         </property>
-                         <property name="icon">
-                          <iconset resource="../drivenet.qrc">
-                           <normaloff>:/icons/remove</normaloff>:/icons/remove</iconset>
-                         </property>
-                        </widget>
-                       </item>
-                      </layout>
-                     </item>
-                     <item>
-                      <layout class="QHBoxLayout" name="horizontalLayoutAmount" stretch="0">
-                       <item>
-                        <widget class="BitcoinAmountField" name="payAmount">
-                         <property name="sizePolicy">
-                          <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
-                           <horstretch>0</horstretch>
-                           <verstretch>0</verstretch>
-                          </sizepolicy>
-                         </property>
-                        </widget>
-                       </item>
-                      </layout>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="pushButtonDeposit">
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
-                       </property>
-                       <property name="text">
-                        <string/>
-                       </property>
-                       <property name="icon">
-                        <iconset resource="../drivenet.qrc">
-                         <normaloff>:/icons/send</normaloff>:/icons/send</iconset>
-                       </property>
-                       <property name="default">
-                        <bool>true</bool>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <spacer name="verticalSpacer">
-                       <property name="orientation">
-                        <enum>Qt::Vertical</enum>
-                       </property>
-                       <property name="sizeType">
-                        <enum>QSizePolicy::Expanding</enum>
-                       </property>
-                       <property name="sizeHint" stdset="0">
-                        <size>
-                         <width>20</width>
-                         <height>372</height>
-                        </size>
-                       </property>
-                      </spacer>
-                     </item>
-                    </layout>
+                    <property name="scaledContents">
+                     <bool>false</bool>
+                    </property>
+                    <property name="wordWrap">
+                     <bool>true</bool>
+                    </property>
                    </widget>
+                  </item>
+                  <item>
+                   <layout class="QHBoxLayout" name="payToLayout">
+                    <property name="spacing">
+                     <number>0</number>
+                    </property>
+                    <item>
+                     <widget class="QValidatedLineEdit" name="payTo">
+                      <property name="toolTip">
+                       <string>The DriveNet address to send the payment to</string>
+                      </property>
+                      <property name="text">
+                       <string/>
+                      </property>
+                      <property name="placeholderText">
+                       <string>Sidechain address (deposit recipient)</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QPushButton" name="pushButtonPaste">
+                      <property name="text">
+                       <string>Paste</string>
+                      </property>
+                      <property name="icon">
+                       <iconset resource="../drivenet.qrc">
+                        <normaloff>:/icons/editpaste</normaloff>:/icons/editpaste</iconset>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QPushButton" name="pushButtonClear">
+                      <property name="text">
+                       <string>Clear</string>
+                      </property>
+                      <property name="icon">
+                       <iconset resource="../drivenet.qrc">
+                        <normaloff>:/icons/remove</normaloff>:/icons/remove</iconset>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </item>
+                  <item>
+                   <layout class="QHBoxLayout" name="horizontalLayoutAmount" stretch="0">
+                    <item>
+                     <widget class="BitcoinAmountField" name="payAmount">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </item>
+                  <item>
+                   <widget class="QPushButton" name="pushButtonDeposit">
+                    <property name="sizePolicy">
+                     <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
+                      <horstretch>0</horstretch>
+                      <verstretch>0</verstretch>
+                     </sizepolicy>
+                    </property>
+                    <property name="text">
+                     <string/>
+                    </property>
+                    <property name="icon">
+                     <iconset resource="../drivenet.qrc">
+                      <normaloff>:/icons/send</normaloff>:/icons/send</iconset>
+                    </property>
+                    <property name="default">
+                     <bool>true</bool>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <spacer name="verticalSpacer">
+                    <property name="orientation">
+                     <enum>Qt::Vertical</enum>
+                    </property>
+                    <property name="sizeType">
+                     <enum>QSizePolicy::Expanding</enum>
+                    </property>
+                    <property name="sizeHint" stdset="0">
+                     <size>
+                      <width>20</width>
+                      <height>372</height>
+                     </size>
+                    </property>
+                   </spacer>
                   </item>
                  </layout>
                 </widget>
                 <widget class="QWidget" name="tab">
                  <attribute name="title">
-                  <string>Escrow </string>
+                  <string>Tables</string>
                  </attribute>
                  <layout class="QVBoxLayout" name="verticalLayout_5">
                   <item>
-                   <widget class="QCheckBox" name="checkBox_5">
-                    <property name="enabled">
-                     <bool>false</bool>
+                   <widget class="QTabWidget" name="tabWidget_2">
+                    <property name="currentIndex">
+                     <number>0</number>
                     </property>
-                    <property name="text">
-                     <string>Filter by selected Sidechain</string>
-                    </property>
+                    <widget class="QWidget" name="tab_4">
+                     <attribute name="title">
+                      <string>Escrow status</string>
+                     </attribute>
+                     <layout class="QVBoxLayout" name="verticalLayout_8">
+                      <item>
+                       <widget class="QTableView" name="tableViewEscrow"/>
+                      </item>
+                     </layout>
+                    </widget>
+                    <widget class="QWidget" name="tab_5">
+                     <attribute name="title">
+                      <string>WT^ status</string>
+                     </attribute>
+                     <layout class="QVBoxLayout" name="verticalLayout_7">
+                      <item>
+                       <widget class="QTableView" name="tableViewWT"/>
+                      </item>
+                     </layout>
+                    </widget>
                    </widget>
-                  </item>
-                  <item>
-                   <widget class="QTableView" name="tableViewEscrow"/>
-                  </item>
-                 </layout>
-                </widget>
-                <widget class="QWidget" name="tab_2">
-                 <attribute name="title">
-                  <string>WT^(s)</string>
-                 </attribute>
-                 <layout class="QVBoxLayout" name="verticalLayout_4">
-                  <item>
-                   <widget class="QCheckBox" name="checkBox_6">
-                    <property name="enabled">
-                     <bool>false</bool>
-                    </property>
-                    <property name="text">
-                     <string>Filter by selected Sidechain</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QTableView" name="tableViewWT"/>
                   </item>
                  </layout>
                 </widget>
