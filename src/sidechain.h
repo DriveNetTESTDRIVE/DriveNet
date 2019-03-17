@@ -157,12 +157,14 @@ struct SidechainLD {
     }
 };
 
+// TODO remove
 struct SidechainUpdateMSG {
     uint8_t nSidechain;
     uint256 hashWTPrime;
     uint16_t nWorkScore;
 };
 
+// TODO remove
 struct SidechainUpdatePackage {
     int nHeight;
     std::vector<SidechainUpdateMSG> vUpdate;

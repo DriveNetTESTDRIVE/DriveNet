@@ -215,7 +215,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
             if (fPeriodEnded)
                 hashSCDB = scdb.GetSCDBHash();
             else
-                hashSCDB = scdb.GetSCDBHashIfUpdate(scdb.GetUpvotes(), nHeight);
+                hashSCDB = scdb.GetSCDBHashIfUpdate(scdb.GetVotes(SCDB_UPVOTE), nHeight);
 
             if ((!fPeriodEnded && !hashSCDB.IsNull()) || fPeriodEnded)
                 GenerateSCDBHashMerkleRootCommitment(*pblock, hashSCDB, chainparams.GetConsensus());

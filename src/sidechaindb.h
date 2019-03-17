@@ -28,20 +28,28 @@ struct SidechainUpdateMSG;
 struct SidechainUpdatePackage;
 struct SidechainWTPrimeState;
 
+enum VoteType
+{
+    SCDB_UPVOTE = 0,
+    SCDB_DOWNVOTE = 1,
+    SCDB_ABSTAIN = 2,
+};
+
 class SidechainDB
 {
 public:
     SidechainDB();
 
-    /** Add deposit(s) to cache */
+    /** Add deposit(s) to cache - from block */
     void AddDeposits(const std::vector<CTransaction>& vtx, const uint256& hashBlock);
 
+    /** Add deposit(s) to cache - from disk cache */
     void AddDeposits(const std::vector<SidechainDeposit>& vDeposit);
 
-    /** Cache WT^ update TODO here for testing, move to networking */
+    /** Cache WT^ update - used only by unit tests (to be removed) */
     void AddSidechainNetworkUpdatePackage(const SidechainUpdatePackage& update);
 
-    /** Add a new WT^ to the database */
+    /** Add a new WT^ to SCDB */
     bool AddWTPrime(uint8_t nSidechain, const uint256& hashWTPrime, int nHeight, bool fDebug = false);
 
     /** Add active sidechains to the in-memory cache */
@@ -53,15 +61,11 @@ public:
     /** Add SidechainProposal to the in-memory cache */
     void CacheSidechainProposals(const std::vector<SidechainProposal>& vSidechainProposalIn);
 
-    /** Add WT^ to the in-memory cache */
-    bool CacheWTPrime(const CTransaction& tx);
-
     /** Add sidechain-to-be-activated hash to cache */
     void CacheSidechainHashToActivate(const uint256& u);
 
-    /** Remove sidechain-to-be-activated hash from cache,
-     * because the user changed their mind */
-    void RemoveSidechainHashToActivate(const uint256& u);
+    /** Add WT^ to the in-memory cache */
+    bool CacheWTPrime(const CTransaction& tx);
 
     /** Check SCDB WT^ verification status */
     bool CheckWorkScore(uint8_t nSidechain, const uint256& hashWTPrime, bool fDebug = false) const;
@@ -69,42 +73,60 @@ public:
     /** Return number of active sidechains */
     int GetActiveSidechainCount() const;
 
-    /** Return vector of deposits this verification period for nSidechain. */
-    std::vector<SidechainDeposit> GetDeposits(uint8_t nSidechain) const;
-
-    /** Return vector of deposits this verification period for the sidechain. */
-    std::vector<SidechainDeposit> GetDeposits(const std::string& sidechainPriv) const;
-
-    /** Return serialization hash of BMM ratchet data */
-    uint256 GetBMMHash() const;
-
-    /** Return serialization hash of SCDB latest verification(s) */
-    uint256 GetSCDBHash() const;
-
     /** Check if the hash of the sidechain is in our hashes of sidechains to
      * activate cache. Return true if it is, or false if not. */
     bool GetActivateSidechain(const uint256& u) const;
 
+    /** Get list of currently active sidechains */
+    std::vector<Sidechain> GetActiveSidechains() const;
+
+    /** Return serialization hash of BMM ratchet data */
+    uint256 GetBMMHash() const;
+
+    /** Return the CTIP (critical transaction index pair) for nSidechain */
+    bool GetCTIP(uint8_t nSidechain, SidechainCTIP& out) const;
+
+    /** Return the CTIP (critical transaction index pair) for all sidechains */
+    std::map<uint8_t, SidechainCTIP> GetCTIP() const;
+
+    /** Return vector of cached deposits for nSidechain. */
+    std::vector<SidechainDeposit> GetDeposits(uint8_t nSidechain) const;
+
+    /** Return vector of cached deposits for nSidechain. */
+    std::vector<SidechainDeposit> GetDeposits(const std::string& sidechainPriv) const;
+
     /** Return the hash of the last block SCDB processed */
     uint256 GetHashBlockLastSeen();
-
-    /** Return what the SCDB hash would be if the updates are applied */
-    uint256 GetSCDBHashIfUpdate(const std::vector<SidechainWTPrimeState>& vNewScores, int nHeight) const;
 
     /**  Return BMM ratchet data for the specified sidechain, if valid */
     bool GetLinkingData(uint8_t nSidechain, std::vector<SidechainLD>& ld) const;
 
-    /** Get the scriptPubKey that relates to nSidehcain if it exists */
-    bool GetSidechainScript(const uint8_t nSidechain, CScript& scriptPubKey) const;
+    /** Return serialization hash of SCDB latest verification(s) */
+    uint256 GetSCDBHash() const;
+
+    /** Return what the SCDB hash would be if the updates are applied */
+    uint256 GetSCDBHashIfUpdate(const std::vector<SidechainWTPrimeState>& vNewScores, int nHeight) const;
 
     /** Get the sidechain that relates to nSidechain if it exists */
     bool GetSidechain(const uint8_t nSidechain, Sidechain& sidechain) const;
 
+    /** Get sidechain activation status */
+    std::vector<SidechainActivationStatus> GetSidechainActivationStatus() const;
+
+    /** Get the name of a sidechain */
+    std::string GetSidechainName(uint8_t nSidechain) const;
+
+    /** Get list of this node's uncommitted sidechain proposals */
+    std::vector<SidechainProposal> GetSidechainProposals() const;
+
+    /** Get the scriptPubKey that relates to nSidehcain if it exists */
+    bool GetSidechainScript(const uint8_t nSidechain, CScript& scriptPubKey) const;
+
+    /** Get list of sidechains that we have set to ACK */
+    std::vector<uint256> GetSidechainsToActivate() const;
+
     /** Get status of nSidechain's WT^(s) (public for unit tests) */
     std::vector<SidechainWTPrimeState> GetState(uint8_t nSidechain) const;
-
-    /** Return the cached WT^ transaction(s) */
-    std::vector<CTransaction> GetWTPrimeCache() const;
 
     /** Return cached but uncommitted WT^ transaction's hash(s) for nSidechain */
     std::vector<uint256> GetUncommittedWTPrimeCache(uint8_t nSidechain) const;
@@ -112,8 +134,18 @@ public:
     /** Return cached but uncommitted WT^ transaction's hash(s) for nSidechain */
     std::vector<SidechainProposal> GetUncommittedSidechainProposals() const;
 
+    /** Returns SCDB WT^ state with vote applied to them */
+    std::vector<SidechainWTPrimeState> GetVotes(VoteType vote) const;
+
+    /** Return cached WT^ transaction(s) */
+    std::vector<CTransaction> GetWTPrimeCache() const;
+
     /** Is there anything being tracked by the SCDB? */
     bool HasState() const;
+
+    /** Return true if the transaction spends sidechain inputs. Return the
+     * sidechain number by reference */
+    bool HasSidechainScript(const std::vector<CScript>& vScript, uint8_t& nSidechain) const;
 
     /** Return true if the deposit is cached */
     bool HaveDepositCached(const SidechainDeposit& deposit) const;
@@ -121,15 +153,17 @@ public:
     /** Return true if LD is in the ratchet */
     bool HaveLinkingData(uint8_t nSidechain, uint256 hashCritical) const;
 
-    /** Return true if the transcation spends sidechain inputs. Return the
-     * sidechain number by reference */
-    bool HasSidechainScript(const std::vector<CScript>& vScript, uint8_t& nSidechain) const;
-
     /** Return true if the full WT^ CTransaction is cached */
     bool HaveWTPrimeCached(const uint256& hashWTPrime) const;
 
     /** Check if SCDB is tracking the work score of a WT^ */
     bool HaveWTPrimeWorkScore(const uint256& hashWTPrime, uint8_t nSidechain) const;
+
+    bool IsSidechainNumberValid(uint8_t nSidechain) const;
+
+    /** Remove sidechain-to-be-activated hash from cache, because the user
+     * changed their mind */
+    void RemoveSidechainHashToActivate(const uint256& u);
 
     /** Reset SCDB and clear out all data tracked by SidechainDB */
     void ResetWTPrimeState();
@@ -140,92 +174,22 @@ public:
     /** Print SCDB WT^ verification status */
     std::string ToString() const;
 
-    /**
-     * Update the DB state.
-     */
+    /** Apply the changes in a block to SCDB */
     bool Update(int nHeight, const uint256& hashBlock, const std::vector<CTxOut>& vout, std::string& strError, bool fDebug = false);
 
     /** Update / add multiple SCDB WT^(s) to SCDB */
     bool UpdateSCDBIndex(const std::vector<SidechainWTPrimeState>& vNewScores, int nHeight, bool fDebug = false);
 
-    /** Read the SCDB hash in a new block and try to synchronize our SCDB
-     *  by testing possible work score updates until the SCDB hash of our
-     *  SCDB matches that of the new block. Return false if no match found.
+    /** Read the SCDB hash in a new block and try to synchronize our SCDB by
+     * testing possible work score updates until the SCDB hash of our SCDB
+     * matches the one from the new block. Return false if no match found.
      */
     bool UpdateSCDBMatchMT(int nHeight, const uint256& hashMerkleRoot);
 
-    /** Get state with upvotes applied to all WT^(s) */
-    std::vector<SidechainWTPrimeState> GetDownvotes() const;
-
-    /** Get state with abstain votes applied to all WT^(s) */
-    std::vector<SidechainWTPrimeState> GetAbstainVotes() const;
-
-    /** Get state with downvotes applied to all WT^(s) */
-    std::vector<SidechainWTPrimeState> GetUpvotes() const;
-
-    /** Get sidechain activation status */
-    std::vector<SidechainActivationStatus> GetSidechainActivationStatus() const;
-
-    /** Get list of currently active sidechains */
-    std::vector<Sidechain> GetActiveSidechains() const;
-
-    /** Get list of this node's uncomitted sidechain proposals */
-    std::vector<SidechainProposal> GetSidechainProposals() const;
-
-    std::string GetSidechainName(uint8_t nSidechain) const;
-
-    bool IsSidechainNumberValid(uint8_t nSidechain) const;
-
-    std::vector<uint256> GetSidechainsToActivate() const;
-
-    bool GetCTIP(uint8_t nSidechain, SidechainCTIP& out) const;
-
-    std::map<uint8_t, SidechainCTIP> GetCTIP() const;
-
 private:
-    /** Tracks verification status of WT^(s) */
-    std::vector<std::vector<SidechainWTPrimeState>> vWTPrimeStatus;
-
-    /** Sidechains which are currently active */
-    std::vector<Sidechain> vActiveSidechain;
-
-    /** Activation status of proposed sidechains */
-    std::vector<SidechainActivationStatus> vActivationStatus;
-
-    /** Cache of sidechain hashes, for sidechains which this node has
-     * been configured to activate by the user*/
-    std::vector<uint256> vSidechainHashActivate;
-
-    /** Cache of proposals created by this node, which should be included in the
-     * next block that this node mines. *
-     */
-    std::vector<SidechainProposal> vSidechainProposal;
-
-    /** BMM ratchet */
-    std::vector<std::vector<SidechainLD>> ratchet;
-
-    /** Cache of potential WT^ transactions */
-    std::vector<CTransaction> vWTPrimeCache;
-
-    /** Cache of deposits created during this verification period */
-    std::vector<SidechainDeposit> vDepositCache;
-
-    // TODO remove
-    /** Cache of WT^ update messages. */
-    std::vector<SidechainUpdatePackage> vSidechainUpdateCache;
-
-    /*
-     * The CTIP of nSidechain up to the latest connected block (does not
-     * include mempool txns).
-     */
-    std::map<uint8_t, SidechainCTIP> mapCTIP;
-
-    /** The most recent block that SCDB has processed */
-    uint256 hashBlockLastSeen;
-
     /**
-     * Submit default vote for all sidechain WT^(s).
-     * Used when a new block does not contain a valid update.
+     * Submit default vote for all sidechain WT^(s). Used when a new block does
+     * not contain a valid update.
      */
     bool ApplyDefaultUpdate();
 
@@ -234,6 +198,47 @@ private:
 
     /* Takes a list of sidechain hashes to undo upvotes */
     void UndoActivationStatusUpdate(const std::vector<uint256>& vHash);
+
+    /*
+     * The CTIP of nSidechain up to the latest connected block (does not include
+     * mempool txns).
+     */
+    std::map<uint8_t, SidechainCTIP> mapCTIP;
+
+    /** The most recent block that SCDB has processed */
+    uint256 hashBlockLastSeen;
+
+    /** Sidechains which are currently active */
+    std::vector<Sidechain> vActiveSidechain;
+
+    /** Activation status of proposed sidechains */
+    std::vector<SidechainActivationStatus> vActivationStatus;
+
+    /** Cache of deposits created during this verification period */
+    std::vector<SidechainDeposit> vDepositCache;
+
+    /** Cache of sidechain hashes, for sidechains which this node has been
+     * configured to activate by the user */
+    std::vector<uint256> vSidechainHashActivate;
+
+    /** Cache of proposals created by this node, which should be included in the
+     * next block that this node mines. *
+     */
+    std::vector<SidechainProposal> vSidechainProposal;
+
+    // TODO remove
+    /** Cache of WT^ update messages. */
+    std::vector<SidechainUpdatePackage> vSidechainUpdateCache;
+
+    /** Cache of potential WT^ transactions */
+    std::vector<CTransaction> vWTPrimeCache;
+
+    /** Tracks verification status of WT^(s) */
+    std::vector<std::vector<SidechainWTPrimeState>> vWTPrimeStatus;
+
+    // TODO remove
+    /** BMM ratchet */
+    std::vector<std::vector<SidechainLD>> ratchet;
 };
 
 /** Return height at which the current WT^ verification period began */
