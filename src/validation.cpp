@@ -2177,26 +2177,23 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
          * coins held in the CTIP output of the sidechain.
          */
 
-        if (drivechainsEnabled) {
+        if (drivechainsEnabled && fSidechainInputs) {
+            // We must get the B-WT^ hash as work is applied to
+            // WT^ before inputs and the change output are known.
+            uint256 hashBWT;
+            if (!tx.GetBWTHash(hashBWT))
+                return error("ConnectBlock(): WT^ (full id): %s has invalid format", tx.GetHash().ToString());
 
-            if (fSidechainInputs) {
-                // We must get the B-WT^ hash as work is applied to
-                // WT^ before inputs and the change output are known.
-                uint256 hashBWT;
-                if (!tx.GetBWTHash(hashBWT))
-                    return error("ConnectBlock(): WT^ (full id): %s has invalid format", tx.GetHash().ToString());
+            // Get values to and from sidechain
+            CAmount amtSidechainUTXO = CAmount(0);
+            CAmount amtUserInput = CAmount(0);
+            CAmount amtReturning = CAmount(0);
+            CAmount amtWithdrawn = CAmount(0);
+            GetSidechainValues(mempool, tx, amtSidechainUTXO, amtUserInput, amtReturning, amtWithdrawn);
 
-                // Get values to and from sidechain
-                CAmount amtSidechainUTXO = CAmount(0);
-                CAmount amtUserInput = CAmount(0);
-                CAmount amtReturning = CAmount(0);
-                CAmount amtWithdrawn = CAmount(0);
-                GetSidechainValues(mempool, tx, amtSidechainUTXO, amtUserInput, amtReturning, amtWithdrawn);
-
-                if (amtSidechainUTXO > amtReturning) {
-                    if (!scdb.CheckWorkScore(nSidechain, hashBWT, true /* fDebug */)) {
-                        return error("ConnectBlock(): CheckWorkScore failed (blind WT^ hash : txid): %s : %s", hashBWT.ToString(), tx.GetHash().ToString());
-                    }
+            if (amtSidechainUTXO > amtReturning) {
+                if (!scdb.SpendWTPrime(nSidechain, tx, true /* fDebug */)) {
+                    return error("ConnectBlock(): Spend WT^ failed (blind WT^ hash : txid): %s : %s", hashBWT.ToString(), tx.GetHash().ToString());
                 }
             }
         }

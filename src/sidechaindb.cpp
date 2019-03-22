@@ -573,6 +573,107 @@ void SidechainDB::ResetSidechains()
     ratchet.resize(vActiveSidechain.size());
 }
 
+bool SidechainDB::SpendWTPrime(uint8_t nSidechain, const CTransaction& tx, bool fDebug)
+{
+    if (!IsSidechainNumberValid(nSidechain)) {
+        if (fDebug) {
+            LogPrintf("SidechainDB::SpendWTPrime(): Cannot spend WT^ (txid): " \
+                "%s for sidechain number: %u.\n Invalid sidechain number.\n");
+        }
+        return false;
+    }
+
+    uint256 hashBlind;
+    if (!tx.GetBWTHash(hashBlind)) {
+        if (fDebug) {
+            LogPrintf("SidechainDB::SpendWTPrime(): Cannot spend WT^ (txid): " \
+                "%s for sidechain number: %u.\n Cannot get blind hash.\n",
+                tx.GetHash().ToString(),
+                nSidechain);
+        }
+        return false;
+    }
+
+    if (!CheckWorkScore(nSidechain, hashBlind, fDebug)) {
+        if (fDebug) {
+            LogPrintf("SidechainDB::SpendWTPrime(): Cannot spend WT^: %s for " \
+                "sidechain number: %u. CheckWorkScore() failed.\n",
+                hashBlind.ToString(),
+                nSidechain);
+        }
+        return false;
+    }
+
+    // Find the required single output returning to the sidechain script
+    bool fBurnFound = false;
+    uint32_t n = 0;
+    uint8_t nSidechainScript;
+    for (size_t i = 0; i < tx.vout.size(); i++) {
+        const CScript &scriptPubKey = tx.vout[i].scriptPubKey;
+        if (HasSidechainScript(std::vector<CScript>{scriptPubKey}, nSidechainScript)) {
+            if (fBurnFound) {
+                // We already found a sidechain script output. This second
+                // sidechain output makes the WT^ invalid.
+                if (fDebug) {
+                    LogPrintf("SidechainDB::SpendWTPrime(): Cannot spend WT^:" \
+                        " %s for sidechain number: %u.\n" \
+                        "Multiple sidechain return outputs in WT^.\n",
+                        hashBlind.ToString(),
+                        nSidechain);
+                }
+                return false;
+            }
+
+            // Copy output index of deposit burn and move on
+            n = i;
+            fBurnFound = true;
+            continue;
+        }
+    }
+
+    // Make sure that the sidechain output was found
+    if (!fBurnFound) {
+        if (fDebug) {
+            LogPrintf("SidechainDB::SpendWTPrime(): Cannot spend WT^: %s for " \
+                "sidechain number: %u.\n No sidechain return output in WT^.\n",
+                hashBlind.ToString(),
+                nSidechain);
+        }
+        return false;
+    }
+
+    // Make sure that the sidechain output is to the correct sidechain
+    if (nSidechainScript != nSidechain) {
+        if (fDebug) {
+            LogPrintf("SidechainDB::SpendWTPrime(): Cannot spend WT^: %s for " \
+                "sidechain number: %u.\n" \
+                "Return output to incorrect nSidechain: %u in WT^.\n",
+                hashBlind.ToString(),
+                nSidechain,
+                nSidechainScript);
+        }
+        return false;
+    }
+
+    // Update CTIP
+    COutPoint out(tx.GetHash(), n);
+    CAmount amount = tx.vout[n].nValue;
+
+    SidechainCTIP ctip;
+    ctip.out = out;
+    ctip.amount = amount;
+
+    mapCTIP[nSidechain] = ctip;
+
+    LogPrintf("SidechainDB::SpendWTPrime(): Updated sidechain CTIP for " \
+        "nSidechain: %u.\n CTIP output: %s\n CTIP amount: %i.\n",
+        nSidechain,
+        out.ToString(),
+        amount);
+
+    return true;
+}
+
 std::string SidechainDB::ToString() const
 {
     std::string str;

@@ -171,6 +171,9 @@ public:
     /** Reset active sidechains and sidechain activation status */
     void ResetSidechains();
 
+    /** Spend a WT^ (if we can) */
+    bool SpendWTPrime(uint8_t nSidechain, const CTransaction& tx, bool fDebug = false);
+
     /** Print SCDB WT^ verification status */
     std::string ToString() const;
 

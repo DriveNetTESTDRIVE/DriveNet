@@ -223,7 +223,7 @@ void SidechainPage::on_pushButtonDeposit_clicked()
     }
 
     // Get keyID
-    CBitcoinAddress address(ui->payTo->text().toStdString());
+    CSidechainAddress address(ui->payTo->text().toStdString());
     CKeyID keyID;
     if (!address.GetKeyID(keyID)) {
         // Invalid address message box
