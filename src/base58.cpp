@@ -122,14 +122,14 @@ bool DecodeBase58(const std::string& str, std::vector<unsigned char>& vchRet)
 }
 
 bool CBitcoinAddress::GetKeyID(CKeyID& keyID) const
- {
-     if (!IsValid() || vchVersion != Params().Base58Prefix(CChainParams::PUBKEY_ADDRESS))
-         return false;
-     uint160 id;
-     memcpy(&id, vchData.data(), 20);
-     keyID = CKeyID(id);
-     return true;
- }
+{
+    if (!IsValid() || vchVersion != Params().Base58Prefix(CChainParams::PUBKEY_ADDRESS))
+        return false;
+    uint160 id;
+    memcpy(&id, vchData.data(), 20);
+    keyID = CKeyID(id);
+    return true;
+}
 
  bool CBitcoinAddress::IsValid() const
 {
@@ -280,7 +280,7 @@ bool CSidechainAddress::GetKeyID(CKeyID& keyID) const
     if (!IsValid() || vchVersion != Params().Base58Prefix(CChainParams::SIDECHAIN_PUBKEY_ADDRESS))
         return false;
     uint160 id;
-    memcpy(&id, &vchData[0], 20);
+    memcpy(&id, vchData.data(), 20);
     keyID = CKeyID(id);
     return true;
 }

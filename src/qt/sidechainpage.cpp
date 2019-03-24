@@ -227,7 +227,7 @@ void SidechainPage::on_pushButtonDeposit_clicked()
     CKeyID keyID;
     if (!address.GetKeyID(keyID)) {
         // Invalid address message box
-        messageBox.setWindowTitle("Invalid Bitcoin address!");
+        messageBox.setWindowTitle("Invalid sidechain address!");
         messageBox.setText("Check the address you have entered and try again.");
         messageBox.exec();
         return;
