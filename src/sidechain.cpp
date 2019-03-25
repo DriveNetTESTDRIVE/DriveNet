@@ -94,18 +94,6 @@ std::string SidechainDeposit::ToString() const
     return ss.str();
 }
 
-bool SidechainLD::operator==(const SidechainLD& a) const
-{
-    return (a.nSidechain == nSidechain &&
-            a.nPrevBlockRef == nPrevBlockRef &&
-            a.hashCritical == hashCritical);
-}
-
-uint256 SidechainLD::GetHash(void) const
-{
-    return SerializeHash(*this);
-}
-
 bool SidechainWTPrimeState::IsNull() const
 {
     return (hashWTPrime.IsNull());

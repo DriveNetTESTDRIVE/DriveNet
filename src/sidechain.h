@@ -138,25 +138,6 @@ struct SidechainDeposit {
     }
 };
 
-struct SidechainLD {
-    uint8_t nSidechain;
-    uint16_t nPrevBlockRef;
-    uint256 hashCritical;
-
-    bool operator==(const SidechainLD& a) const;
-    uint256 GetHash(void) const;
-
-    // For hash calculation
-    ADD_SERIALIZE_METHODS
-
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action) {
-        READWRITE(nSidechain);
-        READWRITE(nPrevBlockRef);
-        READWRITE(hashCritical);
-    }
-};
-
 // TODO remove
 struct SidechainUpdateMSG {
     uint8_t nSidechain;

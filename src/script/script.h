@@ -646,7 +646,6 @@ public:
     /** Script formats for Drivechains */
     bool IsCriticalHashCommit() const;
     bool IsSCDBHashMerkleRootCommit() const;
-    bool IsBMMHashMerkleRootCommit() const;
     bool IsWTPrimeHashCommit() const;
     bool IsSidechainProposalCommit() const;
     bool IsSidechainActivationCommit() const;

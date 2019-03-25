@@ -220,7 +220,6 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
             if ((!fPeriodEnded && !hashSCDB.IsNull()) || fPeriodEnded)
                 GenerateSCDBHashMerkleRootCommitment(*pblock, hashSCDB, chainparams.GetConsensus());
         }
-        GenerateBMMHashMerkleRootCommitment(*pblock, chainparams.GetConsensus());
         GenerateCriticalHashCommitments(*pblock, chainparams.GetConsensus());
 
         // TODO make interactive - GUI

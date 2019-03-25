@@ -3507,44 +3507,6 @@ void GenerateSCDBHashMerkleRootCommitment(CBlock& block, const uint256& hashSCDB
     block.vtx[0] = MakeTransactionRef(std::move(mtx));
 }
 
-void GenerateBMMHashMerkleRootCommitment(CBlock& block, const Consensus::Params& consensusParams)
-{
-    /*
-     * M7
-     * Drivechain BMM linking data once per block hashMerkleRoot commitment.
-     * BIP: (INSERT HERE ONCE ASSIGNED) // TODO
-     */
-
-    // Check for activation of Drivechains
-    if (!IsDrivechainEnabled(chainActive.Tip(), consensusParams))
-        return;
-
-    if (!scdb.HasState())
-        return;
-
-    // Create output that commitment will be added to
-    CTxOut out;
-    out.nValue = 0;
-
-    // Add script header
-    out.scriptPubKey.resize(38);
-    out.scriptPubKey[0] = OP_RETURN;
-    out.scriptPubKey[1] = 0x24; // TODO Remove
-    out.scriptPubKey[2] = 0xD3;
-    out.scriptPubKey[3] = 0x40;
-    out.scriptPubKey[4] = 0x70;
-    out.scriptPubKey[5] = 0x53;
-
-    // Add BMM hashMerkleRoot
-    uint256 hashMerkleRoot = scdb.GetBMMHash();
-    memcpy(&out.scriptPubKey[6], &hashMerkleRoot, 32);
-
-    // Update coinbase in block
-    CMutableTransaction mtx(*block.vtx[0]);
-    mtx.vout.push_back(out);
-    block.vtx[0] = MakeTransactionRef(std::move(mtx));
-}
-
 void GenerateWTPrimeHashCommitment(CBlock& block, const uint256& hashWTPrime, const uint8_t nSidechain, const Consensus::Params& consensusParams)
 {
     /*

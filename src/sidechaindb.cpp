@@ -227,17 +227,6 @@ std::vector<Sidechain> SidechainDB::GetActiveSidechains() const
     return vActiveSidechain;
 }
 
-uint256 SidechainDB::GetBMMHash() const
-{
-    std::vector<uint256> vLeaf;
-    for (const auto& a : ratchet) {
-        for (const SidechainLD& ld : a) {
-            vLeaf.push_back(ld.GetHash());
-        }
-    }
-    return ComputeMerkleRoot(vLeaf);
-}
-
 bool SidechainDB::GetCTIP(uint8_t nSidechain, SidechainCTIP& out) const
 {
     if (!IsSidechainNumberValid(nSidechain))
@@ -292,19 +281,6 @@ std::vector<SidechainDeposit> SidechainDB::GetDeposits(const std::string& sidech
 uint256 SidechainDB::GetHashBlockLastSeen()
 {
     return hashBlockLastSeen;
-}
-
-bool SidechainDB::GetLinkingData(uint8_t nSidechain, std::vector<SidechainLD>& ld) const
-{
-    if (!IsSidechainNumberValid(nSidechain))
-        return false;
-
-    if (nSidechain >= ratchet.size())
-        return false;
-
-    ld = ratchet[nSidechain];
-
-    return true;
 }
 
 uint256 SidechainDB::GetSCDBHash() const
@@ -478,19 +454,6 @@ bool SidechainDB::HaveDepositCached(const SidechainDeposit &deposit) const
     return false;
 }
 
-bool SidechainDB::HaveLinkingData(uint8_t nSidechain, uint256 hashCritical) const
-{
-    if (!IsSidechainNumberValid(nSidechain))
-        return false;
-
-    for (const SidechainLD& ld : ratchet[nSidechain]) {
-        if (ld.hashCritical == hashCritical)
-            return true;
-    }
-    return false;
-}
-
-
 bool SidechainDB::HaveWTPrimeCached(const uint256& hashWTPrime) const
 {
     for (const CTransaction& tx : vWTPrimeCache) {
@@ -561,16 +524,9 @@ void SidechainDB::ResetSidechains()
     // Clear out our cache of sidechain deposits
     vDepositCache.clear();
 
-    // Since vWTPrimeStatus and ratchet are based on active sidechains, we will
-    // also reset them if all sidechains are reset.
-
     // Clear out WT^ state
     vWTPrimeStatus.clear();
     vWTPrimeStatus.resize(vActiveSidechain.size());
-
-    // Clear out BMM LD
-    ratchet.clear();
-    ratchet.resize(vActiveSidechain.size());
 }
 
 bool SidechainDB::SpendWTPrime(uint8_t nSidechain, const CTransaction& tx, bool fDebug)
@@ -714,9 +670,6 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const std::vecto
      * Now we will look for data that is relevant to SCDB
      * in this block's coinbase.
      *
-     * Scan for h* linking data and add it to the BMMLD
-     * ratchet system.
-     *
      * Scan for new WT^(s) and start tracking them.
      *
      * Scan for updated SCDB MT hash, and perform MT hash
@@ -801,42 +754,6 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const std::vecto
         vActivationHash.push_back(hash);
     }
     UpdateActivationStatus(vActivationHash);
-
-    // Scan for bmm h*(s)
-    for (const CTxOut& out : vout) {
-        const CScript& scriptPubKey = out.scriptPubKey;
-
-        if (!scriptPubKey.IsCriticalHashCommit())
-            continue;
-
-        // Read critical data bytes if there are any
-        if (scriptPubKey.size() > 38) {
-            CCriticalData criticalData;
-            criticalData.hashCritical = uint256(std::vector<unsigned char>(scriptPubKey.begin() + 6, scriptPubKey.begin() + 38));
-
-            // Do the bytes indicate that this is a bmm h*?
-            uint8_t nSidechain;
-            uint16_t nPrevBlockRef;
-            if (!criticalData.IsBMMRequest(nSidechain, nPrevBlockRef))
-                continue;
-
-            if (nPrevBlockRef > ratchet[nSidechain].size())
-                continue;
-
-            SidechainLD ld;
-            ld.nSidechain = nSidechain;
-            ld.hashCritical = criticalData.hashCritical;
-            ld.nPrevBlockRef = nPrevBlockRef;
-
-            ratchet[nSidechain].push_back(ld);
-
-            // Maintain ratchet size limit
-            if (!(ratchet[nSidechain].size() < BMM_MAX_LD)) {
-                // TODO change to vector of queue for pop() ?
-                ratchet.erase(ratchet.begin());
-            }
-        }
-    }
 
     // Scan for new WT^(s) and start tracking them
     for (const CTxOut& out : vout) {
@@ -1163,9 +1080,6 @@ void SidechainDB::UpdateActivationStatus(const std::vector<uint256>& vHash)
 
             // Add blank vector to track this sidechain's WT^(s)
             vWTPrimeStatus.push_back(std::vector<SidechainWTPrimeState>{});
-
-            // Add a slot to the ratchet for this new sidechain
-            ratchet.push_back(std::vector<SidechainLD>{});
 
             // Remove proposal from our cache if it has activated
             for (size_t j = 0; j < vSidechainProposal.size(); j++) {

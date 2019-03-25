@@ -440,9 +440,6 @@ void GenerateLNCriticalHashCommitment(CBlock& block, const Consensus::Params& co
 /** Produce the SCDB hashMerkleRoot coinbase commitment for a block */
 void GenerateSCDBHashMerkleRootCommitment(CBlock& block, const uint256& hashSCDB, const Consensus::Params& consensusParams);
 
-/** Produce the BMM hashMerkleRoot coinbase commitment for a block */
-void GenerateBMMHashMerkleRootCommitment(CBlock& block, const Consensus::Params& consensusParams);
-
 /** Produce WT^ hash coinbase commitment for a block */
 void GenerateWTPrimeHashCommitment(CBlock& block, const uint256& hashWTPrime, const uint8_t nSidechain, const Consensus::Params& consensusParams);
 

@@ -22,7 +22,6 @@ struct Sidechain;
 struct SidechainActivationStatus;
 struct SidechainCTIP;
 struct SidechainDeposit;
-struct SidechainLD;
 struct SidechainProposal;
 struct SidechainUpdateMSG;
 struct SidechainUpdatePackage;
@@ -80,9 +79,6 @@ public:
     /** Get list of currently active sidechains */
     std::vector<Sidechain> GetActiveSidechains() const;
 
-    /** Return serialization hash of BMM ratchet data */
-    uint256 GetBMMHash() const;
-
     /** Return the CTIP (critical transaction index pair) for nSidechain */
     bool GetCTIP(uint8_t nSidechain, SidechainCTIP& out) const;
 
@@ -97,9 +93,6 @@ public:
 
     /** Return the hash of the last block SCDB processed */
     uint256 GetHashBlockLastSeen();
-
-    /**  Return BMM ratchet data for the specified sidechain, if valid */
-    bool GetLinkingData(uint8_t nSidechain, std::vector<SidechainLD>& ld) const;
 
     /** Return serialization hash of SCDB latest verification(s) */
     uint256 GetSCDBHash() const;
@@ -149,9 +142,6 @@ public:
 
     /** Return true if the deposit is cached */
     bool HaveDepositCached(const SidechainDeposit& deposit) const;
-
-    /** Return true if LD is in the ratchet */
-    bool HaveLinkingData(uint8_t nSidechain, uint256 hashCritical) const;
 
     /** Return true if the full WT^ CTransaction is cached */
     bool HaveWTPrimeCached(const uint256& hashWTPrime) const;
@@ -238,10 +228,6 @@ private:
 
     /** Tracks verification status of WT^(s) */
     std::vector<std::vector<SidechainWTPrimeState>> vWTPrimeStatus;
-
-    // TODO remove
-    /** BMM ratchet */
-    std::vector<std::vector<SidechainLD>> ratchet;
 };
 
 /** Return height at which the current WT^ verification period began */

@@ -272,25 +272,6 @@ bool CScript::IsSCDBHashMerkleRootCommit() const
     return true;
 }
 
-bool CScript::IsBMMHashMerkleRootCommit() const
-{
-    // Check script size
-    size_t size = this->size();
-    if (size < 38) // sha256 hash + opcodes
-        return false;
-
-    // Check script header
-    if ((*this)[0] != OP_RETURN ||
-            (*this)[1] != 0x24 ||
-            (*this)[2] != 0xD3 ||
-            (*this)[3] != 0x40 ||
-            (*this)[4] != 0x70 ||
-            (*this)[5] != 0x53)
-        return false;
-
-    return true;
-}
-
 bool CScript::IsWTPrimeHashCommit() const
 {
     // Check script size
