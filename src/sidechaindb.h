@@ -162,7 +162,7 @@ public:
     void ResetSidechains();
 
     /** Spend a WT^ (if we can) */
-    bool SpendWTPrime(uint8_t nSidechain, const CTransaction& tx, bool fDebug = false);
+    bool SpendWTPrime(uint8_t nSidechain, const uint256& hashBlock, const CTransaction& tx, bool fDebug = false);
 
     /** Print SCDB WT^ verification status */
     std::string ToString() const;

@@ -136,12 +136,14 @@ bool SidechainDB::AddWTPrime(uint8_t nSidechain, const uint256& hashWTPrime, int
         LogPrintf("SidechainDB::AddWTPrime(): Failed to update SCDBIndex.\n");
 
     return fUpdated;
-
 }
 
 void SidechainDB::CacheActiveSidechains(const std::vector<Sidechain>& vActiveSidechainIn)
 {
     vActiveSidechain = vActiveSidechainIn;
+
+    // Also resize vWTPrimeStatus to keep track of WT^(s)
+    vWTPrimeStatus.resize(vActiveSidechain.size());
 }
 
 void SidechainDB::CacheSidechainActivationStatus(const std::vector<SidechainActivationStatus>& vActivationStatusIn)
@@ -526,10 +528,9 @@ void SidechainDB::ResetSidechains()
 
     // Clear out WT^ state
     vWTPrimeStatus.clear();
-    vWTPrimeStatus.resize(vActiveSidechain.size());
 }
 
-bool SidechainDB::SpendWTPrime(uint8_t nSidechain, const CTransaction& tx, bool fDebug)
+bool SidechainDB::SpendWTPrime(uint8_t nSidechain, const uint256& hashBlock,  const CTransaction& tx, bool fDebug)
 {
     if (!IsSidechainNumberValid(nSidechain)) {
         if (fDebug) {
@@ -620,6 +621,16 @@ bool SidechainDB::SpendWTPrime(uint8_t nSidechain, const CTransaction& tx, bool 
     ctip.amount = amount;
 
     mapCTIP[nSidechain] = ctip;
+
+    // Create a sidechain deposit object for the return amount
+    SidechainDeposit deposit;
+    deposit.nSidechain = nSidechain;
+    deposit.keyID = CKeyID(uint160(ParseHex("1111111111111111111111111111111111111111")));
+    deposit.tx = tx;
+    deposit.n = n;
+    deposit.hashBlock = hashBlock;
+
+    AddDeposits(std::vector<SidechainDeposit>{deposit});
 
     LogPrintf("SidechainDB::SpendWTPrime(): Updated sidechain CTIP for " \
         "nSidechain: %u.\n CTIP output: %s\n CTIP amount: %i.\n",
@@ -817,7 +828,7 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const std::vecto
 
 bool SidechainDB::UpdateSCDBIndex(const std::vector<SidechainWTPrimeState>& vNewScores, int nHeight, bool fDebug)
 {
-    if (!vNewScores.size()) {
+    if (vNewScores.empty()) {
         if (fDebug)
             LogPrintf("SidechainDB::UpdateSCDBIndex: Update failed! No new " \
                     "scores at height: %u\n", nHeight);
