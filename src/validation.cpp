@@ -2192,7 +2192,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
             GetSidechainValues(mempool, tx, amtSidechainUTXO, amtUserInput, amtReturning, amtWithdrawn);
 
             if (amtSidechainUTXO > amtReturning) {
-                if (!scdb.SpendWTPrime(nSidechain, block.GetHash(), tx, true /* fDebug */)) {
+                if (!scdb.SpendWTPrime(nSidechain, block.GetHash(), tx, fJustCheck, true /* fDebug */)) {
                     return error("ConnectBlock(): Spend WT^ failed (blind WT^ hash : txid): %s : %s", hashBWT.ToString(), tx.GetHash().ToString());
                 }
             }

@@ -530,7 +530,7 @@ void SidechainDB::ResetSidechains()
     vWTPrimeStatus.clear();
 }
 
-bool SidechainDB::SpendWTPrime(uint8_t nSidechain, const uint256& hashBlock,  const CTransaction& tx, bool fDebug)
+bool SidechainDB::SpendWTPrime(uint8_t nSidechain, const uint256& hashBlock, const CTransaction& tx, bool fJustCheck, bool fDebug)
 {
     if (!IsSidechainNumberValid(nSidechain)) {
         if (fDebug) {
@@ -612,6 +612,19 @@ bool SidechainDB::SpendWTPrime(uint8_t nSidechain, const uint256& hashBlock,  co
         return false;
     }
 
+    if (nSidechain >= vWTPrimeStatus.size()) {
+        if (fDebug) {
+            LogPrintf("SidechainDB::SpendWTPrime(): Cannot spend WT^: %s for " \
+                "sidechain number: %u.\n WT^ status for sidechain not found.\n",
+                hashBlind.ToString(),
+                nSidechain);
+        }
+        return false;
+    }
+
+    if (fJustCheck)
+        return true;
+
     // Update CTIP
     COutPoint out(tx.GetHash(), n);
     CAmount amount = tx.vout[n].nValue;
@@ -632,11 +645,16 @@ bool SidechainDB::SpendWTPrime(uint8_t nSidechain, const uint256& hashBlock,  co
 
     AddDeposits(std::vector<SidechainDeposit>{deposit});
 
+    // Remove WT^ work score now that is has been paid out
+    vWTPrimeStatus[nSidechain].clear();
+
     LogPrintf("SidechainDB::SpendWTPrime(): Updated sidechain CTIP for " \
-        "nSidechain: %u.\n CTIP output: %s\n CTIP amount: %i.\n",
+        "nSidechain: %u.\n CTIP output: %s\n CTIP amount: %i.\n" \
+        "hashBlock: %s\n",
         nSidechain,
         out.ToString(),
-        amount);
+        amount,
+        hashBlock.ToString());
 
     return true;
 }
