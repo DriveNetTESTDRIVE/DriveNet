@@ -162,16 +162,20 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     // transaction (which in most cases can be a no-op).
     fIncludeWitness = IsWitnessEnabled(pindexPrev, chainparams.GetConsensus()) && fMineWitnessTx;
 
+    bool fDrivechainEnabled = IsDrivechainEnabled(pindexPrev, chainparams.GetConsensus());
+
+    if (fDrivechainEnabled) {
+        // Removed expired BMM requests that we don't want to consider
+        mempool.RemoveExpiredCriticalRequests();
+
+        // Select which BMM requests (if any) to include
+        mempool.SelectBMMRequests();
+    }
+
     int nPackagesSelected = 0;
     int nDescendantsUpdated = 0;
-
-    // Removed expired BMM requests that we don't want to consider
-    mempool.RemoveExpiredCriticalRequests();
-
-    // Select which BMM requests (if any) to include
-    mempool.SelectBMMRequests();
-
-    addPackageTxs(nPackagesSelected, nDescendantsUpdated);
+    bool fNeedCriticalFeeTx = false;
+    addPackageTxs(nPackagesSelected, nDescendantsUpdated, fDrivechainEnabled, fNeedCriticalFeeTx);
 
     int64_t nTime1 = GetTimeMicros();
 
@@ -185,13 +189,18 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     coinbaseTx.vout.resize(1);
     coinbaseTx.vout[0].scriptPubKey = scriptPubKeyIn;
 
-    bool drivechainsEnabled = IsDrivechainEnabled(pindexPrev, chainparams.GetConsensus());
+    // Coinbase subsidy + fees
+    coinbaseTx.vout[0].nValue = nFees + GetBlockSubsidy(nHeight, chainparams.GetConsensus());
+    coinbaseTx.vin[0].scriptSig = CScript() << nHeight << OP_0;
+
+    // Add coinbase to block
+    pblock->vtx[0] = MakeTransactionRef(std::move(coinbaseTx));
 
     std::vector<Sidechain> vActiveSidechain;
-    if (drivechainsEnabled)
+    if (fDrivechainEnabled)
         vActiveSidechain = scdb.GetActiveSidechains();
 
-    if (drivechainsEnabled) {
+    if (fDrivechainEnabled) {
         // Add WT^(s) which have been validated
         for (const Sidechain& s : vActiveSidechain) {
             CMutableTransaction wtx;
@@ -202,11 +211,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
         }
     }
 
-    coinbaseTx.vout[0].nValue = nFees + GetBlockSubsidy(nHeight, chainparams.GetConsensus());
-    coinbaseTx.vin[0].scriptSig = CScript() << nHeight << OP_0;
-    pblock->vtx[0] = MakeTransactionRef(std::move(coinbaseTx));
-
-    if (drivechainsEnabled) {
+    if (fDrivechainEnabled) {
         if (scdb.HasState()) {
             bool fPeriodEnded = (nHeight % SIDECHAIN_VERIFICATION_PERIOD == 0);
             // TODO make interactive - GUI
@@ -272,14 +277,77 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     pblocktemplate->vchCoinbaseCommitment = GenerateCoinbaseCommitment(*pblock, pindexPrev, chainparams.GetConsensus());
     pblocktemplate->vTxFees[0] = -nFees;
 
-    LogPrintf("CreateNewBlock(): block weight: %u txs: %u fees: %ld sigops %d\n", GetBlockWeight(*pblock), nBlockTx, nFees, nBlockSigOpsCost);
-
     // Fill in header
     pblock->hashPrevBlock  = pindexPrev->GetBlockHash();
     UpdateTime(pblock, chainparams.GetConsensus(), pindexPrev);
     pblock->nBits          = GetNextWorkRequired(pindexPrev, pblock, chainparams.GetConsensus());
     pblock->nNonce         = 0;
     pblocktemplate->vTxSigOpsCost[0] = WITNESS_SCALE_FACTOR * GetLegacySigOpCount(*pblock->vtx[0]);
+
+    // Handle / create critical fee tx (collects bmm / critical data fees)
+    if (fDrivechainEnabled && fNeedCriticalFeeTx) {
+        // Create critical fee tx
+        CMutableTransaction feeTx;
+        feeTx.vout.resize(1);
+        // Pay the fees to the same script as the coinbase
+        feeTx.vout[0].scriptPubKey = scriptPubKeyIn;
+        feeTx.vout[0].nValue = CAmount(0);
+
+        // Find all of the critical data transactions included in the block
+        // and take their input and total amount
+        for (const CTransactionRef& tx : pblock->vtx) {
+            if (tx && !tx->criticalData.IsNull()) {
+                // Try to find the critical data fee output and take it
+                for (uint32_t i = 0; i < tx->vout.size(); i++) {
+                    if (tx->vout[i].scriptPubKey == CScript() << OP_TRUE) {
+                        feeTx.vin.push_back(CTxIn(tx->GetHash(), i));
+                        feeTx.vout[0].nValue += tx->vout[i].nValue;
+                    }
+                }
+            }
+        }
+
+        // Add the fee tx to the block
+        if (CTransaction(feeTx).GetValueOut()) {
+            pblock->vtx.push_back(MakeTransactionRef(std::move(feeTx)));
+            pblocktemplate->vTxSigOpsCost.push_back(WITNESS_SCALE_FACTOR * GetLegacySigOpCount(*pblock->vtx.back()));
+            pblocktemplate->vTxFees.push_back(0);
+
+            // Remove the old witness commitment
+            int wi = GetWitnessCommitmentIndex(*pblock);
+            if (wi != -1) {
+                CMutableTransaction mtx(*pblock->vtx[0]);
+                mtx.vout.erase(mtx.vout.begin() + wi);
+                pblock->vtx[0] = MakeTransactionRef(std::move(mtx));
+            }
+
+            pblocktemplate->vchCoinbaseCommitment = GenerateCoinbaseCommitment(*pblock, pindexPrev, chainparams.GetConsensus());
+
+            // Test block validity after adding critical fee tx
+            CValidationState state;
+            if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
+                // TODO right now if the block is too big, this will result in
+                // giving up the BMM commitment fees...
+
+                // Remove the fee tx if the block is too big now
+                pblock->vtx.pop_back();
+                pblocktemplate->vTxSigOpsCost.pop_back();
+                pblocktemplate->vTxFees.pop_back();
+
+                // Remove the old witness commitment
+                int wi = GetWitnessCommitmentIndex(*pblock);
+                if (wi != -1) {
+                    CMutableTransaction mtx(*pblock->vtx[0]);
+                    mtx.vout.erase(mtx.vout.begin() + wi);
+                    pblock->vtx[0] = MakeTransactionRef(std::move(mtx));
+                }
+
+                pblocktemplate->vchCoinbaseCommitment = GenerateCoinbaseCommitment(*pblock, pindexPrev, chainparams.GetConsensus());
+            }
+        }
+    }
+
+    LogPrintf("CreateNewBlock(): block weight: %u txs: %u fees: %ld sigops %d\n", GetBlockWeight(*pblock), nBlockTx, nFees, nBlockSigOpsCost);
 
     CValidationState state;
     if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
@@ -540,7 +608,7 @@ void BlockAssembler::SortForBlock(const CTxMemPool::setEntries& package, CTxMemP
 // Each time through the loop, we compare the best transaction in
 // mapModifiedTxs with the next transaction in the mempool to decide what
 // transaction package to work on next.
-void BlockAssembler::addPackageTxs(int &nPackagesSelected, int &nDescendantsUpdated)
+void BlockAssembler::addPackageTxs(int &nPackagesSelected, int &nDescendantsUpdated, bool fDrivechainEnabled, bool& fNeedCriticalFeeTx)
 {
     // mapModifiedTx will store sorted packages after they are modified
     // because some of their txs are already in the block
@@ -660,6 +728,10 @@ void BlockAssembler::addPackageTxs(int &nPackagesSelected, int &nDescendantsUpda
             AddToBlock(sortedEntries[i]);
             // Erase from the modified set, if present
             mapModifiedTx.erase(sortedEntries[i]);
+
+            // Set fNeedCriticalFeeTx
+            if (fDrivechainEnabled && sortedEntries[i]->HasCriticalData())
+                fNeedCriticalFeeTx = true;
         }
 
         ++nPackagesSelected;

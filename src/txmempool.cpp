@@ -1059,7 +1059,7 @@ void CTxMemPool::SelectBMMRequests()
         }
     }
 
-    RemoveStaged(txToRemove, false, MemPoolRemovalReason::EXPIRY);
+    RemoveStaged(txToRemove, true, MemPoolRemovalReason::EXPIRY);
 }
 
 void CTxMemPool::UpdateCTIP(const std::map<uint8_t, SidechainCTIP>& mapCTIP)

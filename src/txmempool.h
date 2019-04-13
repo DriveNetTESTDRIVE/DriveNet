@@ -125,6 +125,7 @@ public:
 
     bool GetSpendsCoinbase() const { return spendsCoinbase; }
     bool GetSpendsCriticalData() const { return spendsCriticalData; }
+    bool HasCriticalData() const { return !this->tx->criticalData.IsNull(); }
 
     uint64_t GetCountWithAncestors() const { return nCountWithAncestors; }
     uint64_t GetSizeWithAncestors() const { return nSizeWithAncestors; }

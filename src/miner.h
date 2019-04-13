@@ -169,7 +169,7 @@ private:
     /** Add transactions based on feerate including unconfirmed ancestors
       * Increments nPackagesSelected / nDescendantsUpdated with corresponding
       * statistics from the package selection (for logging statistics). */
-    void addPackageTxs(int &nPackagesSelected, int &nDescendantsUpdated);
+    void addPackageTxs(int &nPackagesSelected, int &nDescendantsUpdated, bool fDrivechainEnabled, bool& fNeedCriticalFeeTx);
 
     // helper functions for addPackageTxs()
     /** Remove confirmed (inBlock) entries from given set */
@@ -196,7 +196,7 @@ private:
     bool CreateWTPrimePayout(uint8_t nSidechain, CMutableTransaction& tx);
 };
 
-/** The old (actually useful) miner functions that were removed after 0.12 */
+/** Miner functions restored from Bitcoin 0.12 */
 
 /** Run the miner threads */
 void GenerateBitcoins(bool fGenerate, int nThreads, const CChainParams& chainparams);
