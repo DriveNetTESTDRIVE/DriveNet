@@ -157,37 +157,40 @@ bool CCriticalData::IsBMMRequest(uint8_t& nSidechain, uint16_t& nPrevBlockRef) c
     // Check for h* commit flag in critical data bytes
     if (IsNull())
         return false;
-    if (bytes.size() < 4)
+    if (bytes.size() < 8)
         return false;
 
     if (bytes[0] != 0x00 || bytes[1] != 0xbf || bytes[2] != 0x00)
         return false;
 
-    if (bytes.size() == 4) {
-        nSidechain = 0;
-        // TODO re-enable? By doing some refactoring we could re-enable this
-        // check here. However, I think it would be better to just do the check
-        // someone else outside of this class.
-        //if (!IsSidechainNumberValid(nSidechain))
-        //    return false;
-        //
+    opcodetype opcode;
+    std::vector<unsigned char> vch;
 
-        std::vector<unsigned char> vch;
-        vch.push_back(bytes[3]);
-        nPrevBlockRef = CScriptNum(vch, false).getint();
-    } else {
-        std::vector<unsigned char> vch;
-        vch.push_back(bytes[3]);
+    CScript script(bytes.begin(), bytes.end());
 
-        nSidechain = CScriptNum(vch, false).getint();
-        // TODO re-enable?
-        //if (!IsSidechainNumberValid(nSidechain))
-        //    return false;
+    // Read nSidechain
+    CScript::const_iterator psidechain = script.begin() + 3;
+    if (!script.GetOp(psidechain, opcode, vch))
+        return false;
 
-        std::vector<unsigned char> vchPrev;
-        vchPrev.push_back(bytes[4]);
-        nPrevBlockRef = CScriptNum(vchPrev, false).getint();
-    }
+    int intSidechain = CScriptNum(vch, false).getint();
+    if (intSidechain < 0 || intSidechain > 255)
+        return false;
+
+    nSidechain = (uint8_t)intSidechain;
+
+    // Read prevblockref
+    vch.clear();
+
+    CScript::const_iterator pprevblock = script.begin() + 4;
+    if (!script.GetOp(pprevblock, opcode, vch))
+        return false;
+
+    int intPrevBlock = CScriptNum(vch, false).getint();
+    if (intPrevBlock < 0 || intPrevBlock > 65535)
+        return false;
+
+    nPrevBlockRef = (uint16_t)intPrevBlock;
 
     return true;
 }

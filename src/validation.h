@@ -150,7 +150,7 @@ static const bool DEFAULT_PEERBLOOMFILTERS = true;
 /** Default for -stopatheight */
 static const int DEFAULT_STOPATHEIGHT = 0;
 
-static const int MAX_CRITICAL_DATA_BYTES = 7;
+static const int MAX_CRITICAL_DATA_BYTES = 21;
 
 struct BlockHasher
 {

@@ -678,7 +678,7 @@ UniValue createcriticaldatatx(const JSONRPCRequest& request)
 UniValue createbmmcriticaldatatx(const JSONRPCRequest& request)
 {
     // TODO handle optional height better
-    if (request.fHelp || request.params.size() != 5)
+    if (request.fHelp || request.params.size() != 6)
         throw std::runtime_error(
             "createbmmcriticaldatatx\n"
             "Create a BMM request critical data transaction\n"
@@ -688,10 +688,11 @@ UniValue createbmmcriticaldatatx(const JSONRPCRequest& request)
             "Note: If 0 is passed in for height, current block height will be used"
             "3. \"criticalhash\"   (string, required) h* you want added to a coinbase\n"
             "4. \"nsidechain\"     (numeric, required) Sidechain requesting BMM\n"
-            "5. \"ndag\"           (numeric, required) DAG number\n"
+            "5. \"nprevblockref\"  (numeric, required) prevBlockRef\n"
+            "6. \"prevbytes\"      (string, required) a portion of the previous block hash\n"
             "\nExamples:\n"
-            + HelpExampleCli("createbmmcriticaldatatx", "\"amount\", \"height\", \"criticalhash\", \"nsidechain\", \"ndag\"")
-            + HelpExampleRpc("createbmmcriticaldatatx", "\"amount\", \"height\", \"criticalhash\", \"nsidechain\", \"ndag\"")
+            + HelpExampleCli("createbmmcriticaldatatx", "\"amount\", \"height\", \"criticalhash\", \"nsidechain\", \"nprevblockref\", \"prevbytes\"")
+            + HelpExampleRpc("createbmmcriticaldatatx", "\"amount\", \"height\", \"criticalhash\", \"nsidechain\", \"nprevblockref\", \"prevbytes\"")
             );
 
     // Amount
@@ -720,15 +721,21 @@ UniValue createbmmcriticaldatatx(const JSONRPCRequest& request)
     // nDAG
     int nDAG = request.params[4].get_int();
 
+    // prevBlockHash bytes
+    std::string strPrevBlock = request.params[5].get_str();
+    if (strPrevBlock.size() != 4)
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid prevBlockHash bytes size");
+
     // Create critical data
     CScript bytes;
-    bytes.resize(3);
+    bytes.resize(4);
     bytes[0] = 0x00;
     bytes[1] = 0xbf;
     bytes[2] = 0x00;
 
     bytes << CScriptNum(nSidechain);
     bytes << CScriptNum(nDAG);
+    bytes << ToByteVector(HexStr(strPrevBlock));
 
     CCriticalData criticalData;
     criticalData.bytes = std::vector<unsigned char>(bytes.begin(), bytes.end());
@@ -871,8 +878,9 @@ UniValue listsidechaindeposits(const JSONRPCRequest& request)
         // TODO improve all of these error messages
 
         BlockMap::iterator it = mapBlockIndex.find(d.hashBlock);
-        if (it == mapBlockIndex.end())
-            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block hash not found");
+        if (it == mapBlockIndex.end()) {
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "Block hash not found");
+        }
 
         CBlockIndex* pblockindex = it->second;
         if (pblockindex == NULL)
