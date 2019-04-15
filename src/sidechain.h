@@ -21,10 +21,10 @@ static const int SIDECHAIN_MIN_WORKSCORE = 141;
 //! Sidechain deposit fee (TODO make configurable per sidechain)
 static const CAmount SIDECHAIN_DEPOSIT_FEE = 0.00001 * COIN;
 
-//! Maximum number of failures out of 2016 for a sidechain to activate
-static const int SIDECHAIN_ACTIVATION_MAX_FAILURES = 40;
+//! Max number of failures (blocks without commits) for a sidechain to activate
+static const int SIDECHAIN_ACTIVATION_MAX_FAILURES = 64;
 //! The amount of time a sidechain has to activate
-static const int SIDECHAIN_ACTIVATION_MAX_AGE = 2016;
+static const int SIDECHAIN_ACTIVATION_MAX_AGE = 256;
 //! The number of sidechains which may be signaled for activation at once
 static const int SIDECHAIN_ACTIVATION_MAX_SIGNALS = 32;
 //! The number of sidechains which may be active at once
