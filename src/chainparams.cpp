@@ -58,14 +58,6 @@ void CChainParams::UpdateVersionBitsParameters(Consensus::DeploymentPos d, int64
 /**
  * Main network
  */
-/**
- * What makes a good checkpoint block?
- * + Is surrounded by blocks with reasonable timestamps
- *   (no blocks before with a timestamp after, none after with
- *    timestamp before)
- * + Contains no strange transactions
- */
-
 class CMainParams : public CChainParams {
 public:
     CMainParams() {
@@ -106,7 +98,7 @@ public:
         consensus.nMinimumChainWork = uint256S("0x0000000000000000000000000000000000000000000000000000000002aaaab1");
 
         // By default assume that the signatures in ancestors of this block are valid.
-        consensus.defaultAssumeValid = uint256S("0xcb3de85f362163f6e751e5358d9ebf3cebafef552d80b059d7ab340dd3874080");
+        consensus.defaultAssumeValid = uint256S("0x488704a45ac7348d4339276410387f4ef254cfe75d8de261d8bdb5e88970f0f2");
 
         /**
          * The message start string is designed to be unlikely to occur in normal data.
@@ -120,11 +112,11 @@ public:
         nDefaultPort = 8551;
         nPruneAfterHeight = 100000;
 
-        genesis = CreateGenesisBlock(1552284518, 7861859, 0x1d5fffff, 1, 50 * COIN);
+        genesis = CreateGenesisBlock(1555299219, 6508128, 0x1d5fffff, 1, 50 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
 
-        // PoW: 00000044817c0d5404639cbe97af0ef71f070f86ed40b0c9f48b9e7e9cb7d58f
-        assert(consensus.hashGenesisBlock == uint256S("0xcb3de85f362163f6e751e5358d9ebf3cebafef552d80b059d7ab340dd3874080"));
+        // PoW: 000000044035129c70955e9dabb444076a79f967aed3e6c7ac734b6698fc2e52
+        assert(consensus.hashGenesisBlock == uint256S("0x488704a45ac7348d4339276410387f4ef254cfe75d8de261d8bdb5e88970f0f2"));
         assert(genesis.hashMerkleRoot == uint256S("0x4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"));
 
         // Note that of those which support the service bits prefix, most only support a subset of
@@ -155,7 +147,7 @@ public:
 
         checkpointData = {
             {
-                { 0, uint256S("0xcb3de85f362163f6e751e5358d9ebf3cebafef552d80b059d7ab340dd3874080")},
+                { 0, uint256S("0x488704a45ac7348d4339276410387f4ef254cfe75d8de261d8bdb5e88970f0f2")},
             }
         };
 
