@@ -755,13 +755,13 @@ BOOST_AUTO_TEST_CASE(test_IsStandard)
     BOOST_CHECK(!IsStandardTx(t, reason));
 }
 
-BOOST_AUTO_TEST_CASE(transaction_v3_replay_serialization)
+BOOST_AUTO_TEST_CASE(transaction_v4_replay_serialization)
 {
-    // Check that a version 3 transaction serializes & deserializes correctly
+    // Check that a version 4 transaction serializes & deserializes correctly
     CMutableTransaction mtx;
     mtx.vin.resize(1);
     mtx.vout.resize(1);
-    mtx.nVersion = 3;
+    mtx.nVersion = 4;
     mtx.vin[0].prevout.SetNull();
     mtx.vin[0].scriptSig = CScript();
     CScript script;
@@ -775,7 +775,8 @@ BOOST_AUTO_TEST_CASE(transaction_v3_replay_serialization)
     // Check that CTransaction was properly deserialized
     BOOST_CHECK(txDeserialized.GetHash() == mtx.GetHash());
 
-    BOOST_CHECK(mtx.replayBytes == 0x3f);
+    std::string strHex = EncodeHexTx(mtx);
+    BOOST_CHECK(strHex.size() > 10 && strHex[8] == '3' && strHex[9] == 'f');
 }
 
 BOOST_AUTO_TEST_SUITE_END()

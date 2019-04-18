@@ -610,7 +610,7 @@ UniValue createcriticaldatatx(const JSONRPCRequest& request)
 {
     // TODO finish
     //
-    if (request.fHelp || request.params.size() != 4)
+    if (request.fHelp || request.params.size() != 3)
         throw std::runtime_error(
             "createcriticaldatatx\n"
             "Create a critical data transaction\n"
@@ -622,6 +622,9 @@ UniValue createcriticaldatatx(const JSONRPCRequest& request)
             + HelpExampleCli("createcriticaldatatx", "\"amount\", \"height\", \"criticalhash\"")
             + HelpExampleRpc("createcriticaldatatx", "\"amount\", \"height\", \"criticalhash\"")
             );
+
+    // TODO remove after finished
+    throw JSONRPCError(RPC_INTERNAL_ERROR, "Sorry, this function is not supported yet.");
 
     // Amount
     CAmount nAmount = AmountFromValue(request.params[0]);
@@ -728,7 +731,7 @@ UniValue createbmmcriticaldatatx(const JSONRPCRequest& request)
 
     // Create critical data
     CScript bytes;
-    bytes.resize(4);
+    bytes.resize(3);
     bytes[0] = 0x00;
     bytes[1] = 0xbf;
     bytes[2] = 0x00;

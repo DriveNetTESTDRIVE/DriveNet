@@ -14,6 +14,8 @@
 
 static const int SERIALIZE_TRANSACTION_NO_WITNESS = 0x40000000;
 
+static const unsigned char TX_REPLAY_BYTES = 0x3f;
+
 /** An outpoint - a combination of a transaction hash and an index n into its vout */
 class COutPoint
 {
@@ -243,8 +245,9 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
     const bool fAllowCriticalData = true; // TODO
 
     s >> tx.nVersion;
-    if (tx.nVersion == 3) {
-        s >> tx.replayBytes;
+    if (tx.nVersion == 4) {
+        unsigned char noreplay;
+        s >> noreplay;
     }
     unsigned char flags = 0;
     tx.vin.clear();
@@ -287,8 +290,8 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
     const bool fAllowCriticalData = true; // TODO
 
     s << tx.nVersion;
-    if (tx.nVersion == 3) {
-        s << tx.replayBytes;
+    if (tx.nVersion == 4) {
+        s << TX_REPLAY_BYTES;
     }
     unsigned char flags = 0;
     /* Check whether extra data needs to be serialized. */
@@ -337,7 +340,7 @@ public:
     // adapting relay policy by bumping MAX_STANDARD_VERSION, and then later date
     // bumping the default CURRENT_VERSION at which point both CURRENT_VERSION and
     // MAX_STANDARD_VERSION will be equal.
-    static const int32_t MAX_STANDARD_VERSION=3;
+    static const int32_t MAX_STANDARD_VERSION=4;
 
     // The local variables are made const to prevent unintended modification
     // without updating the cached hash value. However, CTransaction is not
@@ -349,7 +352,6 @@ public:
     const CCriticalData criticalData;
     const int32_t nVersion;
     const uint32_t nLockTime;
-    const unsigned char replayBytes = 0x3f;
 
 private:
     /** Memory only. */
@@ -437,7 +439,6 @@ struct CMutableTransaction
     CCriticalData criticalData;
     int32_t nVersion;
     uint32_t nLockTime;
-    unsigned char replayBytes = 0x3f;
 
     CMutableTransaction();
     CMutableTransaction(const CTransaction& tx);

@@ -34,7 +34,7 @@ BOOST_AUTO_TEST_CASE(bmm_commit)
 
     // Create transaction with critical data
     CMutableTransaction mtx;
-    mtx.nVersion = 1;
+    mtx.nVersion = 3;
     mtx.vin.resize(1);
     mtx.vout.resize(1);
     mtx.vin[0].prevout.hash = GetRandHash();
