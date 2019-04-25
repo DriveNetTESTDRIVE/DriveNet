@@ -16,6 +16,11 @@ QT_END_NAMESPACE
 extern const char *DEFAULT_GUI_PROXY_HOST;
 static constexpr unsigned short DEFAULT_GUI_PROXY_PORT = 9050;
 
+enum Theme {
+    THEME_DEFAULT = 0,
+    THEME_DARK = 1
+};
+
 /** Interface from Qt to configuration data structure for Bitcoin client.
    To Qt, the options are presented as a list with the different options
    laid out vertically.
@@ -49,6 +54,7 @@ public:
         DatabaseCache,          // int
         SpendZeroConfChange,    // bool
         Listen,                 // bool
+        Theme,                  // int
         OptionIDRowCount,
     };
 
@@ -66,6 +72,7 @@ public:
     bool getMinimizeToTray() const { return fMinimizeToTray; }
     bool getMinimizeOnClose() const { return fMinimizeOnClose; }
     int getDisplayUnit() const { return nDisplayUnit; }
+    int getTheme() const { return nTheme; }
     QString getThirdPartyTxUrls() const { return strThirdPartyTxUrls; }
     bool getProxySettings(QNetworkProxy& proxy) const;
     bool getCoinControlFeatures() const { return fCoinControlFeatures; }
@@ -82,6 +89,7 @@ private:
     bool fMinimizeOnClose;
     QString language;
     int nDisplayUnit;
+    int nTheme;
     QString strThirdPartyTxUrls;
     bool fCoinControlFeatures;
     /* settings that were overridden by command-line */
@@ -94,6 +102,7 @@ private:
     void checkAndMigrate();
 Q_SIGNALS:
     void displayUnitChanged(int unit);
+    void themeChanged(int nTheme);
     void coinControlFeaturesChanged(bool);
     void hideTrayIconChanged(bool);
 };

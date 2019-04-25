@@ -316,7 +316,49 @@ RES_ICONS = \
   qt/res/icons/replay_not_replayed.png \
   qt/res/icons/replay_split.png \
   qt/res/icons/replay_replayed.png \
-  qt/res/icons/replay_loaded.png
+  qt/res/icons/replay_loaded.png \
+  qt/res/qdarkstyle/rc/up_arrow_disabled.png \
+  qt/res/qdarkstyle/rc/Hmovetoolbar.png \
+  qt/res/qdarkstyle/rc/stylesheet-branch-end.png \
+  qt/res/qdarkstyle/rc/branch_closed-on.png \
+  qt/res/qdarkstyle/rc/stylesheet-vline.png \
+  qt/res/qdarkstyle/rc/branch_closed.png \
+  qt/res/qdarkstyle/rc/branch_open-on.png \
+  qt/res/qdarkstyle/rc/transparent.png \
+  qt/res/qdarkstyle/rc/right_arrow_disabled.png \
+  qt/res/qdarkstyle/rc/sizegrip.png \
+  qt/res/qdarkstyle/rc/close.png \
+  qt/res/qdarkstyle/rc/close-hover.png \
+  qt/res/qdarkstyle/rc/close-pressed.png \
+  qt/res/qdarkstyle/rc/down_arrow.png \
+  qt/res/qdarkstyle/rc/Vmovetoolbar.png \
+  qt/res/qdarkstyle/rc/left_arrow.png \
+  qt/res/qdarkstyle/rc/stylesheet-branch-more.png \
+  qt/res/qdarkstyle/rc/up_arrow.png \
+  qt/res/qdarkstyle/rc/right_arrow.png \
+  qt/res/qdarkstyle/rc/left_arrow_disabled.png \
+  qt/res/qdarkstyle/rc/Hsepartoolbar.png \
+  qt/res/qdarkstyle/rc/branch_open.png \
+  qt/res/qdarkstyle/rc/Vsepartoolbar.png \
+  qt/res/qdarkstyle/rc/down_arrow_disabled.png \
+  qt/res/qdarkstyle/rc/undock.png \
+  qt/res/qdarkstyle/rc/checkbox_checked_disabled.png \
+  qt/res/qdarkstyle/rc/checkbox_checked_focus.png \
+  qt/res/qdarkstyle/rc/checkbox_checked.png \
+  qt/res/qdarkstyle/rc/checkbox_indeterminate.png \
+  qt/res/qdarkstyle/rc/checkbox_indeterminate_focus.png \
+  qt/res/qdarkstyle/rc/checkbox_unchecked_disabled.png \
+  qt/res/qdarkstyle/rc/checkbox_unchecked_focus.png \
+  qt/res/qdarkstyle/rc/checkbox_unchecked.png \
+  qt/res/qdarkstyle/rc/radio_checked_disabled.png \
+  qt/res/qdarkstyle/rc/radio_checked_focus.png \
+  qt/res/qdarkstyle/rc/radio_checked.png \
+  qt/res/qdarkstyle/rc/radio_unchecked_disabled.png \
+  qt/res/qdarkstyle/rc/radio_unchecked_focus.png \
+  qt/res/qdarkstyle/rc/radio_unchecked.png
+
+RES_QSS = \
+  qt/res/qdarkstyle/style.qss
 
 DRIVENET_QT_BASE_CPP = \
   qt/bantablemodel.cpp \
@@ -400,7 +442,7 @@ qt_libdrivenetqt_a_CXXFLAGS = $(AM_CXXFLAGS) $(QT_PIE_FLAGS)
 qt_libdrivenetqt_a_OBJCXXFLAGS = $(AM_OBJCXXFLAGS) $(QT_PIE_FLAGS)
 
 qt_libdrivenetqt_a_SOURCES = $(DRIVENET_QT_CPP) $(DRIVENET_QT_H) $(QT_FORMS_UI) \
-  $(QT_QRC) $(QT_QRC_LOCALE) $(QT_TS) $(PROTOBUF_PROTO) $(RES_ICONS) $(RES_IMAGES) $(RES_MOVIES)
+  $(QT_QRC) $(QT_QRC_LOCALE) $(QT_TS) $(PROTOBUF_PROTO) $(RES_ICONS) $(RES_QSS) $(RES_IMAGES) $(RES_MOVIES)
 
 nodist_qt_libdrivenetqt_a_SOURCES = $(QT_MOC_CPP) $(QT_MOC) $(PROTOBUF_CC) \
   $(PROTOBUF_H) $(QT_QRC_CPP) $(QT_QRC_LOCALE_CPP)
@@ -463,7 +505,7 @@ $(QT_QRC_LOCALE_CPP): $(QT_QRC_LOCALE) $(QT_QM)
 	  $(SED) -e '/^\*\*.*Created:/d' -e '/^\*\*.*by:/d' > $@
 	@rm $(@D)/temp_$(<F)
 
-$(QT_QRC_CPP): $(QT_QRC) $(QT_FORMS_H) $(RES_ICONS) $(RES_IMAGES) $(RES_MOVIES) $(PROTOBUF_H)
+$(QT_QRC_CPP): $(QT_QRC) $(QT_FORMS_H) $(RES_ICONS) $(RES_QSS) $(RES_IMAGES) $(RES_MOVIES) $(PROTOBUF_H)
 	@test -f $(RCC)
 	$(AM_V_GEN) QT_SELECT=$(QT_SELECT) $(RCC) -name drivenet $< | \
 	  $(SED) -e '/^\*\*.*Created:/d' -e '/^\*\*.*by:/d' > $@

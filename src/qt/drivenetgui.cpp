@@ -50,6 +50,7 @@
 #include <QStackedWidget>
 #include <QStatusBar>
 #include <QStyle>
+#include <QTextStream>
 #include <QTimer>
 #include <QToolBar>
 #include <QVBoxLayout>
@@ -518,6 +519,9 @@ void BitcoinGUI::setClientModel(ClientModel *_clientModel)
 
             // initialize the disable state of the tray icon with the current value in the model.
             setTrayIconVisible(optionsModel->getHideTrayIcon());
+
+            // be aware of the theme changing
+            connect(optionsModel, SIGNAL(themeChanged(int)), this, SLOT(updateTheme(int)));
         }
     } else {
         // Disable possibility to show main window via action
@@ -1201,6 +1205,32 @@ void BitcoinGUI::toggleNetworkActive()
 {
     if (clientModel) {
         clientModel->setNetworkActive(!clientModel->getNetworkActive());
+    }
+}
+
+void BitcoinGUI::updateTheme(int nTheme)
+{
+    // TODO error messages if we cannot find theme resources for some reason
+    if (nTheme == THEME_DEFAULT) {
+        // Reset style sheet so that Qt will revert to system or default theme
+        qApp->setStyleSheet("");
+    }
+    else
+    if (nTheme == THEME_DARK) {
+        QFile file(":/qdarkstyle/darkstyle");
+        file.open(QFile::ReadOnly | QFile::Text);
+        QTextStream stream(&file);
+
+        qApp->setStyleSheet(stream.readAll());
+    }
+}
+
+void BitcoinGUI::initTheme()
+{
+    if (clientModel)
+    {
+        int nTheme = clientModel->getOptionsModel()->getTheme();
+        updateTheme(nTheme);
     }
 }
 

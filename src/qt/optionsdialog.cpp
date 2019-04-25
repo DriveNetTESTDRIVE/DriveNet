@@ -22,6 +22,7 @@
 #include <QIntValidator>
 #include <QLocale>
 #include <QMessageBox>
+#include <QTextStream>
 #include <QTimer>
 
 OptionsDialog::OptionsDialog(QWidget *parent, bool enableWallet) :
@@ -151,6 +152,9 @@ void OptionsDialog::setModel(OptionsModel *_model)
         mapper->toFirst();
 
         updateDefaultProxyNets();
+
+        // Set the current index of the theme selection combo box
+        ui->comboBoxTheme->setCurrentIndex(_model->getTheme());
     }
 
     /* warn when one of the following settings changes by user action (placed here so init via mapper doesn't trigger them) */
@@ -203,6 +207,8 @@ void OptionsDialog::setMapper()
     mapper->addMapping(ui->lang, OptionsModel::Language);
     mapper->addMapping(ui->unit, OptionsModel::DisplayUnit);
     mapper->addMapping(ui->thirdPartyTxUrls, OptionsModel::ThirdPartyTxUrls);
+
+    mapper->addMapping(ui->comboBoxTheme, OptionsModel::Theme, "currentIndex");
 }
 
 void OptionsDialog::setOkButtonState(bool fState)

@@ -177,6 +177,9 @@ public Q_SLOTS:
     */
     void message(const QString &title, const QString &message, unsigned int style, bool *ret = nullptr);
 
+    /** Set the theme to the user's setting during init */
+    void initTheme();
+
 #ifdef ENABLE_WALLET
     /** Set the encryption status as shown in the UI.
        @param[in] status            current encryption status
@@ -251,6 +254,9 @@ private Q_SLOTS:
 
     /** Toggle networking */
     void toggleNetworkActive();
+
+    /** Update the theme */
+    void updateTheme(int nTheme);
 };
 
 class UnitDisplayStatusBarControl : public QLabel

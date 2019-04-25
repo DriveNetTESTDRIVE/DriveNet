@@ -503,6 +503,10 @@ void BitcoinApplication::initializeResult(bool success)
         }
         Q_EMIT splashFinished(window);
 
+        // The signal that would normally update the theme will not be received
+        // during init as the signal/slot connection has yet to be formed.
+        window->initTheme();
+
 #ifdef ENABLE_WALLET
         // Now that initialization/startup is done, process any command-line
         // bitcoin: URIs or payment requests:

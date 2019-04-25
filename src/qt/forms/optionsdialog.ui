@@ -639,6 +639,27 @@
          </property>
         </spacer>
        </item>
+       <item>
+        <widget class="QLabel" name="label">
+         <property name="text">
+          <string>Theme (beta)</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="comboBoxTheme">
+         <item>
+          <property name="text">
+           <string>Default / system theme</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Dark - QDarkStyle</string>
+          </property>
+         </item>
+        </widget>
+       </item>
       </layout>
      </widget>
     </widget>

@@ -149,6 +149,12 @@ void OptionsModel::Init(bool resetSettings)
     if (!gArgs.SoftSetArg("-lang", settings.value("language").toString().toStdString()))
         addOverriddenOption("-lang");
 
+    if (!settings.contains("nTheme"))
+        settings.setValue("nTheme", THEME_DEFAULT);
+    nTheme = settings.value("nTheme").toInt();
+
+    Q_EMIT themeChanged(nTheme);
+
     language = settings.value("language").toString();
 }
 
@@ -285,6 +291,8 @@ QVariant OptionsModel::data(const QModelIndex & index, int role) const
             return settings.value("nThreadsScriptVerif");
         case Listen:
             return settings.value("fListen");
+        case Theme:
+            return nTheme;
         default:
             return QVariant();
         }
@@ -419,6 +427,13 @@ bool OptionsModel::setData(const QModelIndex & index, const QVariant & value, in
             if (settings.value("fListen") != value) {
                 settings.setValue("fListen", value);
                 setRestartRequired(true);
+            }
+            break;
+        case Theme:
+            if (nTheme != value.toInt()) {
+                settings.setValue("nTheme", value);
+                nTheme = value.toInt();
+                Q_EMIT themeChanged(value.toInt());
             }
             break;
         default:
