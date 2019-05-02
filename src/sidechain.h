@@ -12,7 +12,7 @@
 
 // These are the temporary values to speed things up during testing
 static const int SIDECHAIN_VERIFICATION_PERIOD = 300;
-static const int SIDECHAIN_MIN_WORKSCORE = 141;
+static const int SIDECHAIN_MIN_WORKSCORE = 21;
 
 // These are the values that will be used in the final release
 //static const int SIDECHAIN_VERIFICATION_PERIOD = 26298;
@@ -22,9 +22,9 @@ static const int SIDECHAIN_MIN_WORKSCORE = 141;
 static const CAmount SIDECHAIN_DEPOSIT_FEE = 0.00001 * COIN;
 
 //! Max number of failures (blocks without commits) for a sidechain to activate
-static const int SIDECHAIN_ACTIVATION_MAX_FAILURES = 64;
+static const int SIDECHAIN_ACTIVATION_MAX_FAILURES = 32;
 //! The amount of time a sidechain has to activate
-static const int SIDECHAIN_ACTIVATION_MAX_AGE = 256;
+static const int SIDECHAIN_ACTIVATION_MAX_AGE = 64;
 //! The number of sidechains which may be signaled for activation at once
 static const int SIDECHAIN_ACTIVATION_MAX_SIGNALS = 32;
 //! The number of sidechains which may be active at once
