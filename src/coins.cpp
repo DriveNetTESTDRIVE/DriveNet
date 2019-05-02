@@ -106,15 +106,9 @@ void AddCoins(CCoinsViewCache& cache, const CTransaction &tx, int nHeight, bool 
         // Always set the possible_overwrite flag to AddCoin for coinbase txn, in order to correctly
         // deal with the pre-BIP30 occurrences of duplicate coinbase transactions.
         if (tx.criticalData.IsNull()) {
-            cache.AddCoin(COutPoint(txid, i), Coin(tx.vout[i], nHeight, fCoinbase, false), overwrite);
+            cache.AddCoin(COutPoint(txid, i), Coin(tx.vout[i], nHeight, fCoinbase, false /* fCriticalData */), overwrite);
         } else {
-            uint8_t nSidechain;
-            uint16_t nPrevBlockRef;
-            if (tx.criticalData.IsBMMRequest(nSidechain, nPrevBlockRef)) {
-                cache.AddCoin(COutPoint(txid, i), Coin(tx.vout[i], nHeight, fCoinbase, true, nSidechain, nPrevBlockRef, tx.criticalData.hashCritical), overwrite);
-            } else {
-                cache.AddCoin(COutPoint(txid, i), Coin(tx.vout[i], nHeight, fCoinbase, true), overwrite);
-            }
+            cache.AddCoin(COutPoint(txid, i), Coin(tx.vout[i], nHeight, fCoinbase, true /* fCriticalData */), overwrite);
         }
     }
 }

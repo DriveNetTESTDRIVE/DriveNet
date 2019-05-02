@@ -915,13 +915,7 @@ bool CCoinsViewMemPool::GetCoin(const COutPoint &outpoint, Coin &coin) const {
             if (ptx->criticalData.IsNull()) {
                 coin = Coin(ptx->vout[outpoint.n], MEMPOOL_HEIGHT, false, false);
             } else {
-                uint8_t nSidechain;
-                uint16_t nPrevBlockRef;
-                if (ptx->criticalData.IsBMMRequest(nSidechain, nPrevBlockRef)) {
-                    coin = Coin(ptx->vout[outpoint.n], MEMPOOL_HEIGHT, false, true, nSidechain, nPrevBlockRef, ptx->criticalData.hashCritical);
-                } else {
-                    coin = Coin(ptx->vout[outpoint.n], MEMPOOL_HEIGHT, false, true);
-                }
+                coin = Coin(ptx->vout[outpoint.n], MEMPOOL_HEIGHT, false, true /* fCriticalData */);
             }
             return true;
         } else {
@@ -1020,7 +1014,7 @@ void CTxMemPool::RemoveExpiredCriticalRequests()
         }
     }
 
-    RemoveStaged(txToRemove, false, MemPoolRemovalReason::EXPIRY);
+    RemoveStaged(txToRemove, true, MemPoolRemovalReason::EXPIRY);
 }
 
 void CTxMemPool::SelectBMMRequests()
@@ -1038,11 +1032,10 @@ void CTxMemPool::SelectBMMRequests()
 
     for (indexed_transaction_set::const_iterator it = mapTx.begin(); it != mapTx.end(); it++) {
         if (!it->GetTx().criticalData.IsNull()) {
-
             uint8_t nSidechain;
             uint16_t nPrevBlockRef;
-
-            if (it->GetTx().criticalData.IsBMMRequest(nSidechain, nPrevBlockRef)) {
+            std::string strPrevBlock = "";
+            if (it->GetTx().criticalData.IsBMMRequest(nSidechain, nPrevBlockRef, strPrevBlock)) {
                 if (!scdb.IsSidechainNumberValid(nSidechain))
                     continue;
 

@@ -1558,20 +1558,12 @@ bool CheckInputs(const CTransaction& tx, CValidationState &state, const CCoinsVi
                 const Coin& coin = inputs.AccessCoin(prevout);
                 assert(!coin.IsSpent());
 
-                // Check Critical Data / Ratchet maturity
-                // Critical Data outputs that are non-BMM requests must have
-                // a block depth greater than CRITICAL_DATA_MATURITY.
-                // BMM Critical Data outputs must have ratchet 'blocks_atop'
-                // greater than CRITICAL_DATA_MATURITY.
+                // Check Critical Data tx maturity - Critical Data outputs must
+                // have a block depth greater than CRITICAL_DATA_MATURITY.
                 if (fDrivechainsEnabled) {
                     if (coin.IsCriticalData()) {
-                        // When a Critical Data transaction output Coin is
-                        // added to the cache by the mempool, we only set
-                        // coin.hashCritical if it is a BMM request.
-                        if (coin.hashCritical.IsNull()) {
-                            if ((chainActive.Height() - coin.nHeight) < CRITICAL_DATA_MATURITY)
-                                return state.Invalid(false, REJECT_INVALID, "bad-block-txn-immature-critical-data");
-                        }
+                        if ((chainActive.Height() - coin.nHeight) < CRITICAL_DATA_MATURITY)
+                            return state.Invalid(false, REJECT_INVALID, "bad-block-txn-immature-critical-data");
                     }
                 }
 
@@ -3772,8 +3764,8 @@ static bool ContextualCheckBlock(const CBlock& block, CValidationState& state, c
                 // Enforce 1 BMM h* per sidechain per block
                 uint8_t nSidechain;
                 uint16_t nPrevBlockRef;
-                if (tx->criticalData.IsBMMRequest(nSidechain, nPrevBlockRef)) {
-                    // We should never see this error
+                std::string strPrevBlock = "";
+                if (tx->criticalData.IsBMMRequest(nSidechain, nPrevBlockRef, strPrevBlock)) {
                     if (nSidechain > vSidechainBMM.size())
                         return state.DoS(100, false, REJECT_INVALID, "bad-critical-bmm-invalid-nsidechain", true, strprintf("%s : Invalid sidechain number in BMM commitment", __func__));
 
