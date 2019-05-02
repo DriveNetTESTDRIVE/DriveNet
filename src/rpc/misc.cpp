@@ -729,6 +729,13 @@ UniValue createbmmcriticaldatatx(const JSONRPCRequest& request)
     if (strPrevBlock.size() != 4)
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid prevBlockHash bytes size");
 
+    std::string strTip = chainActive.Tip()->GetBlockHash().ToString();
+    strTip = strTip.substr(strTip.size() - 4, strTip.size() - 1);
+
+    // Check the 4 prev block hash bytes
+    if (strTip != strPrevBlock)
+        throw (JSONRPCError(RPC_TYPE_ERROR, "Invalid prevBlockHash bytes incorrect"));
+
     // Create critical data
     CScript bytes;
     bytes.resize(3);
