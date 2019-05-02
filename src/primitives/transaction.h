@@ -211,7 +211,7 @@ public:
     }
 
     bool IsBMMRequest() const;
-    bool IsBMMRequest(uint8_t& nSidechain, uint16_t& nPrevBlockRef) const;
+    bool IsBMMRequest(uint8_t& nSidechain, uint16_t& nPrevBlockRef, std::string& strPrevBlock) const;
 
     friend bool operator==(const CCriticalData& a, const CCriticalData& b)
     {

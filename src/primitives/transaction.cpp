@@ -148,49 +148,122 @@ bool CCriticalData::IsBMMRequest() const
 {
     uint8_t nSidechain;
     uint16_t nPrevBlockRef;
+    std::string strPrevBytes = "";
 
-    return IsBMMRequest(nSidechain, nPrevBlockRef);
+    return IsBMMRequest(nSidechain, nPrevBlockRef, strPrevBytes);
 }
 
-bool CCriticalData::IsBMMRequest(uint8_t& nSidechain, uint16_t& nPrevBlockRef) const
+bool CCriticalData::IsBMMRequest(uint8_t& nSidechain, uint16_t& nPrevBlockRef, std::string& strPrevBlock) const
 {
     // Check for h* commit flag in critical data bytes
     if (IsNull())
         return false;
-    if (bytes.size() < 8)
+    if (bytes.size() < 14)
         return false;
 
     if (bytes[0] != 0x00 || bytes[1] != 0xbf || bytes[2] != 0x00)
         return false;
 
-    opcodetype opcode;
-    std::vector<unsigned char> vch;
-
-    CScript script(bytes.begin(), bytes.end());
-
-    // Read nSidechain
-    CScript::const_iterator psidechain = script.begin() + 3;
-    if (!script.GetOp(psidechain, opcode, vch))
+    int intSidechain = -1;
+    size_t nSideBytes = 0;
+    if (bytes[3] == 0x00)
+    {
+        // Special case for sidechain 0
+        intSidechain = 0;
+        nSideBytes = 0;
+    }
+    else
+    if (bytes[3] == 0x01)
+    {
+        intSidechain = CScriptNum(std::vector<unsigned char>{bytes[4]}, false).getint();
+        nSideBytes = 1;
+    }
+    else
+    if (bytes[3] == 0x02)
+    {
+        intSidechain = CScriptNum(std::vector<unsigned char>{bytes[4], bytes[5]}, false).getint();
+        nSideBytes = 2;
+    }
+    else
+    {
+        // Only 0 - 255 are allowed
         return false;
+    }
 
-    int intSidechain = CScriptNum(vch, false).getint();
     if (intSidechain < 0 || intSidechain > 255)
         return false;
 
     nSidechain = (uint8_t)intSidechain;
 
     // Read prevblockref
-    vch.clear();
 
-    CScript::const_iterator pprevblock = script.begin() + 4;
-    if (!script.GetOp(pprevblock, opcode, vch))
+    int intDAG = -1;
+    size_t nDAGBytes = 0;
+    if (bytes[4 + nSideBytes] == 0)
+    {
+        intDAG = 0;
+        nDAGBytes = 0;
+    }
+    else
+    if (bytes[4 + nSideBytes] == 1)
+    {
+        intDAG = CScriptNum(std::vector<unsigned char>{bytes[5]}, false).getint();
+        nDAGBytes = 1;
+    }
+    else
+    if (bytes[4 + nSideBytes] == 2)
+    {
+        intDAG = CScriptNum(std::vector<unsigned char>{bytes[5], bytes[6]}, false).getint();
+        nDAGBytes = 2;
+    }
+    else
+    if (bytes[4 + nSideBytes] == 3)
+    {
+        intDAG = CScriptNum(std::vector<unsigned char>{bytes[5], bytes[6], bytes[7]}, false).getint();
+        nDAGBytes = 3;
+    }
+    else
+    {
+        return false;
+    }
+
+    if (intDAG < 0 || intDAG > 65535)
         return false;
 
-    int intPrevBlock = CScriptNum(vch, false).getint();
-    if (intPrevBlock < 0 || intPrevBlock > 65535)
-        return false;
+    nPrevBlockRef = (uint16_t)intDAG;
 
-    nPrevBlockRef = (uint16_t)intPrevBlock;
+    // Read prev block bytes
+
+    size_t nBytes = 5 + nSideBytes + nDAGBytes;
+    std::vector<unsigned char> prevBytes;
+    if (bytes[nBytes] == 0x08) {
+        prevBytes = std::vector<unsigned char>(bytes.begin() + nBytes + 1, bytes.end());
+    } else {
+        return false;
+    }
+
+    std::stringstream ss;
+    for (size_t i = 0; i < prevBytes.size(); i++) {
+        ss << std::hex << prevBytes[i];
+    }
+
+    std::string strHex = ss.str();
+    std::string strBytesFinal = "";
+    int nHexBytes = strHex.size();
+    for (int i = 0; i < nHexBytes; i += 2) {
+        // Convert the c_str into a long integer and then cast to char. We want
+        // to get the previous block hash string back from the hex bytes for
+        // easy verification.
+        std::string byte = strHex.substr(i, 2);
+        char c = (char) (int) strtol(byte.c_str(), NULL /* endptr - unused */, 16);
+        strBytesFinal.push_back(c);
+    }
+
+    if (strBytesFinal.size() == 4) {
+        strPrevBlock = strBytesFinal;
+    } else {
+        return false;
+    }
 
     return true;
 }
