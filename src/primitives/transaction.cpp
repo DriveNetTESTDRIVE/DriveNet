@@ -158,6 +158,8 @@ bool CCriticalData::IsBMMRequest(uint8_t& nSidechain, uint16_t& nPrevBlockRef, s
     // Check for h* commit flag in critical data bytes
     if (IsNull())
         return false;
+    if (hashCritical.IsNull())
+        return false;
     if (bytes.size() < 14)
         return false;
 
@@ -199,27 +201,28 @@ bool CCriticalData::IsBMMRequest(uint8_t& nSidechain, uint16_t& nPrevBlockRef, s
 
     int intDAG = -1;
     size_t nDAGBytes = 0;
-    if (bytes[4 + nSideBytes] == 0)
+    size_t nDagPos = 4 + nSideBytes;
+    if (bytes[nDagPos] == 0)
     {
         intDAG = 0;
         nDAGBytes = 0;
     }
     else
-    if (bytes[4 + nSideBytes] == 1)
+    if (bytes[nDagPos] == 1)
     {
-        intDAG = CScriptNum(std::vector<unsigned char>{bytes[5]}, false).getint();
+        intDAG = CScriptNum(std::vector<unsigned char>{bytes[nDagPos + 1]}, false).getint();
         nDAGBytes = 1;
     }
     else
-    if (bytes[4 + nSideBytes] == 2)
+    if (bytes[nDagPos] == 2)
     {
-        intDAG = CScriptNum(std::vector<unsigned char>{bytes[5], bytes[6]}, false).getint();
+        intDAG = CScriptNum(std::vector<unsigned char>{bytes[nDagPos + 1], bytes[nDagPos + 2]}, false).getint();
         nDAGBytes = 2;
     }
     else
-    if (bytes[4 + nSideBytes] == 3)
+    if (bytes[nDagPos] == 3)
     {
-        intDAG = CScriptNum(std::vector<unsigned char>{bytes[5], bytes[6], bytes[7]}, false).getint();
+        intDAG = CScriptNum(std::vector<unsigned char>{bytes[nDagPos + 1], bytes[nDagPos + 2], bytes[nDagPos + 3]}, false).getint();
         nDAGBytes = 3;
     }
     else
