@@ -322,6 +322,15 @@ public:
         return *phashBlock;
     }
 
+    uint256 GetPrevBlockHash() const
+    {
+        if (pprev) {
+            return pprev->GetBlockHash();
+        } else {
+            return uint256();
+        }
+    }
+
     uint256 GetBlockPoWHash() const
     {
         return GetBlockHeader().GetPoWHash();
