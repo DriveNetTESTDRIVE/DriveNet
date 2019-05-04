@@ -246,7 +246,6 @@ BOOST_AUTO_TEST_CASE(bmm_commit_format)
     bmm.bytes = std::vector<unsigned char>(bytes.begin(), bytes.end());
 
     BOOST_CHECK(!bmm.IsBMMRequest());
-
 }
 
 BOOST_AUTO_TEST_SUITE_END()

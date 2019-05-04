@@ -686,34 +686,62 @@ std::string SidechainDB::ToString() const
 
 bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const uint256& hashPrevBlock, const std::vector<CTxOut>& vout, std::string& strError, bool fDebug)
 {
-    if (hashBlock.IsNull())
+    if (hashBlock.IsNull()) {
+        if (fDebug)
+            LogPrintf("%s: Failed: block hash is null at height: %u\n",
+                    __func__,
+                    nHeight);
         return false;
+    }
+
     if (!hashBlockLastSeen.IsNull() && hashPrevBlock.IsNull())
+    {
+        if (fDebug)
+            LogPrintf("%s: Failed: previous block hash null at height: %u\n",
+                    __func__,
+                    nHeight);
         return false;
+    }
+
     if (!vout.size())
+    {
+        if (fDebug)
+            LogPrintf("%s: Failed: empty coinbase transaction at height: %u\n",
+                    __func__,
+                    nHeight);
         return false;
-    if (!hashBlockLastSeen.IsNull() && hashPrevBlock != hashBlockLastSeen)
+    }
+
+    if (!hashBlockLastSeen.IsNull() && hashPrevBlock != hashBlockLastSeen) {
+
+        if (fDebug)
+            LogPrintf("%s: Failed: previous block hash: %s does not match hashBlockLastSeen: %s at height: %u\n",
+                    __func__,
+                    hashPrevBlock.ToString(),
+                    hashBlockLastSeen.ToString(),
+                    nHeight);
         return false;
+    }
 
     // If the WT^ verification period ended, clear old data
     if (nHeight > 0 && (nHeight % SIDECHAIN_VERIFICATION_PERIOD) == 0) {
+        if (fDebug)
+            LogPrintf("%s: WT^ status reset (expired) at height: %u\n",
+                    __func__,
+                    nHeight);
         ResetWTPrimeState();
     }
 
     /*
-     * Now we will look for data that is relevant to SCDB
-     * in this block's coinbase.
+     * Look for data relevant to SCDB in this block's coinbase.
      *
      * Scan for new WT^(s) and start tracking them.
      *
-     * Scan for updated SCDB MT hash, and perform MT hash
-     * based SCDB update.
+     * Scan for updated SCDB MT hash, and perform MT hash based SCDB update.
      *
-     * Scan for sidechain proposals & sidechain activation
-     * commitments.
+     * Scan for sidechain proposals & sidechain activation commitments.
      *
-     * Update hashBlockLastSeen to reflect that we have
-     * scanned this latest block.
+     * Update hashBlockLastSeen.
      */
 
     // Scan for sidechain proposal commitments
@@ -728,7 +756,6 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const uint256& h
         if (!proposal.DeserializeFromScript(scriptPubKey))
             continue; // TODO return false?
 
-        // TODO refactor: change containers to improve this?
         // Check for duplicate
         bool fDuplicate = false;
         for (const SidechainActivationStatus& s : vActivationStatus) {
@@ -750,6 +777,7 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const uint256& h
 
         // Make sure that the proposal is unique,
         bool fUnique = true;
+
         // check the activation status cache
         for (const SidechainActivationStatus& s : vActivationStatus) {
             if (s.proposal == status.proposal) {
@@ -759,10 +787,8 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const uint256& h
         }
         // check the active sidechain list
         for (const Sidechain& s : vActiveSidechain) {
-            // Note that here we are comparing a Sidechain to a
-            // SidechainProposal. There is a custom operator==. The regular
-            // Sidechain class operator== will compare nSidechain which would
-            // be useless.
+            // Note that we are comparing a Sidechain to a SidechainProposal.
+            // There is a custom operator== for this purpose.
             if (s == status.proposal) {
                 fUnique = false;
                 break;
@@ -809,7 +835,6 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const uint256& h
 
             if (!AddWTPrime(nSidechain, hashWTPrime, nHeight, fDebug)) {
                 // TODO handle failure
-                // TODO fix log message error
                 if (fDebug) {
                     LogPrintf("%s: Failed to cache WT^: %s for sidechain number: %u at height: %u\n",
                             __func__,
@@ -822,11 +847,7 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const uint256& h
         }
     }
 
-    // Scan for updated SCDB MT hash and try to update
-    // workscore of WT^(s)
-    // Note: h*(s) and new WT^(s) must be added to SCDB
-    // before this can be done.
-    // Note: Only one MT hash commit is allowed per coinbase
+    // Scan for updated SCDB MT hash and try to update workscore of WT^(s)
     std::vector<CScript> vMTHashScript;
     for (const CTxOut& out : vout) {
         const CScript& scriptPubKey = out.scriptPubKey;
@@ -834,6 +855,7 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const uint256& h
             vMTHashScript.push_back(scriptPubKey);
     }
 
+    // Only one MT hash commit is allowed per coinbase
     if (vMTHashScript.size() == 1) {
         const CScript& scriptPubKey = vMTHashScript.front();
 
@@ -841,6 +863,13 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const uint256& h
         uint256 hashMerkleRoot = uint256(std::vector<unsigned char>(scriptPubKey.begin() + 6, scriptPubKey.begin() + 38));
         bool fUpdated = UpdateSCDBMatchMT(nHeight, hashMerkleRoot);
         // TODO handle !fUpdated
+
+        if (!fUpdated && fDebug) {
+            LogPrintf("%s: Failed to match MT: %s at height: %u\n",
+                    __func__,
+                    hashMerkleRoot.ToString(),
+                    nHeight);
+        }
     }
 
     // Update hashBLockLastSeen
@@ -963,6 +992,13 @@ bool SidechainDB::UpdateSCDBIndex(const std::vector<SidechainWTPrimeState>& vNew
                         s.hashWTPrime.ToString());
         }
     }
+
+    if (fDebug)
+        LogPrintf("%s: Finished updating at height: %u with %u WT^ updates.\n",
+                __func__,
+                nHeight,
+                vNewScores.size());
+
     return true;
 }
 
@@ -991,10 +1027,7 @@ bool SidechainDB::UpdateSCDBMatchMT(int nHeight, const uint256& hashMerkleRoot)
         return (GetSCDBHash() == hashMerkleRoot);
     }
 
-    // TODO the loop below is functional. It isn't efficient.
-    // Changing the container of the update cache might be a good
-    // place to start.
-    //
+    // TODO remove
     // Try to update based on network messages
     for (const SidechainUpdatePackage& update : vSidechainUpdateCache) {
         if (update.nHeight != nHeight)
@@ -1033,8 +1066,6 @@ bool SidechainDB::UpdateSCDBMatchMT(int nHeight, const uint256& hashMerkleRoot)
     return false;
 }
 
-// private
-
 bool SidechainDB::ApplyDefaultUpdate()
 {
     if (!HasState())
@@ -1052,8 +1083,6 @@ bool SidechainDB::ApplyDefaultUpdate()
 
 void SidechainDB::UpdateActivationStatus(const std::vector<uint256>& vHash)
 {
-    // TODO refactor
-
     // Increment the age of all sidechain proposals, remove expired.
     for (size_t i = 0; i < vActivationStatus.size(); i++) {
         vActivationStatus[i].nAge++;
@@ -1141,7 +1170,6 @@ void SidechainDB::UndoActivationStatusUpdate(const std::vector<uint256>& vHash)
 
 int GetLastSidechainVerificationPeriod(int nHeight)
 {
-    // TODO more efficient
     for (;;) {
         if (nHeight < 0)
             return -1;
