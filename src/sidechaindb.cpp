@@ -102,15 +102,16 @@ void SidechainDB::AddSidechainNetworkUpdatePackage(const SidechainUpdatePackage&
 bool SidechainDB::AddWTPrime(uint8_t nSidechain, const uint256& hashWTPrime, int nHeight, bool fDebug)
 {
     if (!IsSidechainNumberValid(nSidechain)) {
-        LogPrintf("SidechainDB::AddWTPrime(): Rejected WT^: %s. Invalid " \
-                "sidechain number: %u\n",
+        LogPrintf("%s: Rejected WT^: %s. Invalid sidechain number: %u\n",
+                __func__,
                 hashWTPrime.ToString());
         return false;
     }
 
     if (HaveWTPrimeWorkScore(hashWTPrime, nSidechain)) {
-        LogPrintf("SidechainDB::AddWTPrime(): Rejected WT^: %s already known\n",
-        hashWTPrime.ToString());
+        LogPrintf("%s: Rejected WT^: %s already known\n",
+                __func__,
+                hashWTPrime.ToString());
         return false;
     }
 
@@ -127,13 +128,12 @@ bool SidechainDB::AddWTPrime(uint8_t nSidechain, const uint256& hashWTPrime, int
     vWT.push_back(wt);
 
     if (fDebug)
-        LogPrintf("SidechainDB::AddWTPrime(): Cached WT^: %s\n",
-                hashWTPrime.ToString());
+        LogPrintf("%s: Cached WT^: %s\n", __func__, hashWTPrime.ToString());
 
     bool fUpdated = UpdateSCDBIndex(vWT, nHeight, true /* fDebug */);
 
     if (!fUpdated && fDebug)
-        LogPrintf("SidechainDB::AddWTPrime(): Failed to update SCDBIndex.\n");
+        LogPrintf("%s: Failed to update SCDBIndex.\n", __func__);
 
     return fUpdated;
 }
@@ -184,21 +184,23 @@ bool SidechainDB::CheckWorkScore(uint8_t nSidechain, const uint256& hashWTPrime,
         if (state.hashWTPrime == hashWTPrime) {
             if (state.nWorkScore >= SIDECHAIN_MIN_WORKSCORE) {
                 if (fDebug)
-                    LogPrintf("SidechainDB::CheckWorkScore(): Approved: %s\n",
+                    LogPrintf("%s: Approved: %s\n",
+                            __func__,
                             hashWTPrime.ToString());
                 return true;
             } else {
                 if (fDebug)
-                    LogPrintf("SidechainDB::CheckWorkScore(): Rejected " \
-                            "(insufficient work score): %s\n",
+                    LogPrintf("%s: Rejected: %s (insufficient work score)\n",
+                            __func__,
                             hashWTPrime.ToString());
                 return false;
             }
         }
     }
     if (fDebug)
-        LogPrintf("SidechainDB::CheckWorkScore(): Rejected (WT^ state not " \
-            "found): %s\n", hashWTPrime.ToString());
+        LogPrintf("%s: Rejected (WT^ state not found): %s\n",
+                __func__,
+                hashWTPrime.ToString());
     return false;
 }
 
@@ -534,8 +536,10 @@ bool SidechainDB::SpendWTPrime(uint8_t nSidechain, const uint256& hashBlock, con
 {
     if (!IsSidechainNumberValid(nSidechain)) {
         if (fDebug) {
-            LogPrintf("SidechainDB::SpendWTPrime(): Cannot spend WT^ (txid): " \
-                "%s for sidechain number: %u.\n Invalid sidechain number.\n");
+            LogPrintf("%s: Cannot spend WT^ (txid): %s for sidechain number: %u.\n Invalid sidechain number.\n",
+                    __func__,
+                    tx.GetHash().ToString(),
+                    nSidechain);
         }
         return false;
     }
@@ -543,8 +547,8 @@ bool SidechainDB::SpendWTPrime(uint8_t nSidechain, const uint256& hashBlock, con
     uint256 hashBlind;
     if (!tx.GetBWTHash(hashBlind)) {
         if (fDebug) {
-            LogPrintf("SidechainDB::SpendWTPrime(): Cannot spend WT^ (txid): " \
-                "%s for sidechain number: %u.\n Cannot get blind hash.\n",
+            LogPrintf("%s: Cannot spend WT^ (txid): %s for sidechain number: %u.\n Cannot get blind hash.\n",
+                __func__,
                 tx.GetHash().ToString(),
                 nSidechain);
         }
@@ -553,8 +557,8 @@ bool SidechainDB::SpendWTPrime(uint8_t nSidechain, const uint256& hashBlock, con
 
     if (!CheckWorkScore(nSidechain, hashBlind, fDebug)) {
         if (fDebug) {
-            LogPrintf("SidechainDB::SpendWTPrime(): Cannot spend WT^: %s for " \
-                "sidechain number: %u. CheckWorkScore() failed.\n",
+            LogPrintf("%s: Cannot spend WT^: %s for sidechain number: %u. CheckWorkScore() failed.\n",
+                __func__,
                 hashBlind.ToString(),
                 nSidechain);
         }
@@ -572,9 +576,8 @@ bool SidechainDB::SpendWTPrime(uint8_t nSidechain, const uint256& hashBlock, con
                 // We already found a sidechain script output. This second
                 // sidechain output makes the WT^ invalid.
                 if (fDebug) {
-                    LogPrintf("SidechainDB::SpendWTPrime(): Cannot spend WT^:" \
-                        " %s for sidechain number: %u.\n" \
-                        "Multiple sidechain return outputs in WT^.\n",
+                    LogPrintf("%s: Cannot spend WT^: %s for sidechain number: %u. Multiple sidechain return outputs in WT^.\n",
+                        __func__,
                         hashBlind.ToString(),
                         nSidechain);
                 }
@@ -591,8 +594,8 @@ bool SidechainDB::SpendWTPrime(uint8_t nSidechain, const uint256& hashBlock, con
     // Make sure that the sidechain output was found
     if (!fBurnFound) {
         if (fDebug) {
-            LogPrintf("SidechainDB::SpendWTPrime(): Cannot spend WT^: %s for " \
-                "sidechain number: %u.\n No sidechain return output in WT^.\n",
+            LogPrintf("%s: Cannot spend WT^: %s for sidechain number: %u. No sidechain return output in WT^.\n",
+                __func__,
                 hashBlind.ToString(),
                 nSidechain);
         }
@@ -602,9 +605,8 @@ bool SidechainDB::SpendWTPrime(uint8_t nSidechain, const uint256& hashBlock, con
     // Make sure that the sidechain output is to the correct sidechain
     if (nSidechainScript != nSidechain) {
         if (fDebug) {
-            LogPrintf("SidechainDB::SpendWTPrime(): Cannot spend WT^: %s for " \
-                "sidechain number: %u.\n" \
-                "Return output to incorrect nSidechain: %u in WT^.\n",
+            LogPrintf("%s: Cannot spend WT^: %s for sidechain number: %u. Return output to incorrect nSidechain: %u in WT^.\n",
+                __func__,
                 hashBlind.ToString(),
                 nSidechain,
                 nSidechainScript);
@@ -614,8 +616,8 @@ bool SidechainDB::SpendWTPrime(uint8_t nSidechain, const uint256& hashBlock, con
 
     if (nSidechain >= vWTPrimeStatus.size()) {
         if (fDebug) {
-            LogPrintf("SidechainDB::SpendWTPrime(): Cannot spend WT^: %s for " \
-                "sidechain number: %u.\n WT^ status for sidechain not found.\n",
+            LogPrintf("%s: Cannot spend WT^: %s for sidechain number: %u. WT^ status for sidechain not found.\n",
+                __func__,
                 hashBlind.ToString(),
                 nSidechain);
         }
@@ -648,9 +650,8 @@ bool SidechainDB::SpendWTPrime(uint8_t nSidechain, const uint256& hashBlock, con
     // Remove WT^ work score now that is has been paid out
     vWTPrimeStatus[nSidechain].clear();
 
-    LogPrintf("SidechainDB::SpendWTPrime(): Updated sidechain CTIP for " \
-        "nSidechain: %u.\n CTIP output: %s\n CTIP amount: %i.\n" \
-        "hashBlock: %s\n",
+    LogPrintf("%s: Updated sidechain CTIP for nSidechain: %u. CTIP output: %s CTIP amount: %i hashBlock: %s.\n",
+        __func__,
         nSidechain,
         out.ToString(),
         amount,
@@ -683,11 +684,15 @@ std::string SidechainDB::ToString() const
     return str;
 }
 
-bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const std::vector<CTxOut>& vout, std::string& strError, bool fDebug)
+bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const uint256& hashPrevBlock, const std::vector<CTxOut>& vout, std::string& strError, bool fDebug)
 {
     if (hashBlock.IsNull())
         return false;
+    if (!hashBlockLastSeen.IsNull() && hashPrevBlock.IsNull())
+        return false;
     if (!vout.size())
+        return false;
+    if (!hashBlockLastSeen.IsNull() && hashPrevBlock != hashBlockLastSeen)
         return false;
 
     // If the WT^ verification period ended, clear old data
@@ -795,8 +800,8 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const std::vecto
             uint8_t nSidechain = scriptPubKey[38];
             if (!IsSidechainNumberValid(nSidechain)) {
                 if (fDebug)
-                    LogPrintf("SidechainDB::Update(): Skipping new WT^: %s, " \
-                            "invalid sidechain number: %u\n",
+                    LogPrintf("%s: Skipping new WT^: %s, invalid sidechain number: %u\n",
+                            __func__,
                             hashWTPrime.ToString(),
                             nSidechain);
                 continue;
@@ -806,8 +811,8 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const std::vecto
                 // TODO handle failure
                 // TODO fix log message error
                 if (fDebug) {
-                    LogPrintf("SidechainDB::Update(): Failed to cache WT^: %s" \
-                            " for sidechain number: %u at height: %u\n",
+                    LogPrintf("%s: Failed to cache WT^: %s for sidechain number: %u at height: %u\n",
+                            __func__,
                             hashWTPrime.ToString(),
                             nSidechain,
                             nHeight);
@@ -848,14 +853,15 @@ bool SidechainDB::UpdateSCDBIndex(const std::vector<SidechainWTPrimeState>& vNew
 {
     if (vNewScores.empty()) {
         if (fDebug)
-            LogPrintf("SidechainDB::UpdateSCDBIndex: Update failed! No new " \
-                    "scores at height: %u\n", nHeight);
+            LogPrintf("%s: Update failed! No new scores at height: %u\n",
+                    __func__,
+                    nHeight);
         return false;
     }
     if (vWTPrimeStatus.empty()) {
         if (fDebug)
-            LogPrintf("SidechainDB::UpdateSCDBIndex: Update failed! Cannot " \
-                    "update because vWTPrimeStatus is empty.\n");
+            LogPrintf("%s: Update failed: vWTPrimeStatus is empty!\n",
+                    __func__);
         return false;
     }
 
@@ -863,8 +869,9 @@ bool SidechainDB::UpdateSCDBIndex(const std::vector<SidechainWTPrimeState>& vNew
     for (const SidechainWTPrimeState& s : vNewScores) {
         if (!IsSidechainNumberValid(s.nSidechain)) {
             if (fDebug)
-                LogPrintf("SidechainDB::UpdateSCDBIndex: Update failed! " \
-                        "Invalid sidechain number: %u\n", s.nSidechain);
+                LogPrintf("%s: Update failed! Invalid sidechain number: %u\n",
+                        __func__,
+                        s.nSidechain);
             return false;
         }
     }
@@ -899,8 +906,8 @@ bool SidechainDB::UpdateSCDBIndex(const std::vector<SidechainWTPrimeState>& vNew
                             (s.nWorkScore == (state.nWorkScore - 1)))
                     {
                         if (fDebug)
-                            LogPrintf("SidechainDB::UpdateSCDBIndex: WT^ work" \
-                                    " score updated: %s %u->%u\n",
+                            LogPrintf("%s: WT^ work  score updated: %s %u->%u\n",
+                                    __func__,
                                     state.hashWTPrime.ToString(),
                                     vWTPrimeStatus[x][y].nWorkScore,
                                     s.nWorkScore);
@@ -912,17 +919,18 @@ bool SidechainDB::UpdateSCDBIndex(const std::vector<SidechainWTPrimeState>& vNew
         if (!fFound) {
             if (s.nWorkScore != 1) {
                 if (fDebug)
-                    LogPrintf("SidechainDB::UpdateSCDBIndex: Rejected new " \
-                            " WT^: %s. Invalid initial workscore (not 1): %u\n",
-                            s.hashWTPrime.ToString(), s.nWorkScore);
+                    LogPrintf("%s: Rejected new WT^: %s. Invalid initial workscore (not 1): %u\n",
+                            __func__,
+                            s.hashWTPrime.ToString(),
+                            s.nWorkScore);
                 continue;
             }
 
             int nAge = GetNumBlocksSinceLastSidechainVerificationPeriod(nHeight);
             if (s.nBlocksLeft != (SIDECHAIN_VERIFICATION_PERIOD - nAge)) {
                 if (fDebug)
-                    LogPrintf("SidechainDB::UpdateSCDBIndex: Rejected new " \
-                            "WT^: %s. Invalid initial nBlocksLeft (not %u): %u\n",
+                    LogPrintf("%s: Rejected new WT^: %s. Invalid initial nBlocksLeft (not %u): %u\n",
+                            __func__,
                             s.hashWTPrime.ToString(),
                             SIDECHAIN_VERIFICATION_PERIOD - nAge,
                             s.nBlocksLeft);
@@ -931,8 +939,8 @@ bool SidechainDB::UpdateSCDBIndex(const std::vector<SidechainWTPrimeState>& vNew
 
             if (!IsSidechainNumberValid(s.nSidechain)) {
                 if (fDebug)
-                    LogPrintf("SidechainDB::UpdateSCDBIndex: Rejected new " \
-                            "WT^: %s. Invalid sidechain number: %u\n",
+                    LogPrintf("%s: Rejected new WT^: %s. Invalid sidechain number: %u\n",
+                            __func__,
                             s.hashWTPrime.ToString(),
                             s.nSidechain);
                 continue;
@@ -940,8 +948,8 @@ bool SidechainDB::UpdateSCDBIndex(const std::vector<SidechainWTPrimeState>& vNew
 
             if (s.nSidechain >= vWTPrimeStatus.size()) {
                 if (fDebug)
-                    LogPrintf("SidechainDB::UpdateSCDBIndex: Rejected new " \
-                            "WT^: %s. Invalid sidechain number (too large): %u\n",
+                    LogPrintf("%s: Rejected new WT^: %s. Invalid sidechain number (too large): %u\n",
+                            __func__,
                             s.hashWTPrime.ToString(),
                             s.nSidechain);
                 continue;
@@ -950,7 +958,8 @@ bool SidechainDB::UpdateSCDBIndex(const std::vector<SidechainWTPrimeState>& vNew
             vWTPrimeStatus[s.nSidechain].push_back(s);
 
             if (fDebug)
-                LogPrintf("SidechainDB::UpdateSCDBIndex: Cached new WT^: %s\n",
+                LogPrintf("%s: Cached new WT^: %s\n",
+                        __func__,
                         s.hashWTPrime.ToString());
         }
     }

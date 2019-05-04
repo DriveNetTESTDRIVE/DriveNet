@@ -168,7 +168,7 @@ public:
     std::string ToString() const;
 
     /** Apply the changes in a block to SCDB */
-    bool Update(int nHeight, const uint256& hashBlock, const std::vector<CTxOut>& vout, std::string& strError, bool fDebug = false);
+    bool Update(int nHeight, const uint256& hashBlock, const uint256& hashPrevBlock, const std::vector<CTxOut>& vout, std::string& strError, bool fDebug = false);
 
     /** Update / add multiple SCDB WT^(s) to SCDB */
     bool UpdateSCDBIndex(const std::vector<SidechainWTPrimeState>& vNewScores, int nHeight, bool fDebug = false);

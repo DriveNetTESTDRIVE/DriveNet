@@ -2252,7 +2252,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
     if (drivechainsEnabled) {
         // Update / synchronize SCDB
         std::string strError = "";
-        if (!scdb.Update(pindex->nHeight, block.GetHash(), block.vtx[0]->vout, strError, true /* fDebug */))
+        if (!scdb.Update(pindex->nHeight, block.GetHash(), block.GetPrevHash(), block.vtx[0]->vout, strError, true /* fDebug */))
             LogPrintf("SCDB failed to update with block: %s\n", block.GetHash().ToString());
         if (strError != "")
             LogPrintf("SCDB update error: %s\n", strError);
