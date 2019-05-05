@@ -2243,20 +2243,20 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
     // add this block to the view's block chain
     view.SetBestBlock(pindex->GetBlockHash());
 
+    if (drivechainsEnabled) {
+        // Update / synchronize SCDB
+        if (!scdb.Update(pindex->nHeight, block.GetHash(), block.GetPrevHash(), block.vtx[0]->vout, true /* fDebug */)) {
+            LogPrintf("SCDB failed to update with block: %s\n", block.GetHash().ToString());
+            // TODO this should be enabled once SCDB undo works
+            //return false;
+        }
+    }
+
     if (drivechainsEnabled && vDepositTx.size())
         scdb.AddDeposits(vDepositTx, block.GetHash());
 
     if (drivechainsEnabled)
         mempool.UpdateCTIP(scdb.GetCTIP());
-
-    if (drivechainsEnabled) {
-        // Update / synchronize SCDB
-        std::string strError = "";
-        if (!scdb.Update(pindex->nHeight, block.GetHash(), block.GetPrevHash(), block.vtx[0]->vout, strError, true /* fDebug */))
-            LogPrintf("SCDB failed to update with block: %s\n", block.GetHash().ToString());
-        if (strError != "")
-            LogPrintf("SCDB update error: %s\n", strError);
-    }
 
     int64_t nTime5 = GetTimeMicros(); nTimeIndex += nTime5 - nTime4;
     LogPrint(BCLog::BENCH, "    - Index writing: %.2fms [%.2fs (%.2fms/blk)]\n", MILLI * (nTime5 - nTime4), nTimeIndex * MICRO, nTimeIndex * MILLI / nBlocksTotal);

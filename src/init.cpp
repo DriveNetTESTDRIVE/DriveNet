@@ -1640,9 +1640,7 @@ bool AppInitMain()
 
             // Update SCDB
             std::string strError = "";
-            if (!scdb.Update(i, pindex->GetBlockHash(), pindex->GetPrevBlockHash(), pindex->coinbase->vout, strError, true /* fDebug */)) {
-                if (strError != "")
-                    LogPrintf("SCDB update error: %s\n", strError);
+            if (!scdb.Update(i, pindex->GetBlockHash(), pindex->GetPrevBlockHash(), pindex->coinbase->vout, true /* fDebug */)) {
                 return InitError("Failed to initialize SCDB.\n");
             }
         }

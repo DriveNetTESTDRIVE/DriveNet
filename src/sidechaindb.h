@@ -112,7 +112,7 @@ public:
     /** Get list of this node's uncommitted sidechain proposals */
     std::vector<SidechainProposal> GetSidechainProposals() const;
 
-    /** Get the scriptPubKey that relates to nSidehcain if it exists */
+    /** Get the scriptPubKey that relates to nSidechain if it exists */
     bool GetSidechainScript(const uint8_t nSidechain, CScript& scriptPubKey) const;
 
     /** Get list of sidechains that we have set to ACK */
@@ -168,7 +168,7 @@ public:
     std::string ToString() const;
 
     /** Apply the changes in a block to SCDB */
-    bool Update(int nHeight, const uint256& hashBlock, const uint256& hashPrevBlock, const std::vector<CTxOut>& vout, std::string& strError, bool fDebug = false);
+    bool Update(int nHeight, const uint256& hashBlock, const uint256& hashPrevBlock, const std::vector<CTxOut>& vout, bool fDebug = false);
 
     /** Update / add multiple SCDB WT^(s) to SCDB */
     bool UpdateSCDBIndex(const std::vector<SidechainWTPrimeState>& vNewScores, int nHeight, bool fDebug = false);

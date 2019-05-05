@@ -44,9 +44,8 @@ bool ActivateSidechain(SidechainDB& scdbTest)
     if (!out.scriptPubKey.IsSidechainProposalCommit())
         return false;
 
-    std::string strError = "";
     uint256 hash1 = GetRandHash();
-    scdbTest.Update(0, hash1, uint256(), std::vector<CTxOut>{out}, strError);
+    scdbTest.Update(0, hash1, uint256(), std::vector<CTxOut>{out});
 
     std::vector<SidechainActivationStatus> vActivation;
     vActivation = scdbTest.GetSidechainActivationStatus();
@@ -69,7 +68,7 @@ bool ActivateSidechain(SidechainDB& scdbTest)
     // Add votes until the sidechain is activated
     for (int i = 1; i <= SIDECHAIN_ACTIVATION_MAX_AGE; i++) {
         uint256 hash2 = GetRandHash();
-        scdbTest.Update(i, hash2, hash1, block.vtx.front()->vout, strError);
+        scdbTest.Update(i, hash2, hash1, block.vtx.front()->vout);
         hash1 = hash2;
     }
 
@@ -151,8 +150,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_MultipleVerificationPeriods)
     uint256 hashBlock = GetRandHash();
 
     // Update scdbTest (will clear out old data from first period)
-    std::string strError = "";
-    scdbTest.Update(SIDECHAIN_VERIFICATION_PERIOD, hashBlock, scdbTest.GetHashBlockLastSeen(), mtx.vout, strError);
+    scdbTest.Update(SIDECHAIN_VERIFICATION_PERIOD, hashBlock, scdbTest.GetHashBlockLastSeen(), mtx.vout);
 
     // WT^ hash for second period
     uint256 hashWTTest2 = GetRandHash();

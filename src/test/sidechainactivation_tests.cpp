@@ -35,9 +35,8 @@ BOOST_AUTO_TEST_CASE(sidechainproposal_single)
 
     BOOST_CHECK(out.scriptPubKey.IsSidechainProposalCommit());
 
-    std::string strError = "";
     uint256 hash = GetRandHash();
-    scdbTest.Update(0, hash, uint256(), std::vector<CTxOut>{out}, strError);
+    scdbTest.Update(0, hash, uint256(), std::vector<CTxOut>{out});
 
     std::vector<SidechainActivationStatus> vActivation;
     vActivation = scdbTest.GetSidechainActivationStatus();
@@ -68,9 +67,8 @@ BOOST_AUTO_TEST_CASE(sidechainproposal_multiple)
     BOOST_CHECK(out.scriptPubKey.IsSidechainProposalCommit());
 
     // Update scdbTest to add the proposal
-    std::string strError = "";
     uint256 hash1 = GetRandHash();
-    scdbTest.Update(0, hash1, uint256(), std::vector<CTxOut>{out}, strError);
+    scdbTest.Update(0, hash1, uint256(), std::vector<CTxOut>{out});
 
     // Create sidechain proposal
     SidechainProposal proposal2;
@@ -90,7 +88,7 @@ BOOST_AUTO_TEST_CASE(sidechainproposal_multiple)
     BOOST_CHECK(out2.scriptPubKey.IsSidechainProposalCommit());
 
     // Update scdbTest to add the proposal
-    scdbTest.Update(1, GetRandHash(), hash1, std::vector<CTxOut>{out2}, strError);
+    scdbTest.Update(1, GetRandHash(), hash1, std::vector<CTxOut>{out2});
 
     std::vector<SidechainActivationStatus> vActivation;
     vActivation = scdbTest.GetSidechainActivationStatus();
@@ -145,8 +143,7 @@ BOOST_AUTO_TEST_CASE(sidechainproposal_perblocklimit)
     BOOST_CHECK(out2.scriptPubKey.IsSidechainProposalCommit());
 
     // Update scdbTest to add the proposal
-    std::string strError = "";
-    scdbTest.Update(0, GetRandHash(), uint256(), std::vector<CTxOut>{out, out2}, strError);
+    scdbTest.Update(0, GetRandHash(), uint256(), std::vector<CTxOut>{out, out2});
 
     std::vector<SidechainActivationStatus> vActivation;
     vActivation = scdbTest.GetSidechainActivationStatus();
@@ -184,9 +181,8 @@ BOOST_AUTO_TEST_CASE(sidechainactivation_activate)
 
     BOOST_CHECK(out.scriptPubKey.IsSidechainProposalCommit());
 
-    std::string strError = "";
     uint256 hash1 = GetRandHash();
-    scdbTest.Update(0, hash1, uint256(), std::vector<CTxOut>{out}, strError);
+    scdbTest.Update(0, hash1, uint256(), std::vector<CTxOut>{out});
 
     std::vector<SidechainActivationStatus> vActivation;
     vActivation = scdbTest.GetSidechainActivationStatus();
@@ -207,7 +203,7 @@ BOOST_AUTO_TEST_CASE(sidechainactivation_activate)
     // Add votes until the sidechain is activated
     for (int i = 1; i <= SIDECHAIN_ACTIVATION_MAX_AGE; i++) {
         uint256 hash2 = GetRandHash();
-        scdbTest.Update(i, hash2, hash1, block.vtx.front()->vout, strError);
+        scdbTest.Update(i, hash2, hash1, block.vtx.front()->vout);
         hash1 = hash2;
     }
 
@@ -244,9 +240,8 @@ BOOST_AUTO_TEST_CASE(sidechainactivation_activate_multi)
 
     BOOST_CHECK(out.scriptPubKey.IsSidechainProposalCommit());
 
-    std::string strError = "";
     uint256 hash1 = GetRandHash();
-    scdbTest.Update(0, hash1, uint256(), std::vector<CTxOut>{out}, strError);
+    scdbTest.Update(0, hash1, uint256(), std::vector<CTxOut>{out});
 
     std::vector<SidechainActivationStatus> vActivation;
     vActivation = scdbTest.GetSidechainActivationStatus();
@@ -270,7 +265,7 @@ BOOST_AUTO_TEST_CASE(sidechainactivation_activate_multi)
     BOOST_CHECK(out.scriptPubKey.IsSidechainProposalCommit());
 
     uint256 hash2 = GetRandHash();
-    scdbTest.Update(1, hash2, hash1, std::vector<CTxOut>{out}, strError);
+    scdbTest.Update(1, hash2, hash1, std::vector<CTxOut>{out});
 
     vActivation = scdbTest.GetSidechainActivationStatus();
 
@@ -292,7 +287,7 @@ BOOST_AUTO_TEST_CASE(sidechainactivation_activate_multi)
     // Add votes until the sidechain is activated
     for (int i = 1; i <= SIDECHAIN_ACTIVATION_MAX_AGE; i++) {
         hash1 = GetRandHash();
-        scdbTest.Update(i, hash1, hash2, block.vtx.front()->vout, strError);
+        scdbTest.Update(i, hash1, hash2, block.vtx.front()->vout);
         hash2 = hash1;
     }
 
@@ -329,9 +324,8 @@ BOOST_AUTO_TEST_CASE(sidechainactivation_activate_multi_seperate)
 
     BOOST_CHECK(out.scriptPubKey.IsSidechainProposalCommit());
 
-    std::string strError = "";
     uint256 hash1 = GetRandHash();
-    scdbTest.Update(0, hash1, uint256(), std::vector<CTxOut>{out}, strError);
+    scdbTest.Update(0, hash1, uint256(), std::vector<CTxOut>{out});
 
     std::vector<SidechainActivationStatus> vActivation;
     vActivation = scdbTest.GetSidechainActivationStatus();
@@ -352,7 +346,7 @@ BOOST_AUTO_TEST_CASE(sidechainactivation_activate_multi_seperate)
     // Add votes until the sidechain is activated
     for (int i = 1; i <= SIDECHAIN_ACTIVATION_MAX_AGE; i++) {
         uint256 hash2 = GetRandHash();
-        scdbTest.Update(i, hash2, hash1, block.vtx.front()->vout, strError);
+        scdbTest.Update(i, hash2, hash1, block.vtx.front()->vout);
         hash1 = hash2;
     }
 
@@ -383,7 +377,7 @@ BOOST_AUTO_TEST_CASE(sidechainactivation_activate_multi_seperate)
     BOOST_CHECK(out.scriptPubKey.IsSidechainProposalCommit());
 
     uint256 hash3 = GetRandHash();
-    scdbTest.Update(1, hash3, hash1, std::vector<CTxOut>{out}, strError);
+    scdbTest.Update(1, hash3, hash1, std::vector<CTxOut>{out});
 
     vActivation = scdbTest.GetSidechainActivationStatus();
 
@@ -399,7 +393,7 @@ BOOST_AUTO_TEST_CASE(sidechainactivation_activate_multi_seperate)
     // Add votes until the sidechain is activated
     for (int i = 1; i <= SIDECHAIN_ACTIVATION_MAX_AGE; i++) {
         uint256 hash4 = GetRandHash();
-        scdbTest.Update(i, hash4, hash3, block.vtx.front()->vout, strError);
+        scdbTest.Update(i, hash4, hash3, block.vtx.front()->vout);
         hash3 = hash4;
     }
 
@@ -434,9 +428,8 @@ BOOST_AUTO_TEST_CASE(sidechainactivation_failActivation)
 
     BOOST_CHECK(out.scriptPubKey.IsSidechainProposalCommit());
 
-    std::string strError = "";
     uint256 hash1 = GetRandHash();
-    scdbTest.Update(0, hash1, uint256(), std::vector<CTxOut>{out}, strError);
+    scdbTest.Update(0, hash1, uint256(), std::vector<CTxOut>{out});
 
     std::vector<SidechainActivationStatus> vActivation;
     vActivation = scdbTest.GetSidechainActivationStatus();
@@ -456,7 +449,7 @@ BOOST_AUTO_TEST_CASE(sidechainactivation_failActivation)
     // Add votes until the sidechain is activated
     for (int i = 1; i <= SIDECHAIN_ACTIVATION_MAX_AGE / 2; i++) {
         uint256 hash2 = GetRandHash();
-        scdbTest.Update(i, hash2, hash1, block.vtx.front()->vout, strError);
+        scdbTest.Update(i, hash2, hash1, block.vtx.front()->vout);
         hash1 = hash2;
     }
 
@@ -491,9 +484,8 @@ BOOST_AUTO_TEST_CASE(sidechainactivation_pruneRejected)
 
     BOOST_CHECK(out.scriptPubKey.IsSidechainProposalCommit());
 
-    std::string strError = "";
     uint256 hash1 = GetRandHash();
-    scdbTest.Update(0, hash1, uint256(), std::vector<CTxOut>{out}, strError);
+    scdbTest.Update(0, hash1, uint256(), std::vector<CTxOut>{out});
 
     std::vector<SidechainActivationStatus> vActivation;
     vActivation = scdbTest.GetSidechainActivationStatus();
@@ -508,7 +500,7 @@ BOOST_AUTO_TEST_CASE(sidechainactivation_pruneRejected)
     for (int i = 1; i <= SIDECHAIN_ACTIVATION_MAX_FAILURES + 1; i++) {
         vActivation = scdbTest.GetSidechainActivationStatus();
         uint256 hash2 = GetRandHash();
-        scdbTest.Update(i, hash2, hash1, std::vector<CTxOut>{out}, strError);
+        scdbTest.Update(i, hash2, hash1, std::vector<CTxOut>{out});
         hash1 = hash2;
     }
 
