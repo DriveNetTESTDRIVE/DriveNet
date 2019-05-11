@@ -3766,7 +3766,7 @@ static bool ContextualCheckBlock(const CBlock& block, CValidationState& state, c
                 uint16_t nPrevBlockRef;
                 std::string strPrevBlock = "";
                 if (tx->criticalData.IsBMMRequest(nSidechain, nPrevBlockRef, strPrevBlock)) {
-                    if (nSidechain > vSidechainBMM.size())
+                    if (nSidechain >= vSidechainBMM.size())
                         return state.DoS(100, false, REJECT_INVALID, "bad-critical-bmm-invalid-nsidechain", true, strprintf("%s : Invalid sidechain number in BMM commitment", __func__));
 
                     if (vSidechainBMM[nSidechain] == false)
