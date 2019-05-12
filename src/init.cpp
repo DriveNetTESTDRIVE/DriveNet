@@ -228,13 +228,6 @@ void Shutdown()
         DumpMempool();
     }
 
-    DumpDepositCache();
-    DumpWTPrimeCache();
-    DumpSidechainActivationStatusCache();
-    DumpActiveSidechainCache();
-    DumpSidechainProposalCache();
-    DumpSidechainActivationHashCache();
-
     if (fFeeEstimatesInitialized)
     {
         ::feeEstimator.FlushUnconfirmed();

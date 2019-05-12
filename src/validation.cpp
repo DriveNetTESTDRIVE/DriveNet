@@ -2366,6 +2366,14 @@ bool static FlushStateToDisk(const CChainParams& chainparams, CValidationState &
                     return AbortNode(state, "Failed to write to block index database");
                 }
             }
+            // Dump SidechainDB, sidechain activation & optional caches
+            DumpDepositCache();
+            DumpWTPrimeCache();
+            DumpSidechainActivationStatusCache();
+            DumpActiveSidechainCache();
+            DumpSidechainProposalCache();
+            DumpSidechainActivationHashCache();
+
             // Finally remove any pruned files
             if (fFlushForPrune)
                 UnlinkPrunedFiles(setFilesToPrune);
