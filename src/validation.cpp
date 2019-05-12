@@ -605,9 +605,8 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
     const uint256 hash = tx.GetHash();
     AssertLockHeld(cs_main);
     LOCK(pool.cs); // mempool "read lock" (held through GetMainSignals().TransactionAddedToMempool())
-    if (pfMissingInputs) {
+    if (pfMissingInputs)
         *pfMissingInputs = false;
-    }
 
     if (!CheckTransaction(tx, state))
         return false; // state filled in by CheckTransaction
@@ -627,6 +626,23 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
     if (!gArgs.GetBoolArg("-prematuredrivechains", false) && !tx.criticalData.IsNull() && !drivechainsEnabled) {
         return state.DoS(0, false, REJECT_NONSTANDARD, "no-drivechains-yet", true);
     }
+
+    // Reject BMM requests with invalid prevBytes
+    if (drivechainsEnabled && !tx.criticalData.IsNull()) {
+        uint8_t nSidechain;
+        uint16_t nPrevBlockRef;
+        std::string strPrevBlock = "";
+        if (tx.criticalData.IsBMMRequest(nSidechain, nPrevBlockRef, strPrevBlock)) {
+            std::string strTip = chainActive.Tip()->GetBlockHash().ToString();
+            strTip = strTip.substr(strTip.size() - 4, strTip.size() - 1);
+            if (strPrevBlock != strTip)
+                return state.DoS(0, false, REJECT_INVALID, "bmm-invalid-prev-bytes", true);
+        }
+    }
+
+    // TODO enable after fixing unit tests to properly activate sidechain for
+    // mempool tests.
+    // Reject BMM request with invalid nSidechain
 
     // Rather not work on nonstandard transactions (unless -testnet/-regtest)
     std::string reason;
