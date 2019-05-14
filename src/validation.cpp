@@ -582,7 +582,7 @@ void GetSidechainValues(CTxMemPool& pool, const CTransaction &tx, CAmount& amtSi
     }
 }
 
-bool CheckBWTHash(const uint256& wtjID, const CTransaction &tx)
+bool CheckBWTHash(const uint256& hashWTPrime, const CTransaction &tx)
 {
     CMutableTransaction mtx = tx;
 
@@ -590,7 +590,7 @@ bool CheckBWTHash(const uint256& wtjID, const CTransaction &tx)
     mtx.vin.clear();
     mtx.vout.pop_back();
 
-    if (mtx.GetHash() == wtjID)
+    if (mtx.GetHash() == hashWTPrime)
         return true;
 
     return false;

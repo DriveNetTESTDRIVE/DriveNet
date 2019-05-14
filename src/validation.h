@@ -312,7 +312,7 @@ void GetSidechainValues(CTxMemPool& pool, const CTransaction& tx, CAmount& amtSi
                         CAmount& amtReturning, CAmount& amtWithdrawn);
 
 /** Compare the blinded hash (B-WT^) with the transaction provided */
-bool CheckBWTHash(const uint256& wtjID, const CTransaction& tx);
+bool CheckBWTHash(const uint256& hashWTPrime, const CTransaction& tx);
 
 /** (try to) add transaction to memory pool
  * plTxnReplaced will be appended to with all transactions replaced from mempool **/
