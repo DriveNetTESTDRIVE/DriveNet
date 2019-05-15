@@ -795,8 +795,14 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const uint256& h
             }
         }
 
-        if (fUnique)
+        if (fUnique) {
+            LogPrintf("SCDB %s: Tracking new sidechain proposal:\n%s\n",
+                    __func__,
+                    status.proposal.ToString());
+
+            // Start tracking the new sidechain proposal
             vActivationStatus.push_back(status);
+        }
     }
 
     // Scan for sidechain activation commitments
@@ -1090,6 +1096,10 @@ void SidechainDB::UpdateActivationStatus(const std::vector<uint256>& vHash)
     for (size_t i = 0; i < vActivationStatus.size(); i++) {
         vActivationStatus[i].nAge++;
         if (vActivationStatus[i].nAge > SIDECHAIN_ACTIVATION_MAX_AGE) {
+            LogPrintf("SCDB %s: Sidechain proposal expired:\n%s\n",
+                    __func__,
+                    vActivationStatus[i].proposal.ToString());
+
             vActivationStatus[i] = vActivationStatus.back();
             vActivationStatus.pop_back();
         }
@@ -1114,6 +1124,10 @@ void SidechainDB::UpdateActivationStatus(const std::vector<uint256>& vHash)
     std::vector<std::vector<SidechainActivationStatus>::const_iterator> vFail;
     for (size_t i = 0; i < vActivationStatus.size(); i++) {
         if (vActivationStatus[i].nFail >= SIDECHAIN_ACTIVATION_MAX_FAILURES) {
+            LogPrintf("SCDB %s: Sidechain proposal rejected:\n%s\n",
+                    __func__,
+                    vActivationStatus[i].proposal.ToString());
+
             vActivationStatus[i] = vActivationStatus.back();
             vActivationStatus.pop_back();
         }
@@ -1158,6 +1172,10 @@ void SidechainDB::UpdateActivationStatus(const std::vector<uint256>& vHash)
                     vSidechainProposal.pop_back();
                 }
             }
+
+            LogPrintf("SCDB %s: Sidechain activated:\n%s\n",
+                    __func__,
+                    vActivationStatus[i].proposal.ToString());
         }
     }
 }
@@ -1169,7 +1187,6 @@ void SidechainDB::UndoActivationStatusUpdate(const std::vector<uint256>& vHash)
     for (const uint256& u : vHash) {
     }
 }
-
 
 int GetLastSidechainVerificationPeriod(int nHeight)
 {
