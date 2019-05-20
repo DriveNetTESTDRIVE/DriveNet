@@ -6,6 +6,7 @@
 #include <script/script.h>
 
 #include <tinyformat.h>
+#include <uint256.h>
 #include <utilstrencodings.h>
 
 const char* GetOpName(opcodetype opcode)
@@ -272,7 +273,7 @@ bool CScript::IsSCDBHashMerkleRootCommit() const
     return true;
 }
 
-bool CScript::IsWTPrimeHashCommit() const
+bool CScript::IsWTPrimeHashCommit(uint256& hashWTPrime, uint8_t& nSidechain) const
 {
     // Check script size
     size_t size = this->size();
@@ -286,6 +287,12 @@ bool CScript::IsWTPrimeHashCommit() const
             (*this)[3] != 0x5A ||
             (*this)[4] != 0xA9 ||
             (*this)[5] != 0x43)
+        return false;
+
+    hashWTPrime = uint256(std::vector<unsigned char>(this->begin() + 6, this->begin() + 38));
+    nSidechain = (*this)[38];
+
+    if (hashWTPrime.IsNull())
         return false;
 
     return true;
@@ -313,7 +320,7 @@ bool CScript::IsSidechainProposalCommit() const
     return true;
 }
 
-bool CScript::IsSidechainActivationCommit() const
+bool CScript::IsSidechainActivationCommit(uint256& hashSidechain) const
 {
     // Check script size
     size_t size = this->size();
@@ -328,8 +335,9 @@ bool CScript::IsSidechainActivationCommit() const
             (*this)[4] != 0xBF)
         return false;
 
-    // TODO deserialize sidechain
-    // TODO check validity of sidechain
+    hashSidechain = uint256(std::vector<unsigned char>(this->begin() + 5, this->begin() + 37));
+    if (hashSidechain.IsNull())
+        return false;
 
     return true;
 }

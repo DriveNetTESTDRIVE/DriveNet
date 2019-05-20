@@ -3109,14 +3109,11 @@ bool CWallet::CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, 
         return false;
     }
 
-    LOCK2(cs_main, vpwallets[0]->cs_wallet);
-
     // User deposit data script
-    CScript dataScript = CScript() << OP_RETURN << CScriptNum(nSidechain) << ToByteVector(keyID);
+    CScript dataScript = CScript() << OP_RETURN << ToByteVector(keyID);
 
     std::vector<unsigned char> vch(ParseHex(HexStr(scriptPubKeyIn)));
     CScript sidechainScript = CScript(vch.begin(), vch.end());
-
     if (sidechainScript.empty()) {
         strFail = "Invalid sidechain deposit script!";
         return false;
@@ -3124,6 +3121,8 @@ bool CWallet::CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, 
 
     // The deposit transaction
     CMutableTransaction mtx;
+
+    LOCK2(cs_main, vpwallets[0]->cs_wallet);
 
     // Select coins to cover sidechain deposit
     std::vector<COutput> vCoins;
@@ -3168,8 +3167,9 @@ bool CWallet::CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, 
     size_t nDepositIndex = mtx.vout.size() - 1;
 
     // Handle existing sidechain utxo. We will look at our local mempool, and
-    // create a deposit based on the latest CTIP for the sidechain. It will be
-    // rejected if other nodes have seen a newer CTIP.
+    // create a deposit based on the latest CTIP for the sidechain.
+    // Note: It will be rejected if other nodes have seen a newer CTIP.
+    // TODO if rejected by other nodes, abandon automatically
     SidechainCTIP ctip;
     CAmount returnAmount = CAmount(0);
     if (::mempool.GetMemPoolCTIP(nSidechain, ctip)) {

@@ -808,7 +808,7 @@ UniValue listsidechainctip(const JSONRPCRequest& request)
             );
 
     // Is nSidechain valid?
-    uint8_t nSidechain = (unsigned int)request.params[0].get_int();
+    int nSidechain = request.params[0].get_int();
     if (!IsSidechainNumberValid(nSidechain))
         throw std::runtime_error("Invalid sidechain number!");
 
@@ -964,7 +964,7 @@ UniValue countsidechaindeposits(const JSONRPCRequest& request)
 #endif
 
     // Is nSidechain valid?
-    uint8_t nSidechain = std::stoi(request.params[0].getValStr());
+    int nSidechain = request.params[0].get_int();
     if (!IsSidechainNumberValid(nSidechain))
         throw std::runtime_error("Invalid sidechain number");
 
@@ -1044,6 +1044,7 @@ UniValue receivewtprime(const JSONRPCRequest& request)
     return ret;
 }
 
+// TODO remove
 UniValue receivewtprimeupdate(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() != 2)
@@ -1083,7 +1084,7 @@ UniValue receivewtprimeupdate(const JSONRPCRequest& request)
         const UniValue& sidechainnumber_v = find_value(o, "sidechainnumber");
         if (!sidechainnumber_v.isNum())
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, missing sidechain number");
-        uint8_t nSidechain = sidechainnumber_v.get_int();
+        int nSidechain = sidechainnumber_v.get_int();
 
         // Is nSidechain valid?
         if (!IsSidechainNumberValid(nSidechain))

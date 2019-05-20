@@ -357,7 +357,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_wallet_ctip_create)
     pubkey = key.GetPubKey();
 
     // User deposit data script
-    CScript dataScript = CScript() << OP_RETURN << CScriptNum(0) << ToByteVector(pubkey.GetID());
+    CScript dataScript = CScript() << OP_RETURN << ToByteVector(pubkey.GetID());
 
     mtx.vout.push_back(CTxOut(CAmount(0), dataScript));
 
@@ -413,7 +413,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_wallet_ctip_multi_deposits)
     pubkey = key.GetPubKey();
 
     // User deposit data script
-    CScript dataScript = CScript() << OP_RETURN << CScriptNum(0) << ToByteVector(pubkey.GetID());
+    CScript dataScript = CScript() << OP_RETURN << ToByteVector(pubkey.GetID());
 
     mtx.vout.push_back(CTxOut(CAmount(0), dataScript));
 
@@ -450,7 +450,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_wallet_ctip_multi_deposits)
     pubkey2 = key2.GetPubKey();
 
     // User deposit data script
-    CScript dataScript2 = CScript() << OP_RETURN << CScriptNum(0) << ToByteVector(pubkey2.GetID());
+    CScript dataScript2 = CScript() << OP_RETURN << ToByteVector(pubkey2.GetID());
 
     mtx2.vout.push_back(CTxOut(CAmount(0), dataScript2));
 
@@ -505,7 +505,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_wallet_ctip_spend_wtprime)
     pubkey = key.GetPubKey();
 
     // User deposit data script
-    CScript dataScript = CScript() << OP_RETURN << CScriptNum(0) << ToByteVector(pubkey.GetID());
+    CScript dataScript = CScript() << OP_RETURN << ToByteVector(pubkey.GetID());
 
     mtx.vout.push_back(CTxOut(CAmount(0), dataScript));
 
@@ -586,7 +586,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_wallet_ctip_spend_wtprime_then_deposit)
     pubkey = key.GetPubKey();
 
     // User deposit data script
-    CScript dataScript = CScript() << OP_RETURN << CScriptNum(0) << ToByteVector(pubkey.GetID());
+    CScript dataScript = CScript() << OP_RETURN << ToByteVector(pubkey.GetID());
 
     mtx.vout.push_back(CTxOut(CAmount(0), dataScript));
 
@@ -656,7 +656,7 @@ BOOST_AUTO_TEST_CASE(sidechaindb_wallet_ctip_spend_wtprime_then_deposit)
     pubkey2 = key2.GetPubKey();
 
     // User deposit data script
-    CScript dataScript2 = CScript() << OP_RETURN << CScriptNum(0) << ToByteVector(pubkey2.GetID());
+    CScript dataScript2 = CScript() << OP_RETURN << ToByteVector(pubkey2.GetID());
 
     mtx2.vout.push_back(CTxOut(CAmount(0), dataScript2));
 
@@ -676,6 +676,95 @@ BOOST_AUTO_TEST_CASE(sidechaindb_wallet_ctip_spend_wtprime_then_deposit)
     BOOST_CHECK(scdbTest.GetCTIP(0, ctip2));
     BOOST_CHECK(ctip2.out.hash == mtx2.GetHash());
     BOOST_CHECK(ctip2.out.n == 1);
+}
+
+BOOST_AUTO_TEST_CASE(IsCriticalHashCommit)
+{
+    // TODO
+}
+
+BOOST_AUTO_TEST_CASE(IsSCDBHashMerkleRootCommit)
+{
+    // TODO
+}
+
+BOOST_AUTO_TEST_CASE(IsWTPrimeHashCommit)
+{
+    // TODO test invalid
+    // Test WT^ hash commitments for nSidechain 0-255 with random WT^ hashes
+    for (unsigned int i = 0; i < 256; i++) {
+        uint256 hashWTPrime = GetRandHash();
+        uint8_t nSidechain = i;
+
+        CBlock block;
+        CMutableTransaction mtx;
+        mtx.vin.resize(1);
+        mtx.vin[0].prevout.SetNull();
+        block.vtx.push_back(MakeTransactionRef(std::move(mtx)));
+        GenerateWTPrimeHashCommitment(block, hashWTPrime, nSidechain, Params().GetConsensus());
+
+        uint256 hashWTPrimeFromCommit;
+        uint8_t nSidechainFromCommit;
+        BOOST_CHECK(block.vtx[0]->vout[0].scriptPubKey.IsWTPrimeHashCommit(hashWTPrimeFromCommit, nSidechainFromCommit));
+
+        BOOST_CHECK(hashWTPrime == hashWTPrimeFromCommit);
+        BOOST_CHECK(nSidechain == nSidechainFromCommit);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(IsSidechainProposalCommit)
+{
+    // TODO test more proposals with different data, versions etc
+    // TODO test invalid
+
+    // Create sidechain proposal
+    SidechainProposal proposal;
+    proposal.nVersion = 0;
+    proposal.title = "Test";
+    proposal.description = "Description";
+    proposal.sidechainKeyID = "80dca759b4ff2c9e9b65ec790703ad09fba844cd";
+    proposal.sidechainHex = "76a91480dca759b4ff2c9e9b65ec790703ad09fba844cd88ac";
+    proposal.sidechainPriv = "5Jf2vbdzdCccKApCrjmwL5EFc4f1cUm5Ah4L4LGimEuFyqYpa9r";
+    proposal.hashID1 = uint256S("b55d224f1fda033d930c92b1b40871f209387355557dd5e0d2b5dd9bb813c33f");
+    proposal.hashID2 = uint256S("9fafdd046727ada4612cf9a860dd3e72ec0187bda31b1ef6fe84207b36537222");
+
+    // Create transaction output with sidechain proposal
+    CTxOut out;
+    out.scriptPubKey = proposal.GetScript();
+    out.nValue = 50 * CENT;
+
+    BOOST_CHECK(out.scriptPubKey.IsSidechainProposalCommit());
+}
+
+BOOST_AUTO_TEST_CASE(IsSidechainActivationCommit)
+{
+    // TODO test more proposals with different data, versions etc
+    // TODO test invalid
+
+    // Create sidechain proposal
+    SidechainProposal proposal;
+    proposal.nVersion = 0;
+    proposal.title = "Test";
+    proposal.description = "Description";
+    proposal.sidechainKeyID = "80dca759b4ff2c9e9b65ec790703ad09fba844cd";
+    proposal.sidechainHex = "76a91480dca759b4ff2c9e9b65ec790703ad09fba844cd88ac";
+    proposal.sidechainPriv = "5Jf2vbdzdCccKApCrjmwL5EFc4f1cUm5Ah4L4LGimEuFyqYpa9r";
+    proposal.hashID1 = uint256S("b55d224f1fda033d930c92b1b40871f209387355557dd5e0d2b5dd9bb813c33f");
+    proposal.hashID2 = uint256S("9fafdd046727ada4612cf9a860dd3e72ec0187bda31b1ef6fe84207b36537222");
+
+    // Use the function from validation to generate the commit, and then
+    // copy it from the block.
+    CBlock block;
+    CMutableTransaction mtx;
+    mtx.vin.resize(1);
+    mtx.vin[0].prevout.SetNull();
+    block.vtx.push_back(MakeTransactionRef(std::move(mtx)));
+    GenerateSidechainActivationCommitment(block, proposal.GetHash(), Params().GetConsensus());
+
+    uint256 hashSidechain;
+    BOOST_CHECK(block.vtx[0]->vout[0].scriptPubKey.IsSidechainActivationCommit(hashSidechain));
+
+    BOOST_CHECK(hashSidechain == proposal.GetHash());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

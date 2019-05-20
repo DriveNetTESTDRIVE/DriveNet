@@ -158,8 +158,8 @@ public:
     /** Reset SCDB and clear out all data tracked by SidechainDB */
     void ResetWTPrimeState();
 
-    /** Reset active sidechains and sidechain activation status */
-    void ResetSidechains();
+    /** Reset everything */
+    void Reset();
 
     /** Spend a WT^ (if we can) */
     bool SpendWTPrime(uint8_t nSidechain, const uint256& hashBlock, const CTransaction& tx, bool fJustCheck = false,  bool fDebug = false);

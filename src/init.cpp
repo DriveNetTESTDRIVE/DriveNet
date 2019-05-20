@@ -196,7 +196,7 @@ void Shutdown()
     /// for example if the data directory was found to be locked.
     /// Be sure that anything that writes files or flushes caches only does this if the respective
     /// module was initialized.
-    RenameThread("bitcoin-shutoff");
+    RenameThread("drivenet-shutoff");
     mempool.AddTransactionsUpdated(1);
 
     StopHTTPRPC();
@@ -223,6 +223,8 @@ void Shutdown()
     // CScheduler/checkqueue threadGroup
     threadGroup.interrupt_all();
     threadGroup.join_all();
+
+    DumpSCDBCache();
 
     if (fDumpMempoolLater && gArgs.GetArg("-persistmempool", DEFAULT_PERSIST_MEMPOOL)) {
         DumpMempool();
@@ -639,7 +641,7 @@ void CleanupBlockRevFiles()
 void ThreadImport(std::vector<fs::path> vImportFiles)
 {
     const CChainParams& chainparams = Params();
-    RenameThread("bitcoin-loadblk");
+    RenameThread("drivenet-loadblk");
 
     {
     CImportingNow imp;
@@ -1407,15 +1409,19 @@ bool AppInitMain()
     }
 
     // ********************************************************* Step 7: load caches
+    fReindex = gArgs.GetBoolArg("-reindex", false);
+
+    bool drivechainsEnabled = IsDrivechainEnabled(chainActive.Tip(), chainparams.GetConsensus());
 
     // TODO remove
-    LoadActiveSidechainCache();
-    LoadDepositCache();
-    LoadWTPrimeCache();
+    if (drivechainsEnabled) {
+        LoadActiveSidechainCache();
+        LoadDepositCache();
+        LoadWTPrimeCache();
+    }
 
     // ********************************************************* Step 8: load block chain
 
-    fReindex = gArgs.GetBoolArg("-reindex", false);
     bool fReindexChainState = gArgs.GetBoolArg("-reindex-chainstate", false);
 
     // cache size calculations
@@ -1595,13 +1601,23 @@ bool AppInitMain()
         }
     }
 
-    uiInterface.InitMessage(_("Synchronizing sidechain database & coinbase cache..."));
+    // TODO remove / refactor.
+    // In order to pass the VerifyDB check above, we need to have loaded the
+    // currently active sidechains and sidechain CTIP info.
+    // After verifydb it will be in an invalid state though, so reload it.
+    // Once SCDB undo is fully supported we can remove this
 
-    bool drivechainsEnabled = IsDrivechainEnabled(chainActive.Tip(), chainparams.GetConsensus());
+    if (drivechainsEnabled) {
+        scdb.Reset();
+        LoadActiveSidechainCache();
+        LoadWTPrimeCache();
+    }
 
     // Synchronize SCDB
-    if (drivechainsEnabled && chainActive.Tip() && (chainActive.Tip()->GetBlockHash() != scdb.GetHashBlockLastSeen()))
+    if (drivechainsEnabled && !fReindex && chainActive.Tip() && (chainActive.Tip()->GetBlockHash() != scdb.GetHashBlockLastSeen()))
     {
+        uiInterface.InitMessage(_("Synchronizing sidechain database & coinbase cache..."));
+
         // TODO use GetLastSidechainVerificationPeriod() from validation
         // Find out how far back (in blocks) we need to synchronize SCDB
         const int nHeight = chainActive.Height();
@@ -1658,9 +1674,12 @@ bool AppInitMain()
         ::feeEstimator.Read(est_filein);
     fFeeEstimatesInitialized = true;
 
-    LoadSidechainActivationStatusCache();
-    LoadSidechainProposalCache();
-    LoadSidechainActivationHashCache();
+    if (drivechainsEnabled && !fReindex) {
+        LoadSidechainActivationStatusCache(); // Sidechain activation status
+        LoadDepositCache(); // Sidechain deposit cache
+        LoadSidechainProposalCache(); // Sidechain proposals we have created
+        LoadSidechainActivationHashCache(); // Sidechain hashes we want to ack
+    }
 
     // ********************************************************* Step 9: load wallet
 #ifdef ENABLE_WALLET
@@ -1713,6 +1732,7 @@ bool AppInitMain()
         vImportFiles.push_back(strFile);
     }
 
+    // Import blocks: load external block files if reindexing or bootstrap.dat
     threadGroup.create_thread(boost::bind(&ThreadImport, vImportFiles));
 
     // Wait for genesis block to be processed

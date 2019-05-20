@@ -683,35 +683,29 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
         } else if (amtReturning > amtSidechainUTXO) {
             // M5 Deposit
 
-            // Check format & extract sidechain number & deposit outpoint
-            uint8_t nSidechainFromScript = -1;
+            // Check format
             uint8_t nSidechain;
             COutPoint outpoint;
             bool fFormatChecked = false;
+            bool fSidechainOutput = false;
             for (size_t i = 0; i < tx.vout.size(); i++) {
                 const CScript &scriptPubKey = tx.vout[i].scriptPubKey;
                 if (scdb.HasSidechainScript(std::vector<CScript>{scriptPubKey}, nSidechain)) {
+                    // We found the deposit burn output
+                    fSidechainOutput = true;
+
                     // Copy output index of deposit and move on
                     outpoint.n = i;
                     outpoint.hash = tx.GetHash();
                     continue;
                 }
-                // scriptPubKey must contain keyID, OP_RETURN, nSidechain
-                if (scriptPubKey.size() != 23 && scriptPubKey.size() != 24)
-                    continue;
+                // scriptPubKey must contain keyID, OP_RETURN
                 if (scriptPubKey.front() != OP_RETURN)
                     continue;
-
-                std::vector<unsigned char> vchNS;
-                vchNS.push_back(scriptPubKey[1]);
-
-                CScriptNum nSidechain(vchNS, false);
-                nSidechainFromScript = (unsigned int)nSidechain.getint();
-
-                if (!IsSidechainNumberValid(nSidechainFromScript))
+                if (scriptPubKey.size() != 22 && scriptPubKey.size() != 23)
                     continue;
 
-                CScript::const_iterator pkey = scriptPubKey.begin() + 2 + (scriptPubKey.size() == 24);
+                CScript::const_iterator pkey = scriptPubKey.begin() + 1;
                 opcodetype opcode;
                 std::vector<unsigned char> vch;
                 if (!scriptPubKey.GetOp(pkey, opcode, vch))
@@ -728,13 +722,15 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
 
             if (!fFormatChecked)
                 return state.DoS(0, false, REJECT_INVALID, "sidechain-deposit-invalid-format");
+            if (!fSidechainOutput)
+                return state.DoS(0, false, REJECT_INVALID, "sidechain-deposit-invalid-no-sidechain-output");
 
-            // Check nSidechain again
-            if (!IsSidechainNumberValid(nSidechainFromScript))
+            // Check nSidechain
+            if (!IsSidechainNumberValid(nSidechain))
                 return state.DoS(0, false, REJECT_INVALID, "sidechain-deposit-invalid-sidechain-number");
 
             // Check that CTIP input was spent if there is one
-            auto it = mempool.mapLastSidechainDeposit.find(nSidechainFromScript);
+            auto it = mempool.mapLastSidechainDeposit.find(nSidechain);
             if (it != mempool.mapLastSidechainDeposit.end()) {
                 int nCTIPSpent = 0;
                 const COutPoint out = it->second.out;
@@ -750,10 +746,10 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
             SidechainCTIP ctip;
             ctip.out = outpoint;
             ctip.amount = amtReturning;
-            mempool.mapLastSidechainDeposit[nSidechainFromScript] = ctip;
+            mempool.mapLastSidechainDeposit[nSidechain] = ctip;
 
         } else if (amtSidechainUTXO > 0) {
-            return state.DoS(100, false, REJECT_INVALID, "sidechain-invalid-ctip-spend");
+            return state.DoS(100, false, REJECT_INVALID, "sidechain-deposit-invalid-ctip-withdraw");
         }
     }
 
@@ -2366,14 +2362,6 @@ bool static FlushStateToDisk(const CChainParams& chainparams, CValidationState &
                     return AbortNode(state, "Failed to write to block index database");
                 }
             }
-            // Dump SidechainDB, sidechain activation & optional caches
-            DumpDepositCache();
-            DumpWTPrimeCache();
-            DumpSidechainActivationStatusCache();
-            DumpActiveSidechainCache();
-            DumpSidechainProposalCache();
-            DumpSidechainActivationHashCache();
-
             // Finally remove any pruned files
             if (fFlushForPrune)
                 UnlinkPrunedFiles(setFilesToPrune);
@@ -3790,13 +3778,18 @@ static bool ContextualCheckBlock(const CBlock& block, CValidationState& state, c
                 uint16_t nPrevBlockRef;
                 std::string strPrevBlock = "";
                 if (tx->criticalData.IsBMMRequest(nSidechain, nPrevBlockRef, strPrevBlock)) {
-                    if (nSidechain >= vSidechainBMM.size())
-                        return state.DoS(100, false, REJECT_INVALID, "bad-critical-bmm-invalid-nsidechain", true, strprintf("%s : Invalid sidechain number in BMM commitment", __func__));
+                    if (nSidechain >= vSidechainBMM.size()) {
+                        return state.DoS(100, false, REJECT_INVALID,
+                                "bad-critical-bmm-nsidechain-invalid", true,
+                                strprintf("%s : Invalid sidechain number: %u in BMM commitment", __func__, nSidechain));
+                    }
 
                     if (vSidechainBMM[nSidechain] == false)
                         vSidechainBMM[nSidechain] = true;
                     else
-                        return state.DoS(100, false, REJECT_INVALID, "bad-critical-data-multiple-bmm-for-sidechain", true, strprintf("%s : Multiple BMM h* requests for a single Sidechain", __func__));
+                        return state.DoS(100, false, REJECT_INVALID,
+                                "bad-critical-bmm-nsidechain-multiple", true,
+                                strprintf("%s : Multiple BMM h* requests for a single Sidechain", __func__));
 
                 }
             }
@@ -4795,6 +4788,8 @@ bool LoadExternalBlockFile(const CChainParams& chainparams, FILE* fileIn, CDiskB
     static std::multimap<uint256, CDiskBlockPos> mapBlocksUnknownParent;
     int64_t nStart = GetTimeMillis();
 
+    CBlock blockTest;
+
     int nLoaded = 0;
     try {
         // This takes over fileIn and calls fclose() on it in the CBufferedFile destructor
@@ -4834,6 +4829,8 @@ bool LoadExternalBlockFile(const CChainParams& chainparams, FILE* fileIn, CDiskB
                 CBlock& block = *pblock;
                 blkdat >> block;
                 nRewind = blkdat.GetPos();
+
+                blockTest = block;
 
                 // detect out of order blocks, and store them for later
                 uint256 hash = block.GetHash();
@@ -5276,17 +5273,16 @@ bool LoadDepositCache()
         }
     }
     catch (const std::exception& e) {
-        // TODO log this
-        // std::cout << "Exception: " << e.what() << std::endl;
+        LogPrintf("%s: Exception: %s\n", __func__, e.what());
         return false;
     }
 
     // Add to SCDB
     // TODO nSidechain
-    if (!vDeposit.empty())
+    if (!vDeposit.empty()) {
         scdb.AddDeposits(vDeposit);
-
-    mempool.UpdateCTIP(scdb.GetCTIP());
+        mempool.UpdateCTIP(scdb.GetCTIP());
+    }
 
     return true;
 }
@@ -5304,7 +5300,7 @@ void DumpDepositCache()
 
     int count = vDeposit.size();
 
-    // Write the coins
+    // Write the deposits
     fs::path path = GetDataDir() / "deposit.dat";
     CAutoFile fileout(fsbridge::fopen(path, "w"), SER_DISK, CLIENT_VERSION);
     if (fileout.IsNull()) {
@@ -5314,15 +5310,14 @@ void DumpDepositCache()
     try {
         fileout << 210000; // version required to read: 0.21.00 or later
         fileout << CLIENT_VERSION; // version that wrote the file
-        fileout << count; // Number of coins in file
+        fileout << count; // Number of deposits in file
 
         for (const SidechainDeposit& d : vDeposit) {
             fileout << d;
         }
     }
     catch (const std::exception& e) {
-        // TODO log this
-        // std::cout << "Exception: " << e.what() << std::endl;
+        LogPrintf("%s: Exception: %s\n", __func__, e.what());
         return;
     }
 }
@@ -5356,8 +5351,7 @@ bool LoadWTPrimeCache()
         }
     }
     catch (const std::exception& e) {
-        // TODO log this
-        // std::cout << "Exception: " << e.what() << std::endl;
+        LogPrintf("%s: Exception: %s\n", __func__, e.what());
         return false;
     }
 
@@ -5377,7 +5371,7 @@ void DumpWTPrimeCache()
 
     int count = vWTPrime.size();
 
-    // Write the coins
+    // Write the WT^ cache
     fs::path path = GetDataDir() / "wtprime.dat";
     CAutoFile fileout(fsbridge::fopen(path, "w"), SER_DISK, CLIENT_VERSION);
     if (fileout.IsNull()) {
@@ -5387,15 +5381,14 @@ void DumpWTPrimeCache()
     try {
         fileout << 210000; // version required to read: 0.21.00 or later
         fileout << CLIENT_VERSION; // version that wrote the file
-        fileout << count; // Number of coins in file
+        fileout << count; // Number of WT^(s) in file
 
         for (const CTransaction& tx : vWTPrime) {
             fileout << MakeTransactionRef(tx);
         }
     }
     catch (const std::exception& e) {
-        // TODO log this
-        // std::cout << "Exception: " << e.what() << std::endl;
+        LogPrintf("%s: Exception: %s\n", __func__, e.what());
         return;
     }
 }
@@ -5429,8 +5422,7 @@ bool LoadSidechainActivationStatusCache()
         }
     }
     catch (const std::exception& e) {
-        // TODO log this
-        // std::cout << "Exception: " << e.what() << std::endl;
+        LogPrintf("%s: Exception: %s\n", __func__, e.what());
         return false;
     }
 
@@ -5447,7 +5439,7 @@ void DumpSidechainActivationStatusCache()
 
     int count = vActivationStatus.size();
 
-    // Write the coins
+    // Write the sidechain activation status cache
     fs::path path = GetDataDir() / "sidechainactivation.dat";
     CAutoFile fileout(fsbridge::fopen(path, "w"), SER_DISK, CLIENT_VERSION);
     if (fileout.IsNull()) {
@@ -5457,15 +5449,14 @@ void DumpSidechainActivationStatusCache()
     try {
         fileout << 210000; // version required to read: 0.21.00 or later
         fileout << CLIENT_VERSION; // version that wrote the file
-        fileout << count; // Number of coins in file
+        fileout << count; // Number of sidechains in file
 
         for (const SidechainActivationStatus& s : vActivationStatus) {
             fileout << s;
         }
     }
     catch (const std::exception& e) {
-        // TODO log this
-        // std::cout << "Exception: " << e.what() << std::endl;
+        LogPrintf("%s: Exception: %s\n", __func__, e.what());
         return;
     }
 }
@@ -5499,8 +5490,7 @@ bool LoadActiveSidechainCache()
         }
     }
     catch (const std::exception& e) {
-        // TODO log this
-        // std::cout << "Exception: " << e.what() << std::endl;
+        LogPrintf("%s: Exception: %s\n", __func__, e.what());
         return false;
     }
 
@@ -5516,7 +5506,7 @@ void DumpActiveSidechainCache()
 
     int count = vSidechain.size();
 
-    // Write the coins
+    // Write the active sidechain cache
     fs::path path = GetDataDir() / "activesidechains.dat";
     CAutoFile fileout(fsbridge::fopen(path, "w"), SER_DISK, CLIENT_VERSION);
     if (fileout.IsNull()) {
@@ -5526,15 +5516,14 @@ void DumpActiveSidechainCache()
     try {
         fileout << 210000; // version required to read: 0.21.00 or later
         fileout << CLIENT_VERSION; // version that wrote the file
-        fileout << count; // Number of coins in file
+        fileout << count; // Number of sidechains in file
 
         for (const Sidechain& s : vSidechain) {
             fileout << s;
         }
     }
     catch (const std::exception& e) {
-        // TODO log this
-        // std::cout << "Exception: " << e.what() << std::endl;
+        LogPrintf("%s: Exception: %s\n", __func__, e.what());
         return;
     }
 }
@@ -5568,8 +5557,7 @@ bool LoadSidechainProposalCache()
         }
     }
     catch (const std::exception& e) {
-        // TODO log this
-        // std::cout << "Exception: " << e.what() << std::endl;
+        LogPrintf("%s: Exception: %s\n", __func__, e.what());
         return false;
     }
 
@@ -5585,7 +5573,7 @@ void DumpSidechainProposalCache()
 
     int count = vProposal.size();
 
-    // Write the coins
+    // Write the sidechain proposal cache
     fs::path path = GetDataDir() / "sidechainproposals.dat";
     CAutoFile fileout(fsbridge::fopen(path, "w"), SER_DISK, CLIENT_VERSION);
     if (fileout.IsNull()) {
@@ -5595,15 +5583,14 @@ void DumpSidechainProposalCache()
     try {
         fileout << 210000; // version required to read: 0.21.00 or later
         fileout << CLIENT_VERSION; // version that wrote the file
-        fileout << count; // Number of coins in file
+        fileout << count; // Number of proposals in file
 
         for (const SidechainProposal& s : vProposal) {
             fileout << s;
         }
     }
     catch (const std::exception& e) {
-        // TODO log this
-        // std::cout << "Exception: " << e.what() << std::endl;
+        LogPrintf("%s: Exception: %s\n", __func__, e.what());
         return;
     }
 }
@@ -5638,7 +5625,7 @@ bool LoadSidechainActivationHashCache()
     }
     catch (const std::exception& e) {
         // TODO log this
-        // std::cout << "Exception: " << e.what() << std::endl;
+        LogPrintf("%s: Exception: %s\n", __func__, e.what());
         return false;
     }
 
@@ -5655,7 +5642,7 @@ void DumpSidechainActivationHashCache()
 
     int count = vHash.size();
 
-    // Write the coins
+    // Write the sidechain activation hash cache
     fs::path path = GetDataDir() / "sidechainhashactivate.dat";
     CAutoFile fileout(fsbridge::fopen(path, "w"), SER_DISK, CLIENT_VERSION);
     if (fileout.IsNull()) {
@@ -5665,15 +5652,14 @@ void DumpSidechainActivationHashCache()
     try {
         fileout << 210000; // version required to read: 0.21.00 or later
         fileout << CLIENT_VERSION; // version that wrote the file
-        fileout << count; // Number of coins in file
+        fileout << count; // Number of hashes in file
 
         for (const uint256& u : vHash) {
             fileout << u;
         }
     }
     catch (const std::exception& e) {
-        // TODO log this
-        // std::cout << "Exception: " << e.what() << std::endl;
+        LogPrintf("%s: Exception: %s\n", __func__, e.what());
         return;
     }
 }
@@ -5772,6 +5758,19 @@ bool VerifyTxOutProof(const std::string& strProof)
 bool IsSidechainNumberValid(uint8_t nSidechain)
 {
     return scdb.IsSidechainNumberValid(nSidechain);
+}
+
+void DumpSCDBCache()
+{
+    // TODO make configurable
+
+    // Dump SidechainDB, sidechain activation & optional caches
+    DumpDepositCache();
+    DumpWTPrimeCache();
+    DumpSidechainActivationStatusCache();
+    DumpActiveSidechainCache();
+    DumpSidechainProposalCache();
+    DumpSidechainActivationHashCache();
 }
 
 class CMainCleanup

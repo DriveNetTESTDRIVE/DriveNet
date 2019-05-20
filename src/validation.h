@@ -574,4 +574,7 @@ bool VerifyTxOutProof(const std::string& strProof);
 /** Verify that nSidechain refers to an active sidechain */
 bool IsSidechainNumberValid(uint8_t nSidechain);
 
+/** Flush SCDB cache data to disk */
+void DumpSCDBCache();
+
 #endif // BITCOIN_VALIDATION_H

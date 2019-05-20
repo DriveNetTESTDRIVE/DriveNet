@@ -325,11 +325,11 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
 
             // Test block validity after adding critical fee tx
             CValidationState state;
-            if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
-                // TODO right now if the block is too big, this will result in
-                // giving up the BMM commitment fees...
+            if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, true, true)) {
+                // TODO right now if the block is too big or invalid after this
+                // will result in giving up the BMM commitment fees...
 
-                // Remove the fee tx if the block is too big now
+                // Remove fee tx if the block is too big or otherwise invalid
                 pblock->vtx.pop_back();
                 pblocktemplate->vTxSigOpsCost.pop_back();
                 pblocktemplate->vTxFees.pop_back();

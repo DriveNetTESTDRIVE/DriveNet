@@ -19,6 +19,8 @@
 #include <string>
 #include <vector>
 
+class uint256;
+
 // Maximum number of bytes pushable to the stack
 static const unsigned int MAX_SCRIPT_ELEMENT_SIZE = 520;
 
@@ -646,9 +648,9 @@ public:
     /** Script formats for Drivechains */
     bool IsCriticalHashCommit() const;
     bool IsSCDBHashMerkleRootCommit() const;
-    bool IsWTPrimeHashCommit() const;
+    bool IsWTPrimeHashCommit(uint256& hashWTPrime, uint8_t& nSidechain) const;
     bool IsSidechainProposalCommit() const;
-    bool IsSidechainActivationCommit() const;
+    bool IsSidechainActivationCommit(uint256& hashSidechain) const;
 
     /** Called by IsStandardTx and P2SH/BIP62 VerifyScript (which makes it consensus-critical). */
     bool IsPushOnly(const_iterator pc) const;
