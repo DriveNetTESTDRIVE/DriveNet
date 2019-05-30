@@ -17,7 +17,7 @@
 #include <boost/test/unit_test.hpp>
 
 int ApplyTxInUndo(Coin&& undo, CCoinsViewCache& view, const COutPoint& out);
-void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo &txundo, int nHeight);
+void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, CTxUndo &txundo, int nHeight, bool fJustCheck = false);
 
 namespace
 {
@@ -175,7 +175,7 @@ BOOST_AUTO_TEST_CASE(coins_cache_simulation_test)
             } else {
                 removed_an_entry = true;
                 coin.Clear();
-                stack.back()->SpendCoin(COutPoint(txid, 0));
+                stack.back()->SpendCoin(COutPoint(txid, 0), false);
             }
         }
 
@@ -372,7 +372,7 @@ BOOST_AUTO_TEST_CASE(updatecoins_simulation_test)
             // Update the expected result to know about the new output coins
             assert(tx.vout.size() == 1);
             const COutPoint outpoint(tx.GetHash(), 0);
-            result[outpoint] = Coin(tx.vout[0], height, CTransaction(tx).IsCoinBase(), !CTransaction(tx).criticalData.IsNull());
+            result[outpoint] = Coin(tx.vout[0], height, CTransaction(tx).IsCoinBase(), !CTransaction(tx).criticalData.IsNull(), false);
 
             // Call UpdateCoins on the top cache
             CTxUndo undo;
@@ -402,7 +402,7 @@ BOOST_AUTO_TEST_CASE(updatecoins_simulation_test)
             // Disconnect the tx from the current UTXO
             // See code in DisconnectBlock
             // remove outputs
-            stack.back()->SpendCoin(utxod->first);
+            stack.back()->SpendCoin(utxod->first, false);
             // restore inputs
             if (!tx.IsCoinBase()) {
                 const COutPoint &out = tx.vin[0].prevout;
@@ -663,7 +663,7 @@ BOOST_AUTO_TEST_CASE(ccoins_access)
 void CheckSpendCoins(CAmount base_value, CAmount cache_value, CAmount expected_value, char cache_flags, char expected_flags)
 {
     SingleEntryCacheTest test(base_value, cache_value, cache_flags);
-    test.cache.SpendCoin(OUTPOINT);
+    test.cache.SpendCoin(OUTPOINT, false);
     test.cache.SelfTest();
 
     CAmount result_value;
@@ -720,7 +720,7 @@ void CheckAddCoinBase(CAmount base_value, CAmount cache_value, CAmount modify_va
     try {
         CTxOut output;
         output.nValue = modify_value;
-        test.cache.AddCoin(OUTPOINT, Coin(std::move(output), 1, coinbase, false), coinbase);
+        test.cache.AddCoin(OUTPOINT, Coin(std::move(output), 1, coinbase, false, false), coinbase);
         test.cache.SelfTest();
         GetCoinsMapEntry(test.cache.map(), result_value, result_flags);
     } catch (std::logic_error& e) {

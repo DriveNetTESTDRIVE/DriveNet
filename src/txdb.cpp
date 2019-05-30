@@ -70,7 +70,8 @@ bool CCoinsViewDB::GetCoin(const COutPoint &outpoint, Coin &coin) const {
     LoadedCoin loadedCoin;
     if (GetLoadedCoin(outpoint.GetHash(), loadedCoin)) {
         coin = loadedCoin.coin;
-        return true;
+        coin.fLoaded = true;
+        return !loadedCoin.fSpent;
     }
 
     return false;
@@ -124,6 +125,12 @@ bool CCoinsViewDB::BatchWrite(CCoinsMap &mapCoins, const uint256 &hashBlock) {
     batch.Write(DB_HEAD_BLOCKS, std::vector<uint256>{hashBlock, old_tip});
 
     for (CCoinsMap::iterator it = mapCoins.begin(); it != mapCoins.end();) {
+        // Skip loaded coins, we don't want them being written to the base
+        if (it->second.coin.fLoaded) {
+            it++;
+            continue;
+        }
+
         if (it->second.flags & CCoinsCacheEntry::DIRTY) {
             CoinEntry entry(&it->first);
             if (it->second.coin.IsSpent())
@@ -218,8 +225,8 @@ bool CCoinsViewDB::ReadLoadedCoins()
     }
 
     // TODO log this
-    uint64_t fileSize = fs::file_size(path);
-    uint64_t dataSize = fileSize - (sizeof(int) * 3);
+    //uint64_t fileSize = fs::file_size(path);
+    //uint64_t dataSize = fileSize - (sizeof(int) * 3);
 
     int read = 0;
     std::vector<LoadedCoin> vLoadedCoin;
@@ -228,6 +235,7 @@ bool CCoinsViewDB::ReadLoadedCoins()
         filein >> nVersionRequired;
         filein >> nVersionThatWrote;
         if (nVersionRequired > CLIENT_VERSION) {
+            LogPrintf("%s: version required greater than client version!\n",  __func__);
             return false;
         }
 
@@ -246,16 +254,16 @@ bool CCoinsViewDB::ReadLoadedCoins()
             vLoadedCoin.push_back(loadedCoin);
             read++;
         }
-        // Write final batch (or up to 2000000 coins will be skipped)
+        // Write final batch
         WriteLoadedCoinIndex(vLoadedCoin);
     }
     catch (const std::exception& e) {
-        // TODO log this
-        // std::cout << "Exception: " << e.what() << std::endl;
+        LogPrintf("%s: Exception: %s\n",  __func__, e.what());
         return false;
     }
 
-    // TODO log how many coins were read
+
+    LogPrintf("%s: read: %u loaded coins.\n", __func__, read);
 
     return true;
 }
@@ -270,8 +278,9 @@ std::vector<LoadedCoin> CCoinsViewDB::ReadMyLoadedCoins()
         return vLoadedCoin;
     }
 
-    uint64_t fileSize = fs::file_size(path);
-    uint64_t dataSize = fileSize - (sizeof(int) * 3);
+    // TODO log this
+    //uint64_t fileSize = fs::file_size(path);
+    //uint64_t dataSize = fileSize - (sizeof(int) * 3);
 
     try {
         int nVersionRequired, nVersionThatWrote;
@@ -290,8 +299,7 @@ std::vector<LoadedCoin> CCoinsViewDB::ReadMyLoadedCoins()
         }
     }
     catch (const std::exception& e) {
-        // TODO log this
-        // std::cout << "Exception: " << e.what() << std::endl;
+        LogPrintf("%s: Exception: %s\n",  __func__, e.what());
         return vLoadedCoin;
     }
 
@@ -321,8 +329,7 @@ void CCoinsViewDB::WriteMyLoadedCoins(const std::vector<LoadedCoin>& vLoadedCoin
         }
     }
     catch (const std::exception& e) {
-        // TODO log this
-        // std::cout << "ML Exception: " << e.what() << std::endl;
+        LogPrintf("%s: Exception: %s\n",  __func__, e.what());
         return;
     }
 }
@@ -618,7 +625,7 @@ bool CCoinsViewDB::Upgrade() {
             COutPoint outpoint(key.second, 0);
             for (size_t i = 0; i < old_coins.vout.size(); ++i) {
                 if (!old_coins.vout[i].IsNull() && !old_coins.vout[i].scriptPubKey.IsUnspendable()) {
-                    Coin newcoin(std::move(old_coins.vout[i]), old_coins.nHeight, old_coins.fCoinBase, false);
+                    Coin newcoin(std::move(old_coins.vout[i]), old_coins.nHeight, old_coins.fCoinBase, false, false);
                     outpoint.n = i;
                     CoinEntry entry(&outpoint);
                     batch.Write(entry, newcoin);

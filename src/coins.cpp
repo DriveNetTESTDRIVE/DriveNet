@@ -20,6 +20,8 @@ CCoinsViewLoadedCursor *CCoinsView::LoadedCursor() const { return nullptr; }
 bool CCoinsView::ReadLoadedCoins() { return false; }
 std::vector<LoadedCoin> CCoinsView::ReadMyLoadedCoins() {return std::vector<LoadedCoin>(); }
 void CCoinsView::WriteMyLoadedCoins(const std::vector<LoadedCoin>& vLoadedCoin) {}
+bool CCoinsView::WriteToLoadedCoinIndex(const LoadedCoin& coin) { return false; }
+bool CCoinsView::GetLoadedCoin(const uint256& hashOutPoint, LoadedCoin& coinOut) const { return false; }
 
 bool CCoinsView::HaveCoin(const COutPoint &outpoint) const
 {
@@ -35,6 +37,8 @@ std::vector<uint256> CCoinsViewBacked::GetHeadBlocks() const { return base->GetH
 void CCoinsViewBacked::SetBackend(CCoinsView &viewIn) { base = &viewIn; }
 bool CCoinsViewBacked::BatchWrite(CCoinsMap &mapCoins, const uint256 &hashBlock) { return base->BatchWrite(mapCoins, hashBlock); }
 
+bool CCoinsViewBacked::WriteToLoadedCoinIndex(const LoadedCoin& coin) { return base->WriteToLoadedCoinIndex(coin); }
+bool CCoinsViewBacked::GetLoadedCoin(const uint256& hashOutPoint, LoadedCoin& coinOut) const { return base->GetLoadedCoin(hashOutPoint, coinOut); };
 bool CCoinsViewBacked::ReadLoadedCoins() { return base->ReadLoadedCoins(); }
 std::vector<LoadedCoin> CCoinsViewBacked::ReadMyLoadedCoins() { return base->ReadMyLoadedCoins(); }
 void CCoinsViewBacked::WriteMyLoadedCoins(const std::vector<LoadedCoin>& vLoadedCoin) { base->WriteMyLoadedCoins(vLoadedCoin); }
@@ -106,17 +110,33 @@ void AddCoins(CCoinsViewCache& cache, const CTransaction &tx, int nHeight, bool 
         // Always set the possible_overwrite flag to AddCoin for coinbase txn, in order to correctly
         // deal with the pre-BIP30 occurrences of duplicate coinbase transactions.
         if (tx.criticalData.IsNull()) {
-            cache.AddCoin(COutPoint(txid, i), Coin(tx.vout[i], nHeight, fCoinbase, false /* fCriticalData */), overwrite);
+            cache.AddCoin(COutPoint(txid, i), Coin(tx.vout[i], nHeight, fCoinbase, false /* fCriticalData */, false /* fLoaded */), overwrite);
         } else {
-            cache.AddCoin(COutPoint(txid, i), Coin(tx.vout[i], nHeight, fCoinbase, true /* fCriticalData */), overwrite);
+            cache.AddCoin(COutPoint(txid, i), Coin(tx.vout[i], nHeight, fCoinbase, true /* fCriticalData */, false /* fLoaded */), overwrite);
         }
     }
 }
 
-bool CCoinsViewCache::SpendCoin(const COutPoint &outpoint, Coin* moveout) {
+bool CCoinsViewCache::SpendCoin(const COutPoint &outpoint, bool fJustCheck, Coin* moveout) {
     CCoinsMap::iterator it = FetchCoin(outpoint);
     if (it == cacheCoins.end()) return false;
     cachedCoinsUsage -= it->second.coin.DynamicMemoryUsage();
+
+    // Set fSpent for loaded coins
+    if (it->second.coin.fLoaded) {
+        // Lookup the loaded coin
+        LoadedCoin loaded;
+        if (!base->GetLoadedCoin(outpoint.GetHash(), loaded))
+            return false;
+
+        // Update fSpent
+        loaded.fSpent = true;
+
+        // Write update to loaded coin index
+        if (!fJustCheck)
+            base->WriteToLoadedCoinIndex(loaded);
+    }
+
     if (moveout) {
         *moveout = std::move(it->second.coin);
     }
@@ -178,6 +198,10 @@ bool CCoinsViewCache::BatchWrite(CCoinsMap &mapCoins, const uint256 &hashBlockIn
     for (CCoinsMap::iterator it = mapCoins.begin(); it != mapCoins.end(); it = mapCoins.erase(it)) {
         // Ignore non-dirty entries (optimization).
         if (!(it->second.flags & CCoinsCacheEntry::DIRTY)) {
+            continue;
+        }
+        // Ignore loaded coins (we don't want them written to the base)
+        if (it->second.coin.fLoaded) {
             continue;
         }
         CCoinsMap::iterator itUs = cacheCoins.find(it->first);

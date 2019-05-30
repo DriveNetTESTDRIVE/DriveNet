@@ -41,19 +41,23 @@ public:
     //! whether containing transaction has critical data
     bool fCriticalData;
 
+    //! whether coin was loaded from utxo dat file
+    bool fLoaded;
+
     //! construct a Coin from a CTxOut and height/coinbase information.
-    Coin(CTxOut&& outIn, int nHeightIn, bool fCoinBaseIn, bool fCriticalDataIn) : out(std::move(outIn)), nHeight(nHeightIn), fCoinBase(fCoinBaseIn), fCriticalData(fCriticalDataIn) {}
-    Coin(const CTxOut& outIn, int nHeightIn, bool fCoinBaseIn, bool fCriticalDataIn) : out(outIn), nHeight(nHeightIn), fCoinBase(fCoinBaseIn), fCriticalData(fCriticalDataIn) {}
+    Coin(CTxOut&& outIn, int nHeightIn, bool fCoinBaseIn, bool fCriticalDataIn, bool fLoadedIn) : out(std::move(outIn)), nHeight(nHeightIn), fCoinBase(fCoinBaseIn), fCriticalData(fCriticalDataIn), fLoaded(fLoadedIn) {}
+    Coin(const CTxOut& outIn, int nHeightIn, bool fCoinBaseIn, bool fCriticalDataIn, bool fLoadedIn) : out(outIn), nHeight(nHeightIn), fCoinBase(fCoinBaseIn), fCriticalData(fCriticalDataIn), fLoaded(fLoadedIn) {}
 
     void Clear() {
         out.SetNull();
         fCoinBase = false;
         fCriticalData = false;
+        fLoaded = false;
         nHeight = 0;
     }
 
     //! empty constructor
-    Coin() : nHeight(0), fCoinBase(false), fCriticalData(false) { }
+    Coin() : nHeight(0), fCoinBase(false), fCriticalData(false), fLoaded(false) { }
 
     bool IsCoinBase() const {
         return fCoinBase;
@@ -63,12 +67,17 @@ public:
         return fCriticalData;
     }
 
+    bool IsLoaded() const {
+        return fLoaded;
+    }
+
     template<typename Stream>
     void Serialize(Stream &s) const {
         assert(!IsSpent());
         uint32_t code = nHeight * 2 + fCoinBase;
         ::Serialize(s, VARINT(code));
         ::Serialize(s, fCriticalData);
+        ::Serialize(s, fLoaded);
         ::Serialize(s, CTxOutCompressor(REF(out)));
     }
 
@@ -79,6 +88,7 @@ public:
         nHeight = code >> 1;
         fCoinBase = code & 1;
         ::Unserialize(s, fCriticalData);
+        ::Unserialize(s, fLoaded);
         ::Unserialize(s, REF(CTxOutCompressor(out)));
     }
 
@@ -99,10 +109,34 @@ public:
     }
 };
 
+// Inherhits the Coin class but with the serialization functions as they are
+// in bitcoin core. (for importing loaded coins)
+class CoreCoin : public Coin
+{
+public:
+    template<typename Stream>
+    void Serialize(Stream &s) const {
+        assert(!IsSpent());
+        uint32_t code = nHeight * 2 + fCoinBase;
+        ::Serialize(s, VARINT(code));
+        ::Serialize(s, CTxOutCompressor(REF(out)));
+    }
+
+    template<typename Stream>
+    void Unserialize(Stream &s) {
+        uint32_t code = 0;
+        ::Unserialize(s, VARINT(code));
+        nHeight = code >> 1;
+        fCoinBase = code & 1;
+        ::Unserialize(s, REF(CTxOutCompressor(out)));
+    }
+};
+
 struct LoadedCoin
 {
-    Coin coin;
+    CoreCoin coin;
     COutPoint out;
+    bool fSpent;
 
     ADD_SERIALIZE_METHODS;
 
@@ -115,8 +149,10 @@ struct LoadedCoin
     inline void SerializationOp(Stream &s, Operation ser_action) {
         READWRITE(coin);
         READWRITE(out);
+        READWRITE(fSpent); // TODO this doesn't need to be serialized
     }
 };
+
 class SaltedOutpointHasher
 {
 private:
@@ -217,6 +253,11 @@ public:
     //! The passed mapCoins can be modified.
     virtual bool BatchWrite(CCoinsMap &mapCoins, const uint256 &hashBlock);
 
+    //! Write to the loaded coin index
+    virtual bool WriteToLoadedCoinIndex(const LoadedCoin& coin);
+    //! Get a loaded coin from the index
+    virtual bool GetLoadedCoin(const uint256& hashOutPoint, LoadedCoin& coinOut) const;
+
     //! Get a cursor to iterate over the whole state
     virtual CCoinsViewCursor *Cursor() const;
     virtual CCoinsViewLoadedCursor *LoadedCursor() const;
@@ -248,6 +289,8 @@ public:
     std::vector<uint256> GetHeadBlocks() const override;
     void SetBackend(CCoinsView &viewIn);
     bool BatchWrite(CCoinsMap &mapCoins, const uint256 &hashBlock) override;
+    bool WriteToLoadedCoinIndex(const LoadedCoin& coin) override;
+    bool GetLoadedCoin(const uint256& hashOutPoint, LoadedCoin& coinOut) const;
     CCoinsViewCursor *Cursor() const override;
     CCoinsViewLoadedCursor *LoadedCursor() const override;
     size_t EstimateSize() const override;
@@ -325,7 +368,7 @@ public:
      * If no unspent output exists for the passed outpoint, this call
      * has no effect.
      */
-    bool SpendCoin(const COutPoint &outpoint, Coin* moveto = nullptr);
+    bool SpendCoin(const COutPoint &outpoint, bool fJustCheck, Coin* moveto = nullptr);
 
     /**
      * Push the modifications applied to this cache to its base.

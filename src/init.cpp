@@ -1756,7 +1756,7 @@ bool AppInitMain()
 
     // ********************************************************* Step 12: load coins
 
-    bool fReadLoadedCoins = gArgs.GetBoolArg("-loadedcoins", false);
+    bool fReadLoadedCoins = gArgs.GetBoolArg("-loadedcoins", true);
 
     // TODO improve this check... Right now we're just checking if the last
     // loaded coin that will be written can currently be looked up by pcoinsTip.
