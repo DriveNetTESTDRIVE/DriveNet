@@ -189,7 +189,8 @@ UniValue importprivkey(const JSONRPCRequest& request)
     std::vector<LoadedCoin> vLoadedCoin;
     {
         LOCK(cs_main);
-        CCoinsViewLoadedCursor *i = pcoinsTip->LoadedCursor();
+        std::unique_ptr<CCoinsViewLoadedCursor> i(pcoinsTip->LoadedCursor());
+        assert(i);
 
         CWallet* const pwallet = GetWalletForJSONRPCRequest(request);
         if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
@@ -202,7 +203,6 @@ UniValue importprivkey(const JSONRPCRequest& request)
 
             if (pwallet->IsSpent(coin.out.hash, coin.out.n)) {
                 i->Next();
-
                 continue;
             }
 
