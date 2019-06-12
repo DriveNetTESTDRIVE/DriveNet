@@ -5263,9 +5263,6 @@ bool LoadDepositCache()
         return false;
     }
 
-    // TODO log this
-    uint64_t fileSize = fs::file_size(path);
-
     std::vector<SidechainDeposit> vDeposit;
     try {
         int nVersionRequired, nVersionThatWrote;
@@ -5341,9 +5338,6 @@ bool LoadWTPrimeCache()
         return false;
     }
 
-    // TODO log this
-    uint64_t fileSize = fs::file_size(path);
-
     std::vector<CTransactionRef> vWTPrime;
     try {
         int nVersionRequired, nVersionThatWrote;
@@ -5412,9 +5406,6 @@ bool LoadSidechainActivationStatusCache()
         return false;
     }
 
-    // TODO log this
-    uint64_t fileSize = fs::file_size(path);
-
     std::vector<SidechainActivationStatus> vActivationStatus;
     try {
         int nVersionRequired, nVersionThatWrote;
@@ -5480,9 +5471,6 @@ bool LoadActiveSidechainCache()
         return false;
     }
 
-    // TODO log this
-    uint64_t fileSize = fs::file_size(path);
-
     std::vector<Sidechain> vSidechain;
     try {
         int nVersionRequired, nVersionThatWrote;
@@ -5546,9 +5534,6 @@ bool LoadSidechainProposalCache()
     if (filein.IsNull()) {
         return false;
     }
-
-    // TODO log this
-    uint64_t fileSize = fs::file_size(path);
 
     std::vector<SidechainProposal> vProposal;
     try {
@@ -5614,9 +5599,6 @@ bool LoadSidechainActivationHashCache()
         return false;
     }
 
-    // TODO log this
-    uint64_t fileSize = fs::file_size(path);
-
     std::vector<uint256> vHash;
     try {
         int nVersionRequired, nVersionThatWrote;
@@ -5635,7 +5617,6 @@ bool LoadSidechainActivationHashCache()
         }
     }
     catch (const std::exception& e) {
-        // TODO log this
         LogPrintf("%s: Exception: %s\n", __func__, e.what());
         return false;
     }
