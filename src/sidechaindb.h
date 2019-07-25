@@ -70,7 +70,7 @@ public:
     bool CheckWorkScore(uint8_t nSidechain, const uint256& hashWTPrime, bool fDebug = false) const;
 
     /** Return number of active sidechains */
-    int GetActiveSidechainCount() const;
+    unsigned int GetActiveSidechainCount() const;
 
     /** Check if the hash of the sidechain is in our hashes of sidechains to
      * activate cache. Return true if it is, or false if not. */

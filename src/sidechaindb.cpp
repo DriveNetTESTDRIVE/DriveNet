@@ -209,7 +209,7 @@ bool SidechainDB::CheckWorkScore(uint8_t nSidechain, const uint256& hashWTPrime,
     return false;
 }
 
-int SidechainDB::GetActiveSidechainCount() const
+unsigned int SidechainDB::GetActiveSidechainCount() const
 {
     return vActiveSidechain.size();
 }
@@ -294,6 +294,9 @@ uint256 SidechainDB::GetHashBlockLastSeen()
 
 uint256 SidechainDB::GetSCDBHash() const
 {
+    if (vWTPrimeStatus.empty())
+        return uint256();
+
     std::vector<uint256> vLeaf;
     for (const Sidechain& s : vActiveSidechain) {
         std::vector<SidechainWTPrimeState> vState = GetState(s.nSidechain);
@@ -414,7 +417,6 @@ std::vector<SidechainWTPrimeState> SidechainDB::GetVotes(VoteType vote) const
         vNew.push_back(latest);
     }
     return vNew;
-
 }
 
 std::vector<CTransaction> SidechainDB::GetWTPrimeCache() const

@@ -3495,10 +3495,6 @@ void GenerateSCDBHashMerkleRootCommitment(CBlock& block, const uint256& hashSCDB
     if (!IsDrivechainEnabled(chainActive.Tip(), consensusParams))
         return;
 
-    // check consensusParams.vDeployments[Consensus::DEPLOYMENT_DRIVECHAINS]
-    if (!scdb.HasState())
-        return;
-
     // Create output that commitment will be added to
     CTxOut out;
     out.nValue = 0;

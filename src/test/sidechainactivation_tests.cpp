@@ -11,7 +11,14 @@
 
 #include <boost/test/unit_test.hpp>
 
-BOOST_FIXTURE_TEST_SUITE(sidechainactivation_tests, TestChain100Setup)
+
+// TODO refactor.
+// Combine this file with sidechaindb_tests where we have a convenient sidechain
+// activation function and more sidechain activation tests. Sidechain activation
+// is a fundamental part of SCDB anyways.
+
+
+BOOST_FIXTURE_TEST_SUITE(sidechainactivation_tests, TestingSetup)
 
 BOOST_AUTO_TEST_CASE(sidechainproposal_single)
 {
