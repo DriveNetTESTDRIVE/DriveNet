@@ -110,6 +110,7 @@ TestingSetup::~TestingSetup()
         pcoinsdbview.reset();
         pblocktree.reset();
         fs::remove_all(pathTemp);
+        scdb.Reset();
 }
 
 TestChain100Setup::TestChain100Setup() : TestingSetup(CBaseChainParams::REGTEST)
