@@ -23,16 +23,9 @@ struct SidechainActivationStatus;
 struct SidechainCTIP;
 struct SidechainDeposit;
 struct SidechainProposal;
-struct SidechainUpdateMSG;
-struct SidechainUpdatePackage;
 struct SidechainWTPrimeState;
 
-enum VoteType
-{
-    SCDB_UPVOTE = 0,
-    SCDB_DOWNVOTE = 1,
-    SCDB_ABSTAIN = 2,
-};
+enum VoteType : unsigned int;
 
 class SidechainDB
 {
@@ -44,9 +37,6 @@ public:
 
     /** Add deposit(s) to cache - from disk cache */
     void AddDeposits(const std::vector<SidechainDeposit>& vDeposit);
-
-    /** Cache WT^ update - used only by unit tests (to be removed) */
-    void AddSidechainNetworkUpdatePackage(const SidechainUpdatePackage& update);
 
     /** Add a new WT^ to SCDB */
     bool AddWTPrime(uint8_t nSidechain, const uint256& hashWTPrime, int nHeight, bool fDebug = false);
@@ -127,7 +117,8 @@ public:
     /** Return cached but uncommitted WT^ transaction's hash(s) for nSidechain */
     std::vector<SidechainProposal> GetUncommittedSidechainProposals() const;
 
-    /** Returns SCDB WT^ state with vote applied to them */
+    /** Returns SCDB WT^ state with single vote type applied to all of the most
+     * recent WT^(s) in the cache */
     std::vector<SidechainWTPrimeState> GetVotes(VoteType vote) const;
 
     /** Return cached WT^ transaction(s) */
@@ -177,6 +168,7 @@ public:
      * testing possible work score updates until the SCDB hash of our SCDB
      * matches the one from the new block. Return false if no match found.
      */
+    bool UpdateSCDBMatchMT(int nHeight, const uint256& hashMerkleRoot, const std::vector<SidechainWTPrimeState>& vScores);
     bool UpdateSCDBMatchMT(int nHeight, const uint256& hashMerkleRoot);
 
 private:
@@ -219,14 +211,12 @@ private:
      */
     std::vector<SidechainProposal> vSidechainProposal;
 
-    // TODO remove
-    /** Cache of WT^ update messages. */
-    std::vector<SidechainUpdatePackage> vSidechainUpdateCache;
-
     /** Cache of potential WT^ transactions */
     std::vector<CTransaction> vWTPrimeCache;
 
     /** Tracks verification status of WT^(s) */
+    // x = nSidechain
+    // y = state of WT^(s) for nSidechain
     std::vector<std::vector<SidechainWTPrimeState>> vWTPrimeStatus;
 };
 

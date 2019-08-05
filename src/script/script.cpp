@@ -342,6 +342,24 @@ bool CScript::IsSidechainActivationCommit(uint256& hashSidechain) const
     return true;
 }
 
+bool CScript::IsSCDBUpdate() const
+{
+    // Check script size
+    size_t size = this->size();
+    if (size < 5) // TODO put in exact minimum size
+        return false;
+
+    // Check script header
+    if ((*this)[0] != OP_RETURN ||
+            (*this)[1] != 0xD7 ||
+            (*this)[2] != 0x7D ||
+            (*this)[3] != 0x17 ||
+            (*this)[4] != 0x76)
+        return false;
+
+    return true;
+}
+
 bool CScript::IsPushOnly(const_iterator pc) const
 {
     while (pc < end())

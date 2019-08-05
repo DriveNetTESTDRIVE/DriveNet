@@ -46,6 +46,14 @@ std::vector<unsigned char> ToByteVector(const T& in)
     return std::vector<unsigned char>(in.begin(), in.end());
 }
 
+/** SCDB update byte codes */
+enum scdboptype
+{
+    SC_OP_DELIM = 0xe1,
+    SC_OP_UPVOTE = 0xe2,
+    SC_OP_DOWNVOTE = 0xe3,
+};
+
 /** Script opcodes */
 enum opcodetype
 {
@@ -451,6 +459,14 @@ public:
         return *this;
     }
 
+    CScript& operator<<(scdboptype scopcode)
+    {
+        if (scopcode < 0xe1 || scopcode > 0xe3)
+            throw std::runtime_error("CScript::operator<<(): invalid scopcode");
+        insert(end(), (unsigned char)scopcode);
+        return *this;
+    }
+
     CScript& operator<<(const CScriptNum& b)
     {
         *this << b.getvch();
@@ -651,6 +667,7 @@ public:
     bool IsWTPrimeHashCommit(uint256& hashWTPrime, uint8_t& nSidechain) const;
     bool IsSidechainProposalCommit() const;
     bool IsSidechainActivationCommit(uint256& hashSidechain) const;
+    bool IsSCDBUpdate() const;
 
     /** Called by IsStandardTx and P2SH/BIP62 VerifyScript (which makes it consensus-critical). */
     bool IsPushOnly(const_iterator pc) const;

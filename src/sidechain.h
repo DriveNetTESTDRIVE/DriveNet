@@ -138,17 +138,20 @@ struct SidechainDeposit {
     }
 };
 
-// TODO remove
-struct SidechainUpdateMSG {
-    uint8_t nSidechain;
-    uint256 hashWTPrime;
-    uint16_t nWorkScore;
+// The types of votes a user may set for a WT^
+enum VoteType : unsigned int
+{
+    SCDB_UPVOTE = 0,
+    SCDB_DOWNVOTE = 1,
+    SCDB_ABSTAIN = 2,
 };
 
-// TODO remove
-struct SidechainUpdatePackage {
-    int nHeight;
-    std::vector<SidechainUpdateMSG> vUpdate;
+// A vote set by the user to specify custom votes for particular WT^(s)
+struct SidechainCustomVote
+{
+    VoteType vote;
+    uint8_t nSidechain;
+    uint256 hashWTPrime;
 };
 
 struct SidechainWTPrimeState {

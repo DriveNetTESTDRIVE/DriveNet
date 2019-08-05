@@ -1044,79 +1044,6 @@ UniValue receivewtprime(const JSONRPCRequest& request)
     return ret;
 }
 
-// TODO remove
-UniValue receivewtprimeupdate(const JSONRPCRequest& request)
-{
-    if (request.fHelp || request.params.size() != 2)
-        throw std::runtime_error(
-            "receivewtprimeupdate\n"
-            "Receive an update for a WT^\n"
-            "\nArguments:\n"
-            "1. \"height\"                      (numeric, required) the block height\n"
-            "2. \"updates\"                     (array, required) A json array of json objects\n"
-            "     [\n"
-            "       {\n"
-            "         \"sidechainnumber\":n,    (numeric, required) The sidechain number\n"
-            "         \"hashWTPrime\":id,       (string,  required) The WT^ hash\n"
-            "         \"workscore\":n           (numeric, required) The updated workscore\n"
-            "       } \n"
-            "       ,...\n"
-            "     ]\n"
-            "\nExamples:\n"
-            + HelpExampleCli("receivewtprimeupdate", "")
-            + HelpExampleRpc("receivewtprimeupdate", "")
-     );
-
-    RPCTypeCheck(request.params, {UniValue::VNUM, UniValue::VARR}, true);
-    if (request.params[0].isNull() || request.params[1].isNull())
-        throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, arguments 1 and 2 must be non-null");
-
-    int nHeight = request.params[0].get_int();
-    SidechainUpdatePackage updatePackage;
-    updatePackage.nHeight = nHeight;
-
-    UniValue inputs = request.params[1].get_array();
-    for (unsigned int idx = 0; idx < inputs.size(); idx++) {
-        const UniValue& input = inputs[idx];
-        const UniValue& o = input.get_obj();
-
-        // Get sidechain number
-        const UniValue& sidechainnumber_v = find_value(o, "sidechainnumber");
-        if (!sidechainnumber_v.isNum())
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, missing sidechain number");
-        int nSidechain = sidechainnumber_v.get_int();
-
-        // Is nSidechain valid?
-        if (!IsSidechainNumberValid(nSidechain))
-            throw std::runtime_error("Invalid sidechain number");
-
-        // Get WT^ hash
-        uint256 hashWTPrime = ParseHashO(o, "hashWTPrime");
-        if (hashWTPrime.IsNull())
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, missing WT^ hash");
-
-        // Get updated work score
-        const UniValue& workscore_v = find_value(o, "workscore");
-        if (!workscore_v.isNum())
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, missing updated workscore");
-        uint16_t nWorkScore = workscore_v.get_int();
-
-        // create MSG
-        SidechainUpdateMSG update;
-        update.nSidechain = nSidechain;
-        update.hashWTPrime = hashWTPrime;
-        update.nWorkScore = nWorkScore;
-
-        // add to package
-        updatePackage.vUpdate.push_back(update);
-    }
-
-    // Add created package to SCDB WT^ update cache
-    scdb.AddSidechainNetworkUpdatePackage(updatePackage);
-
-    return true;
-}
-
 UniValue getbmmproof(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() != 2)
@@ -1510,7 +1437,6 @@ static const CRPCCommand commands[] =
     { "DriveChain",         "listsidechaindeposits",    &listsidechaindeposits,     {"nsidechain", "count"}},
     { "DriveChain",         "countsidechaindeposits",   &countsidechaindeposits,    {"nsidechain"}},
     { "DriveChain",         "receivewtprime",           &receivewtprime,            {"nsidechain","rawtx"}},
-    { "DriveChain",         "receivewtprimeupdate",     &receivewtprimeupdate,      {"height","update"}},
     { "DriveChain",         "getbmmproof",              &getbmmproof,               {"blockhash", "criticalhash"}},
     { "DriveChain",         "listpreviousblockhashes",  &listpreviousblockhashes,   {}},
     // Drivechain voting / sidechain activation rpc commands
