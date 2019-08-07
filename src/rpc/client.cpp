@@ -144,6 +144,8 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "receivewtprime", 0, "nsidechain" },
     { "receivewtprimeupdate", 0, "height" },
     { "receivewtprimeupdate", 1, "update" },
+    { "createsidechaindeposit", 0, "nsidechain" },
+    { "createsidechaindeposit", 2, "amount" },
     // Echo with conversion (For testing only)
     { "echojson", 0, "arg0" },
     { "echojson", 1, "arg1" },

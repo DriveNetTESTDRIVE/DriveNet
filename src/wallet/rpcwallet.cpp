@@ -20,6 +20,7 @@
 #include <rpc/server.h>
 #include <rpc/util.h>
 #include <script/sign.h>
+#include <sidechaindb.h>
 #include <timedata.h>
 #include <util.h>
 #include <utilmoneystr.h>
@@ -3430,6 +3431,71 @@ UniValue generate(const JSONRPCRequest& request)
     return generateBlocks(coinbase_script, num_generate, max_tries, true);
 }
 
+UniValue createsidechaindeposit(const JSONRPCRequest& request)
+{
+    CWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
+        return NullUniValue;
+    }
+
+    if (request.fHelp || request.params.size() != 3)
+        throw std::runtime_error(
+            "createsidechaindeposit \"nsidechain\" \"address\" \"amount\"\n"
+            "\nCreate a sidechain deposit of an amount to a given address.\n"
+            + HelpRequiringPassphrase(pwallet) +
+            "\nArguments:\n"
+            "1. \"nsidechain\"         (numeric, required) The sidechain to send to.\n"
+            "2. \"address\"            (string, required) The bitcoin address to send to.\n"
+            "3. \"amount\"             (numeric or string, required) The amount in " + CURRENCY_UNIT + " to send. eg 0.1\n"
+            "\nResult:\n"
+            "\"txid\"                  (string) The transaction id.\n"
+            "\nExamples:\n"
+            + HelpExampleCli("createsidechaindeposit", "0 \"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 0.1")
+            + HelpExampleRpc("createsidechaindeposit", "0, \"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", 0.1")
+        );
+
+    // nSidechain
+    unsigned int nSidechain = request.params[0].get_int();
+    if (!IsSidechainNumberValid(nSidechain))
+        throw JSONRPCError(RPC_MISC_ERROR, "Invalid sidechain number");
+
+    ObserveSafeMode();
+
+    // Make sure the results are valid at least up to the most recent block
+    // the user could have gotten from another RPC command prior to now
+    pwallet->BlockUntilSyncedToCurrentChain();
+
+    LOCK2(cs_main, pwallet->cs_wallet);
+
+    CSidechainAddress address(request.params[1].get_str());
+    std::cout << "Address: " << address.ToString() << std::endl;
+    CKeyID keyID;
+    if (!address.GetKeyID(keyID)) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid sidechain address");
+    }
+
+    // Amount
+    CAmount nAmount = AmountFromValue(request.params[2]);
+    if (nAmount <= 0)
+        throw JSONRPCError(RPC_MISC_ERROR, "Invalid amount for send");
+
+    // Get sidechain script
+    CScript scriptPubKey;
+    if (!scdb.GetSidechainScript(nSidechain, scriptPubKey))
+        throw JSONRPCError(RPC_MISC_ERROR, "Failed to lookup sidechain script");
+
+    EnsureWalletIsUnlocked(pwallet);
+
+    CTransactionRef tx;
+    std::string strFail = "";
+    if (!pwallet->CreateSidechainDeposit(tx, strFail, scriptPubKey, nSidechain, nAmount, keyID))
+    {
+        throw JSONRPCError(RPC_MISC_ERROR, strFail);
+    }
+
+    return tx->GetHash().GetHex();
+}
+
 UniValue rescanblockchain(const JSONRPCRequest& request)
 {
     CWallet * const pwallet = GetWalletForJSONRPCRequest(request);
@@ -3583,6 +3649,8 @@ static const CRPCCommand commands[] =
     { "wallet",             "rescanblockchain",         &rescanblockchain,         {"start_height", "stop_height"} },
 
     { "generating",         "generate",                 &generate,                 {"nblocks","maxtries"} },
+
+    {"DriveChain",          "createsidechaindeposit",   &createsidechaindeposit,   {"nSidechain", "address", "amount"} },
 };
 
 void RegisterWalletRPCCommands(CRPCTable &t)
