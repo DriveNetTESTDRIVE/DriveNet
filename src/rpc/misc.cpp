@@ -1296,8 +1296,8 @@ UniValue createsidechainproposal(const JSONRPCRequest& request)
             "2. \"description\"  (string, required) sidechain description\n"
             "3. \"keyhash\"      (string, required) any SHA256 hash (used to generate private key)\n"
             "4. \"version\"      (numeric, optional) sidechain / proposal version\n"
-            "5. \"hashid1\"      (string, optional) SHA256 hash used to identify sidechain\n"
-            "6. \"hashid2\"      (string, optional) SHA256 hash used to identify sidechain\n"
+            "5. \"hashid1\"      (string, optional) 256 bits used to identify sidechain\n"
+            "6. \"hashid2\"      (string, optional) 160 bits used to identify sidechain\n"
             "\nExamples:\n"
             + HelpExampleCli("createsidechainproposal", "")
             + HelpExampleRpc("createsidechainproposal", "")
@@ -1308,14 +1308,21 @@ UniValue createsidechainproposal(const JSONRPCRequest& request)
     std::string strHash = request.params[2].get_str();
 
     int nVersion = -1;
-    std::string strHashID1 = "";
-    std::string strHashID2 = "";
     if (request.params.size() >= 4)
         nVersion = request.params[3].get_int();
-    if (request.params.size() >= 5)
+
+    std::string strHashID1 = "";
+    std::string strHashID2 = "";
+    if (request.params.size() >= 5) {
         strHashID1 = request.params[4].get_str();
-    if (request.params.size() == 6)
+        if (strHashID1.size() != 64)
+            throw JSONRPCError(RPC_MISC_ERROR, "HashID1 size invalid!");
+    }
+    if (request.params.size() == 6) {
         strHashID2 = request.params[5].get_str();
+        if (strHashID2.size() != 40)
+            throw JSONRPCError(RPC_MISC_ERROR, "HashID2 size invalid!");
+    }
 
     if (strTitle.empty())
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Sidechain must have a title!");
@@ -1356,7 +1363,7 @@ UniValue createsidechainproposal(const JSONRPCRequest& request)
     if (!strHashID1.empty())
         proposal.hashID1 = uint256S(strHashID1);
     if (!strHashID2.empty())
-        proposal.hashID2 = uint256S(strHashID2);
+        proposal.hashID2 = uint160S(strHashID2);
 
     // Cache proposal so that it can be added to the next block we mine
     scdb.CacheSidechainProposals(std::vector<SidechainProposal>{proposal});

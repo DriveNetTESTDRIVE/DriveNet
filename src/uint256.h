@@ -135,6 +135,22 @@ public:
     }
 };
 
+/* uint160 from const char* */
+inline uint160 uint160S(const char *str)
+{
+    uint160 rv;
+    rv.SetHex(str);
+    return rv;
+}
+
+/* uint160 from std::string */
+inline uint160 uint160S(const std::string& str)
+{
+    uint160 rv;
+    rv.SetHex(str);
+    return rv;
+}
+
 /* uint256 from const char *.
  * This is a separate function because the constructor uint256(const char*) can result
  * in dangerously catching uint256(0).

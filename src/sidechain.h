@@ -43,7 +43,7 @@ struct SidechainProposal {
     std::string sidechainHex;
     std::string sidechainPriv;
     uint256 hashID1;
-    uint256 hashID2;
+    uint160 hashID2;
 
     ADD_SERIALIZE_METHODS
 
@@ -93,7 +93,7 @@ struct Sidechain {
     std::string title;
     std::string description;
     uint256 hashID1;
-    uint256 hashID2;
+    uint160 hashID2;
 
     std::string GetSidechainName() const;
     bool operator==(const Sidechain& a) const;

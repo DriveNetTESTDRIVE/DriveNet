@@ -153,7 +153,8 @@ void SidechainDB::CacheSidechainActivationStatus(const std::vector<SidechainActi
 
 void SidechainDB::CacheSidechainProposals(const std::vector<SidechainProposal>& vSidechainProposalIn)
 {
-        vSidechainProposal = vSidechainProposalIn;
+    for (const SidechainProposal& s : vSidechainProposalIn)
+        vSidechainProposal.push_back(s);
 }
 
 void SidechainDB::CacheSidechainHashToActivate(const uint256& u)

@@ -152,6 +152,19 @@ void SidechainMinerDialog::on_pushButtonCreateSidechainProposal_clicked()
     assert(key.VerifyPubKey(pubkey));
     CKeyID vchAddress = pubkey.GetID();
 
+    if (!strHashID1.empty() && strHashID1.size() != 64) {
+        QMessageBox::critical(this, tr("DriveNet - error"),
+            tr("HashID1 (release tarball hash) invalid size!"),
+            QMessageBox::Ok);
+        return;
+    }
+    if (!strHashID2.empty() && strHashID2.size() != 40) {
+        QMessageBox::critical(this, tr("DriveNet - error"),
+            tr("HashID2 (build commit hash) invalid size!"),
+            QMessageBox::Ok);
+        return;
+    }
+
     // Generate script hex
     CScript sidechainScript = CScript() << OP_DUP << OP_HASH160 << ToByteVector(vchAddress) << OP_EQUALVERIFY << OP_CHECKSIG;
 
@@ -161,8 +174,10 @@ void SidechainMinerDialog::on_pushButtonCreateSidechainProposal_clicked()
     proposal.sidechainPriv = vchSecret.ToString();
     proposal.sidechainKeyID = HexStr(vchAddress);
     proposal.sidechainHex = HexStr(sidechainScript);
-    proposal.hashID1 = uint256S(strHashID1);
-    proposal.hashID2 = uint256S(strHashID2);
+    if (!strHashID1.empty())
+        proposal.hashID1 = uint256S(strHashID1);
+    if (!strHashID1.empty())
+        proposal.hashID2 = uint160S(strHashID2);
     proposal.nVersion = nVersion;
 
     // Cache proposal so that it can be added to the next block we mine
@@ -284,7 +299,7 @@ void SidechainMinerDialog::on_toolButtonIDHash2_clicked()
     // TODO display message based on current selected version
     // TODO move text into static const
     QMessageBox::information(this, tr("DriveNet - information"),
-        tr("Build commit hash:\n\n"
+        tr("Build commit hash (160 bits):\n\n"
            "If the software was developed using git, the build commit hash "
            "should match the commit hash of the first sidechain release.\n\n"
            "To verify it later, you can look up this commit in the repository "

@@ -94,7 +94,7 @@ bool ActivateSidechain(SidechainDB& scdbTest, int nHeight = 0)
     proposal.sidechainHex = "76a91480dca759b4ff2c9e9b65ec790703ad09fba844cd88ac";
     proposal.sidechainPriv = "5Jf2vbdzdCccKApCrjmwL5EFc4f1cUm5Ah4L4LGimEuFyqYpa9r";
     proposal.hashID1 = uint256S("b55d224f1fda033d930c92b1b40871f209387355557dd5e0d2b5dd9bb813c33f");
-    proposal.hashID2 = uint256S("9fafdd046727ada4612cf9a860dd3e72ec0187bda31b1ef6fe84207b36537222");
+    proposal.hashID2 = uint160S("31d98584f3c570961359c308619f5cf2e9178482");
 
     return ActivateSidechain(scdbTest, proposal, nHeight);
 }
@@ -125,7 +125,7 @@ BOOST_AUTO_TEST_CASE(activate_multiple_sidechains)
     proposal.sidechainHex = "76a91480dca759b4ff2c9e9b65ec790703ad09fba844cd88ac"; // TODO
     proposal.sidechainPriv = "5Jf2vbdzdCccKApCrjmwL5EFc4f1cUm5Ah4L4LGimEuFyqYpa9r"; // TODO
     proposal.hashID1 = GetRandHash();
-    proposal.hashID2 = GetRandHash();
+    proposal.hashID2 = uint160S("31d98584f3c570961359c308619f5cf2e9178482");
 
     BOOST_CHECK(ActivateSidechain(scdbTest, proposal, 0));
     BOOST_CHECK(scdbTest.GetActiveSidechainCount() == 2);
@@ -151,7 +151,7 @@ BOOST_AUTO_TEST_CASE(activate_max_sidechains)
     proposal.sidechainHex = "76a91480dca759b4ff2c9e9b65ec790703ad09fba844cd88ac"; // TODO
     proposal.sidechainPriv = "5Jf2vbdzdCccKApCrjmwL5EFc4f1cUm5Ah4L4LGimEuFyqYpa9r"; // TODO
     proposal.hashID1 = GetRandHash();
-    proposal.hashID2 = GetRandHash();
+    proposal.hashID2 = uint160S("31d98584f3c570961359c308619f5cf2e9178482");
 
     unsigned int nSidechains = 0;
     for (int i = 0; i < SIDECHAIN_ACTIVATION_MAX_ACTIVE; i++) {
@@ -772,7 +772,7 @@ BOOST_AUTO_TEST_CASE(IsSidechainProposalCommit)
     proposal.sidechainHex = "76a91480dca759b4ff2c9e9b65ec790703ad09fba844cd88ac";
     proposal.sidechainPriv = "5Jf2vbdzdCccKApCrjmwL5EFc4f1cUm5Ah4L4LGimEuFyqYpa9r";
     proposal.hashID1 = uint256S("b55d224f1fda033d930c92b1b40871f209387355557dd5e0d2b5dd9bb813c33f");
-    proposal.hashID2 = uint256S("9fafdd046727ada4612cf9a860dd3e72ec0187bda31b1ef6fe84207b36537222");
+    proposal.hashID2 = uint160S("31d98584f3c570961359c308619f5cf2e9178482");
 
     // Create transaction output with sidechain proposal
     CTxOut out;
@@ -796,7 +796,7 @@ BOOST_AUTO_TEST_CASE(IsSidechainActivationCommit)
     proposal.sidechainHex = "76a91480dca759b4ff2c9e9b65ec790703ad09fba844cd88ac";
     proposal.sidechainPriv = "5Jf2vbdzdCccKApCrjmwL5EFc4f1cUm5Ah4L4LGimEuFyqYpa9r";
     proposal.hashID1 = uint256S("b55d224f1fda033d930c92b1b40871f209387355557dd5e0d2b5dd9bb813c33f");
-    proposal.hashID2 = uint256S("9fafdd046727ada4612cf9a860dd3e72ec0187bda31b1ef6fe84207b36537222");
+    proposal.hashID2 = uint160S("31d98584f3c570961359c308619f5cf2e9178482");
 
     // Use the function from validation to generate the commit, and then
     // copy it from the block.
@@ -845,7 +845,7 @@ BOOST_AUTO_TEST_CASE(update_helper_basic)
     proposal.sidechainHex = "76a91480dca759b4ff2c9e9b65ec790703ad09fba844cd88ac"; // TODO
     proposal.sidechainPriv = "5Jf2vbdzdCccKApCrjmwL5EFc4f1cUm5Ah4L4LGimEuFyqYpa9r"; // TODO
     proposal.hashID1 = GetRandHash();
-    proposal.hashID2 = GetRandHash();
+    proposal.hashID2 = uint160S("31d98584f3c570961359c308619f5cf2e9178482");
 
     // Activate second sidechain
     BOOST_CHECK(ActivateSidechain(scdbTest, proposal, 0));
@@ -942,7 +942,7 @@ BOOST_AUTO_TEST_CASE(update_helper_multi_custom)
     proposal.sidechainHex = "76a91480dca759b4ff2c9e9b65ec790703ad09fba844cd88ac"; // TODO
     proposal.sidechainPriv = "5Jf2vbdzdCccKApCrjmwL5EFc4f1cUm5Ah4L4LGimEuFyqYpa9r"; // TODO
     proposal.hashID1 = GetRandHash();
-    proposal.hashID2 = GetRandHash();
+    proposal.hashID2 = uint160S("31d98584f3c570961359c308619f5cf2e9178482");
 
     // Activate second sidechain
     BOOST_CHECK(ActivateSidechain(scdbTest, proposal, 0));
@@ -957,7 +957,7 @@ BOOST_AUTO_TEST_CASE(update_helper_multi_custom)
     proposal2.sidechainHex = "76a91480dca759b4ff2c9e9b65ec790703ad09fba844cd88ac"; // TODO
     proposal2.sidechainPriv = "5Jf2vbdzdCccKApCrjmwL5EFc4f1cUm5Ah4L4LGimEuFyqYpa9r"; // TODO
     proposal2.hashID1 = GetRandHash();
-    proposal2.hashID2 = GetRandHash();
+    proposal2.hashID2 = uint160S("31d98584f3c570961359c308619f5cf2e9178482");
 
     // Activate second sidechain
     BOOST_CHECK(ActivateSidechain(scdbTest, proposal2, 0));
@@ -1075,7 +1075,7 @@ BOOST_AUTO_TEST_CASE(update_helper_multi_custom_multi_wtprime)
     proposal.sidechainHex = "76a91480dca759b4ff2c9e9b65ec790703ad09fba844cd88ac"; // TODO
     proposal.sidechainPriv = "5Jf2vbdzdCccKApCrjmwL5EFc4f1cUm5Ah4L4LGimEuFyqYpa9r"; // TODO
     proposal.hashID1 = GetRandHash();
-    proposal.hashID2 = GetRandHash();
+    proposal.hashID2 = uint160S("31d98584f3c570961359c308619f5cf2e9178482");
 
     // Activate second sidechain
     BOOST_CHECK(ActivateSidechain(scdbTest, proposal, 0));
@@ -1090,7 +1090,7 @@ BOOST_AUTO_TEST_CASE(update_helper_multi_custom_multi_wtprime)
     proposal2.sidechainHex = "76a91480dca759b4ff2c9e9b65ec790703ad09fba844cd88ac"; // TODO
     proposal2.sidechainPriv = "5Jf2vbdzdCccKApCrjmwL5EFc4f1cUm5Ah4L4LGimEuFyqYpa9r"; // TODO
     proposal2.hashID1 = GetRandHash();
-    proposal2.hashID2 = GetRandHash();
+    proposal2.hashID2 = uint160S("31d98584f3c570961359c308619f5cf2e9178482");
 
     // Activate second sidechain
     BOOST_CHECK(ActivateSidechain(scdbTest, proposal2, 0));
@@ -1293,7 +1293,7 @@ BOOST_AUTO_TEST_CASE(update_helper_max_active)
     proposal.sidechainHex = "76a91480dca759b4ff2c9e9b65ec790703ad09fba844cd88ac"; // TODO
     proposal.sidechainPriv = "5Jf2vbdzdCccKApCrjmwL5EFc4f1cUm5Ah4L4LGimEuFyqYpa9r"; // TODO
     proposal.hashID1 = GetRandHash();
-    proposal.hashID2 = GetRandHash();
+    proposal.hashID2 = uint160S("31d98584f3c570961359c308619f5cf2e9178482");
 
     // Activate the maximum number of sidechains allowed
     unsigned int nSidechains = 0;

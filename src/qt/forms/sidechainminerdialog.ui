@@ -385,7 +385,7 @@
              <item>
               <widget class="QLabel" name="label_11">
                <property name="text">
-                <string>Release tarball hash</string>
+                <string>Release tarball hash (256 bits)</string>
                </property>
               </widget>
              </item>
@@ -434,7 +434,7 @@
              <item>
               <widget class="QLabel" name="label_12">
                <property name="text">
-                <string>Build commit hash</string>
+                <string>Build commit hash (160 bits)</string>
                </property>
               </widget>
              </item>
