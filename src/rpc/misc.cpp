@@ -1396,6 +1396,75 @@ UniValue vote(const JSONRPCRequest& request)
     return NullUniValue;
 }
 
+UniValue getaveragefee(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() > 2)
+        throw std::runtime_error(
+            "getaveragefee (\"num_blocks\")\n"
+            "\n\n"
+            "\nArguments:\n"
+            "1. block_count     (numeric, optional, default=6) number of blocks to scan\n"
+            "2. start_height    (numeric, optional, default=current block count) block height to start from\n"
+            "\nResult:\n"
+            "{\n"
+            "  \"fee\" : x.x,   (numeric) average of fees in " + CURRENCY_UNIT + "/kB\n"
+            "}\n"
+            "\n"
+            "\nExample:\n"
+            + HelpExampleCli("getaveragefee", "6")
+            );
+
+    int nBlocks = 6;
+    if (request.params.size() >= 1)
+        nBlocks = request.params[0].get_int();
+
+    int nHeight = chainActive.Height();
+    if (request.params.size() == 2) {
+        int nHeightIn = request.params[1].get_int();
+        if (nHeightIn > nHeight)
+            throw JSONRPCError(RPC_MISC_ERROR, "Invalid start height!");
+
+        nHeight = nHeightIn;
+    }
+
+    if (nBlocks > nHeight)
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Invalid number of blocks!");
+
+    int nTx = 0;
+    CAmount nTotalFees = 0;
+    for (int i = nHeight; i >= (nHeight - nBlocks); i--) {
+        uint256 hashBlock = chainActive[i]->GetBlockHash();
+
+        if (mapBlockIndex.count(hashBlock) == 0)
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
+
+        CBlock block;
+        CBlockIndex* pblockindex = mapBlockIndex[hashBlock];
+        if (fHavePruned && !(pblockindex->nStatus & BLOCK_HAVE_DATA) && pblockindex->nTx > 0)
+            throw JSONRPCError(RPC_MISC_ERROR, "Block not available (pruned data)");
+
+        if (!ReadBlockFromDisk(block, pblockindex, Params().GetConsensus()))
+            throw JSONRPCError(RPC_MISC_ERROR, "Block not found on disk");
+
+        // We don't have the coins (they are spent) to look up the transaction
+        // input amounts for calculation of fees. Instead, get the block subsidy
+        // for the height and subtract it from the coinbase output amount to
+        // estimate fees paid in the block.
+        CAmount nSubsidy = GetBlockSubsidy(i, Params().GetConsensus());
+        CAmount nCoinbase = block.vtx[0]->GetValueOut();
+
+        // Record total fees in the block
+        nTotalFees += nCoinbase - nSubsidy;
+        // Record number of transactions
+        nTx += block.vtx.size();
+    }
+
+    UniValue result(UniValue::VOBJ);
+    result.push_back(Pair("feeaverage", ValueFromAmount(nTotalFees / nTx)));
+    return result;
+}
+
+
 UniValue echo(const JSONRPCRequest& request)
 {
     if (request.fHelp)
@@ -1453,6 +1522,8 @@ static const CRPCCommand commands[] =
     { "DriveChain",         "getsidechainactivationstatus",  &getsidechainactivationstatus,   {}},
     { "DriveChain",         "createsidechainproposal",       &createsidechainproposal,   {"title", "description", "keyhash", "nversion", "hashid1", "hashid2"}},
     { "DriveChain",         "vote",                          &vote,   {}},
+
+    { "DriveChain",         "getaveragefee",                 &getaveragefee,   {"numblocks", "startheight"}},
 };
 
 void RegisterMiscRPCCommands(CRPCTable &t)
