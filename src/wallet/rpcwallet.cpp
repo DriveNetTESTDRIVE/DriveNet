@@ -3468,7 +3468,6 @@ UniValue createsidechaindeposit(const JSONRPCRequest& request)
     LOCK2(cs_main, pwallet->cs_wallet);
 
     CSidechainAddress address(request.params[1].get_str());
-    std::cout << "Address: " << address.ToString() << std::endl;
     CKeyID keyID;
     if (!address.GetKeyID(keyID)) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid sidechain address");
