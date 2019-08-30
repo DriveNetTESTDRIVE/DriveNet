@@ -1400,8 +1400,7 @@ UniValue getaveragefee(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() > 2)
         throw std::runtime_error(
-            "getaveragefee (\"num_blocks\")\n"
-            "\n\n"
+            "getaveragefee\n"
             "\nArguments:\n"
             "1. block_count     (numeric, optional, default=6) number of blocks to scan\n"
             "2. start_height    (numeric, optional, default=current block count) block height to start from\n"
@@ -1411,7 +1410,7 @@ UniValue getaveragefee(const JSONRPCRequest& request)
             "}\n"
             "\n"
             "\nExample:\n"
-            + HelpExampleCli("getaveragefee", "6")
+            + HelpExampleCli("getaveragefee", "6 10")
             );
 
     int nBlocks = 6;
@@ -1464,6 +1463,95 @@ UniValue getaveragefee(const JSONRPCRequest& request)
     return result;
 }
 
+UniValue getworkscore(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() != 2)
+        throw std::runtime_error(
+            "getworkscore \"num_blocks\")\n"
+            "Request the workscore of a WT^\n"
+            "\nArguments:\n"
+            "1. nsidechain     (numeric, required) Sidechain number to look up WT^ of\n"
+            "2. hashwtprime    (string, required) Hash of the WT^\n"
+            "\nResult:\n"
+            "{\n"
+            "  \"workscore\" : x,   (numeric) workscore of WT^\n"
+            "}\n"
+            "\n"
+            "\nExample:\n"
+            + HelpExampleCli("getworkscore", "0 hashWTPrime")
+            );
+
+    // nSidechain
+    int nSidechain = request.params[0].get_int();
+
+    if (!IsSidechainNumberValid(nSidechain))
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid Sidechain number");
+
+    std::string strHash = request.params[1].get_str();
+    if (strHash.size() != 64)
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid WT^ hash length");
+
+    uint256 hashWTPrime = uint256S(strHash);
+    if (hashWTPrime.IsNull())
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid WT^ hash");
+
+    std::vector<SidechainWTPrimeState> vState = scdb.GetState(nSidechain);
+    if (vState.empty())
+        throw JSONRPCError(RPC_TYPE_ERROR, "No WT^(s) in SCDB for sidechain");
+
+    int nWorkScore = -1;
+    for (const SidechainWTPrimeState& s : vState) {
+        if (s.hashWTPrime == hashWTPrime) {
+            nWorkScore = s.nWorkScore;
+            break;
+        }
+    }
+
+    if (nWorkScore == -1)
+        throw JSONRPCError(RPC_TYPE_ERROR, "No WT^ workscore in SCDB");
+
+    UniValue result(UniValue::VOBJ);
+    result.push_back(Pair("workscore", nWorkScore));
+    return result;
+}
+
+UniValue listwtprimes(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() != 1)
+        throw std::runtime_error(
+            "listwtprimes\n"
+            "List WT^(s) for nSidechain\n"
+            "\nArguments:\n"
+            "1. nsidechain     (numeric, required) Sidechain number to list WT^(s) of\n"
+            "\nResult: (array)\n"
+            "{\n"
+            "  \"hashwtprime\" : x (string) hash of WT^\n"
+            "}\n"
+            "\n"
+            "\nExample:\n"
+            + HelpExampleCli("listwtprimes", "0")
+            );
+
+    // nSidechain
+    int nSidechain = request.params[0].get_int();
+
+    if (!IsSidechainNumberValid(nSidechain))
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid Sidechain number");
+
+    std::vector<SidechainWTPrimeState> vState = scdb.GetState(nSidechain);
+    if (vState.empty())
+        throw JSONRPCError(RPC_TYPE_ERROR, "No WT^(s) in SCDB for sidechain");
+
+    UniValue ret(UniValue::VARR);
+    for (const SidechainWTPrimeState& s : vState) {
+        UniValue obj(UniValue::VOBJ);
+        obj.push_back(Pair("hashwtprime", s.hashWTPrime.ToString()));
+
+        ret.push_back(obj);
+    }
+
+    return ret;
+}
 
 UniValue echo(const JSONRPCRequest& request)
 {
@@ -1506,24 +1594,25 @@ static const CRPCCommand commands[] =
     { "hidden",             "echojson",               &echo,                   {"arg0","arg1","arg2","arg3","arg4","arg5","arg6","arg7","arg8","arg9"}},
     { "hidden",             "getinfo",                &getinfo_deprecated,     {}},
 
+    // TODO improve & shorten names
     /* DriveChain rpc commands (mainly used by sidechains) */
-    { "DriveChain",         "createcriticaldatatx",     &createcriticaldatatx,      {"amount", "height", "criticalhash"}},
-    { "DriveChain",         "createbmmcriticaldatatx",  &createbmmcriticaldatatx,   {"amount", "height", "criticalhash", "nsidechain", "ndag"}},
-    { "DriveChain",         "listsidechainctip",        &listsidechainctip,         {"nsidechain"}},
-    { "DriveChain",         "listsidechaindeposits",    &listsidechaindeposits,     {"nsidechain", "count"}},
-    { "DriveChain",         "countsidechaindeposits",   &countsidechaindeposits,    {"nsidechain"}},
-    { "DriveChain",         "receivewtprime",           &receivewtprime,            {"nsidechain","rawtx"}},
-    { "DriveChain",         "getbmmproof",              &getbmmproof,               {"blockhash", "criticalhash"}},
-    { "DriveChain",         "listpreviousblockhashes",  &listpreviousblockhashes,   {}},
-    // Drivechain voting / sidechain activation rpc commands
-    { "DriveChain",         "listactivesidechains",          &listactivesidechains,   {}},
-    { "DriveChain",         "listsidechainactivationstatus", &listsidechainactivationstatus,   {}},
-    { "DriveChain",         "listsidechainproposals",        &listsidechainproposals,   {}},
-    { "DriveChain",         "getsidechainactivationstatus",  &getsidechainactivationstatus,   {}},
-    { "DriveChain",         "createsidechainproposal",       &createsidechainproposal,   {"title", "description", "keyhash", "nversion", "hashid1", "hashid2"}},
-    { "DriveChain",         "vote",                          &vote,   {}},
-
-    { "DriveChain",         "getaveragefee",                 &getaveragefee,   {"numblocks", "startheight"}},
+    { "DriveChain",  "createcriticaldatatx",          &createcriticaldatatx,         {"amount", "height", "criticalhash"}},
+    { "DriveChain",  "createbmmcriticaldatatx",       &createbmmcriticaldatatx,      {"amount", "height", "criticalhash", "nsidechain", "ndag"}},
+    { "DriveChain",  "listsidechainctip",             &listsidechainctip,            {"nsidechain"}},
+    { "DriveChain",  "listsidechaindeposits",         &listsidechaindeposits,        {"nsidechain", "count"}},
+    { "DriveChain",  "countsidechaindeposits",        &countsidechaindeposits,       {"nsidechain"}},
+    { "DriveChain",  "receivewtprime",                &receivewtprime,               {"nsidechain","rawtx"}},
+    { "DriveChain",  "getbmmproof",                   &getbmmproof,                  {"blockhash", "criticalhash"}},
+    { "DriveChain",  "listpreviousblockhashes",       &listpreviousblockhashes,      {}},
+    { "DriveChain",  "listactivesidechains",          &listactivesidechains,         {}},
+    { "DriveChain",  "listsidechainactivationstatus", &listsidechainactivationstatus,{}},
+    { "DriveChain",  "listsidechainproposals",        &listsidechainproposals,       {}},
+    { "DriveChain",  "getsidechainactivationstatus",  &getsidechainactivationstatus, {}},
+    { "DriveChain",  "createsidechainproposal",       &createsidechainproposal,      {"title", "description", "keyhash", "nversion", "hashid1", "hashid2"}},
+    { "DriveChain",  "vote",                          &vote,                         {}},
+    { "DriveChain",  "getaveragefee",                 &getaveragefee,                {"numblocks", "startheight"}},
+    { "DriveChain",  "getworkscore",                  &getworkscore,                 {"nsidechain", "hashwtprime"}},
+    { "DriveChain",  "listwtprimes",                  &listwtprimes,                 {"nsidechain"}},
 };
 
 void RegisterMiscRPCCommands(CRPCTable &t)
