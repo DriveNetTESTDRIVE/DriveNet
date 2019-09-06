@@ -214,13 +214,36 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     if (fDrivechainEnabled) {
         if (scdb.HasState()) {
             bool fPeriodEnded = (nHeight % SIDECHAIN_VERIFICATION_PERIOD == 0);
-            // TODO make interactive - GUI
-            // We're generating the block, and will upvote the leading WT^ by default.
             uint256 hashSCDB;
-            if (fPeriodEnded)
+            if (fPeriodEnded) {
                 hashSCDB = scdb.GetSCDBHash();
-            else
-                hashSCDB = scdb.GetSCDBHashIfUpdate(scdb.GetVotes(SCDB_UPVOTE), nHeight);
+            }
+            else {
+                // Check if the user has set a default WT^ vote
+                std::string strDefaultVote = "";
+                strDefaultVote = gArgs.GetArg("-defaultwtprimevote", "");
+                if (strDefaultVote == "upvote") {
+                    hashSCDB = scdb.GetSCDBHashIfUpdate(scdb.GetVotes(SCDB_UPVOTE), nHeight);
+                }
+                else
+                if (strDefaultVote == "downvote") {
+                    hashSCDB = scdb.GetSCDBHashIfUpdate(scdb.GetVotes(SCDB_DOWNVOTE), nHeight);
+                }
+                else {
+                    hashSCDB = scdb.GetSCDBHashIfUpdate(scdb.GetVotes(SCDB_ABSTAIN), nHeight);
+                }
+
+                // Check if the user has set any custom WT^ votes. They can set
+                // custom upvotes and custom downvotes by specifying the WT^
+                // hash as a command line param. Note that there can be multiple
+                // custom votes of each type and that's why we use GetArgs()
+                std::vector<std::string> vHashUpvote = gArgs.GetArgs("-upvote");
+                std::vector<std::string> vHashDownvote = gArgs.GetArgs("-downvote");
+                // TODO use custom WT^ votes based on WT^ hash
+
+                // TODO
+                // If params are not set, check for GUI configuration
+            }
 
             if ((!fPeriodEnded && !hashSCDB.IsNull()) || fPeriodEnded)
                 GenerateSCDBHashMerkleRootCommitment(*pblock, hashSCDB, chainparams.GetConsensus());
