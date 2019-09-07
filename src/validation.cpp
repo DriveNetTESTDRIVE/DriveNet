@@ -4850,8 +4850,6 @@ bool LoadExternalBlockFile(const CChainParams& chainparams, FILE* fileIn, CDiskB
     static std::multimap<uint256, CDiskBlockPos> mapBlocksUnknownParent;
     int64_t nStart = GetTimeMillis();
 
-    CBlock blockTest;
-
     int nLoaded = 0;
     try {
         // This takes over fileIn and calls fclose() on it in the CBufferedFile destructor
@@ -4891,8 +4889,6 @@ bool LoadExternalBlockFile(const CChainParams& chainparams, FILE* fileIn, CDiskB
                 CBlock& block = *pblock;
                 blkdat >> block;
                 nRewind = blkdat.GetPos();
-
-                blockTest = block;
 
                 // detect out of order blocks, and store them for later
                 uint256 hash = block.GetHash();
