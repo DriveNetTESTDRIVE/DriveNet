@@ -215,10 +215,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
         if (scdb.HasState()) {
             bool fPeriodEnded = (nHeight % SIDECHAIN_VERIFICATION_PERIOD == 0);
             uint256 hashSCDB;
-            if (fPeriodEnded) {
-                hashSCDB = scdb.GetSCDBHash();
-            }
-            else {
+            if (!fPeriodEnded) {
                 // Check if the user has set a default WT^ vote
                 std::string strDefaultVote = "";
                 strDefaultVote = gArgs.GetArg("-defaultwtprimevote", "");
@@ -244,7 +241,6 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
                 // TODO
                 // If params are not set, check for GUI configuration
             }
-
             if ((!fPeriodEnded && !hashSCDB.IsNull()) || fPeriodEnded)
                 GenerateSCDBHashMerkleRootCommitment(*pblock, hashSCDB, chainparams.GetConsensus());
         }
