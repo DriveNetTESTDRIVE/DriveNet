@@ -196,22 +196,13 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     // Add coinbase to block
     pblock->vtx[0] = MakeTransactionRef(std::move(coinbaseTx));
 
+    // Collect active sidechains
     std::vector<Sidechain> vActiveSidechain;
     if (fDrivechainEnabled)
         vActiveSidechain = scdb.GetActiveSidechains();
 
     if (fDrivechainEnabled) {
-        // If a WT^ has sufficient workscore, create the payout transaction
-        for (const Sidechain& s : vActiveSidechain) {
-            CMutableTransaction wtx;
-            bool fCreated = CreateWTPrimePayout(s.nSidechain, wtx);
-            if (fCreated && wtx.vout.size() && wtx.vin.size()) {
-                pblock->vtx.push_back(MakeTransactionRef(std::move(wtx)));
-            }
-        }
-    }
-
-    if (fDrivechainEnabled) {
+        // Handle activation of sidechains
         if (scdb.HasState()) {
             bool fPeriodEnded = (nHeight % SIDECHAIN_VERIFICATION_PERIOD == 0);
             uint256 hashSCDB;
@@ -241,9 +232,12 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
                 // TODO
                 // If params are not set, check for GUI configuration
             }
+            // Generate SCDB merkle root hash commitment
             if ((!fPeriodEnded && !hashSCDB.IsNull()) || fPeriodEnded)
                 GenerateSCDBHashMerkleRootCommitment(*pblock, hashSCDB, chainparams.GetConsensus());
         }
+
+        // Generate critical hash commitments (usually for BMM commitments)
         GenerateCriticalHashCommitments(*pblock, chainparams.GetConsensus());
 
         // TODO make interactive - GUI
@@ -263,6 +257,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
         // TODO this should loop through sidechains with activation status,
         // and activated sidechains to figure out which proposals we haven't
         // proposed yet.
+        //
         // Commit the oldest uncommitted sidechain proposal that we have created
         //
         // If we commit a proposal, save the hash to easily ACK it later
@@ -273,10 +268,10 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
             hashProposal = vProposal.front().GetHash();
         }
 
-        // TODO for now, if this is set to 1 (true), activate any sidechain
-        // which has been proposed. Make this behavior the default unless a
-        // list of sha256 hashes of sidechains is also provided to the command
-        // line, in which case only activate those sidechain(s).
+        // TODO for now, if this is set activate any sidechain which has been
+        // proposed. Make this behavior the default unless a list of sha256
+        // hashes of sidechains is also provided to the command line, in which
+        // case only activate those sidechain(s).
         bool fAnySidechain = gArgs.GetBoolArg("-activatesidechains", false);
 
         // Commit sidechain activation for proposals in activation status cache
@@ -293,15 +288,16 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
         }
     }
 
-    pblocktemplate->vchCoinbaseCommitment = GenerateCoinbaseCommitment(*pblock, pindexPrev, chainparams.GetConsensus());
-    pblocktemplate->vTxFees[0] = -nFees;
-
-    // Fill in header
-    pblock->hashPrevBlock  = pindexPrev->GetBlockHash();
-    UpdateTime(pblock, chainparams.GetConsensus(), pindexPrev);
-    pblock->nBits          = GetNextWorkRequired(pindexPrev, pblock, chainparams.GetConsensus());
-    pblock->nNonce         = 0;
-    pblocktemplate->vTxSigOpsCost[0] = WITNESS_SCALE_FACTOR * GetLegacySigOpCount(*pblock->vtx[0]);
+    // If a WT^ has sufficient workscore, create the payout transaction
+    if (fDrivechainEnabled) {
+        for (const Sidechain& s : vActiveSidechain) {
+            CMutableTransaction wtx;
+            bool fCreated = CreateWTPrimePayout(s.nSidechain, wtx);
+            if (fCreated && wtx.vout.size() && wtx.vin.size()) {
+                pblock->vtx.push_back(MakeTransactionRef(std::move(wtx)));
+            }
+        }
+    }
 
     // Handle / create critical fee tx (collects bmm / critical data fees)
     if (fDrivechainEnabled && fNeedCriticalFeeTx) {
@@ -332,16 +328,6 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
             pblocktemplate->vTxSigOpsCost.push_back(WITNESS_SCALE_FACTOR * GetLegacySigOpCount(*pblock->vtx.back()));
             pblocktemplate->vTxFees.push_back(0);
 
-            // Remove the old witness commitment
-            int wi = GetWitnessCommitmentIndex(*pblock);
-            if (wi != -1) {
-                CMutableTransaction mtx(*pblock->vtx[0]);
-                mtx.vout.erase(mtx.vout.begin() + wi);
-                pblock->vtx[0] = MakeTransactionRef(std::move(mtx));
-            }
-
-            pblocktemplate->vchCoinbaseCommitment = GenerateCoinbaseCommitment(*pblock, pindexPrev, chainparams.GetConsensus());
-
             // Test block validity after adding critical fee tx
             CValidationState state;
             if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, true, true)) {
@@ -352,19 +338,19 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
                 pblock->vtx.pop_back();
                 pblocktemplate->vTxSigOpsCost.pop_back();
                 pblocktemplate->vTxFees.pop_back();
-
-                // Remove the old witness commitment
-                int wi = GetWitnessCommitmentIndex(*pblock);
-                if (wi != -1) {
-                    CMutableTransaction mtx(*pblock->vtx[0]);
-                    mtx.vout.erase(mtx.vout.begin() + wi);
-                    pblock->vtx[0] = MakeTransactionRef(std::move(mtx));
-                }
-
-                pblocktemplate->vchCoinbaseCommitment = GenerateCoinbaseCommitment(*pblock, pindexPrev, chainparams.GetConsensus());
             }
         }
     }
+
+    pblocktemplate->vchCoinbaseCommitment = GenerateCoinbaseCommitment(*pblock, pindexPrev, chainparams.GetConsensus());
+    pblocktemplate->vTxFees[0] = -nFees;
+
+    // Fill in header
+    pblock->hashPrevBlock  = pindexPrev->GetBlockHash();
+    UpdateTime(pblock, chainparams.GetConsensus(), pindexPrev);
+    pblock->nBits          = GetNextWorkRequired(pindexPrev, pblock, chainparams.GetConsensus());
+    pblock->nNonce         = 0;
+    pblocktemplate->vTxSigOpsCost[0] = WITNESS_SCALE_FACTOR * GetLegacySigOpCount(*pblock->vtx[0]);
 
     LogPrintf("CreateNewBlock(): block weight: %u txs: %u fees: %ld sigops %d\n", GetBlockWeight(*pblock), nBlockTx, nFees, nBlockSigOpsCost);
 
