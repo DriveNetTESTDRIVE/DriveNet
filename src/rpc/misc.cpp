@@ -820,6 +820,7 @@ UniValue listsidechainctip(const JSONRPCRequest& request)
     obj.push_back(Pair("txid", ctip.out.hash.ToString()));
     obj.push_back(Pair("n", (int64_t)ctip.out.n));
     obj.push_back(Pair("amount", ctip.amount));
+    obj.push_back(Pair("amountformatted", FormatMoney(ctip.amount)));
 
     return obj;
 }
