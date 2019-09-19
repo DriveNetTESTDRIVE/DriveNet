@@ -19,7 +19,7 @@ static const int64_t MAX_BLOCK_SIGOPS_COST = 80000;
 static const int COINBASE_MATURITY = 100;
 
 /** Critical data maturity */
-static const int CRITICAL_DATA_MATURITY = 0; // TODO remove? disabled for now
+//static const int CRITICAL_DATA_MATURITY = 0; // TODO remove? disabled for now
 
 static const int WITNESS_SCALE_FACTOR = 4;
 

@@ -1573,12 +1573,14 @@ bool CheckInputs(const CTransaction& tx, CValidationState &state, const CCoinsVi
 
                 // Check Critical Data tx maturity - Critical Data outputs must
                 // have a block depth greater than CRITICAL_DATA_MATURITY.
-                if (fDrivechainsEnabled) {
-                    if (coin.IsCriticalData()) {
-                        if ((chainActive.Height() - coin.nHeight) < CRITICAL_DATA_MATURITY)
-                            return state.Invalid(false, REJECT_INVALID, "bad-block-txn-immature-critical-data");
-                    }
-                }
+                //if (fDrivechainsEnabled) {
+                //    if (coin.IsCriticalData()) {
+                //        if ((chainActive.Height() - coin.nHeight) < CRITICAL_DATA_MATURITY) {
+                //        LogPrintf("KYLO: %u\n", chainActive.Height() - coin.nHeight);
+                //            return state.Invalid(false, REJECT_INVALID, "bad-block-txn-immature-critical-data");
+                //        }
+                //    }
+                //}
 
                 // We very carefully only pass in things to CScriptCheck which
                 // are clearly committed to by tx' witness hash. This provides
