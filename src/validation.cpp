@@ -2105,6 +2105,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
     std::vector<PrecomputedTransactionData> txdata;
     txdata.reserve(block.vtx.size()); // Required so that pointers to individual PrecomputedTransactionData don't get invalidated
     std::vector<CTransaction> vDepositTx;
+    std::vector<std::pair<uint8_t, CTransaction>> vWTPrimeToSpend;
     for (unsigned int i = 0; i < block.vtx.size(); i++)
     {
         const CTransaction &tx = *(block.vtx[i]);
@@ -2206,7 +2207,11 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
             GetSidechainValues(mempool, tx, amtSidechainUTXO, amtUserInput, amtReturning, amtWithdrawn);
 
             if (amtSidechainUTXO > amtReturning) {
-                if (!scdb.SpendWTPrime(nSidechain, block.GetHash(), tx, fJustCheck, true /* fDebug */)) {
+                // Note that we are just checking that the WT^ can be spent,
+                // and then tracking it to spend later in the function
+                if (scdb.SpendWTPrime(nSidechain, block.GetHash(), tx, true /* fJustCheck */, true /* fDebug */)) {
+                    vWTPrimeToSpend.push_back(std::make_pair(nSidechain, tx));
+                } else {
                     return error("ConnectBlock(): Spend WT^ failed (blind WT^ hash : txid): %s : %s", hashBWT.ToString(), tx.GetHash().ToString());
                 }
             }
@@ -2263,6 +2268,18 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
     if (drivechainsEnabled)
         mempool.UpdateCTIP(scdb.GetCTIP(), fJustCheck);
 
+    if (drivechainsEnabled && vWTPrimeToSpend.size()) {
+        for (size_t i = 0; i < vWTPrimeToSpend.size(); i++) {
+            uint8_t nSidechain = vWTPrimeToSpend[i].first;
+            const CTransaction tx = vWTPrimeToSpend[i].second;
+            uint256 hashBWT;
+            tx.GetBWTHash(hashBWT);
+            if (!scdb.SpendWTPrime(nSidechain, block.GetHash(), tx, fJustCheck, true /* fDebug */)) {
+                return error("ConnectBlock(): Final spend WT^ failed (blind WT^ hash : txid): %s : %s", hashBWT.ToString(), tx.GetHash().ToString());
+            }
+        }
+    }
+
     if (fJustCheck)
         return true;
 
@@ -2280,7 +2297,6 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
     assert(pindex->phashBlock);
     // add this block to the view's block chain
     view.SetBestBlock(pindex->GetBlockHash());
-
 
     int64_t nTime5 = GetTimeMicros(); nTimeIndex += nTime5 - nTime4;
     LogPrint(BCLog::BENCH, "    - Index writing: %.2fms [%.2fs (%.2fms/blk)]\n", MILLI * (nTime5 - nTime4), nTimeIndex * MICRO, nTimeIndex * MILLI / nBlocksTotal);
