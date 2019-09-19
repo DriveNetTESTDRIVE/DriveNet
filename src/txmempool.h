@@ -508,7 +508,7 @@ public:
 
     void SelectBMMRequests();
 
-    void UpdateCTIP(const std::map<uint8_t, SidechainCTIP>& mapCTIP);
+    void UpdateCTIP(const std::map<uint8_t, SidechainCTIP>& mapCTIP, bool fJustCheck = false);
 
     bool GetMemPoolCTIP(uint8_t nSidechain, SidechainCTIP& ctip) const;
 

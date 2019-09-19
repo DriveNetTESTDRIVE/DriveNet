@@ -33,7 +33,7 @@ public:
     SidechainDB();
 
     /** Add deposit(s) to cache - from block */
-    void AddDeposits(const std::vector<CTransaction>& vtx, const uint256& hashBlock);
+    void AddDeposits(const std::vector<CTransaction>& vtx, const uint256& hashBlock, bool fJustCheck = false);
 
     /** Add deposit(s) to cache - from disk cache */
     void AddDeposits(const std::vector<SidechainDeposit>& vDeposit);
@@ -159,7 +159,7 @@ public:
     std::string ToString() const;
 
     /** Apply the changes in a block to SCDB */
-    bool Update(int nHeight, const uint256& hashBlock, const uint256& hashPrevBlock, const std::vector<CTxOut>& vout, bool fDebug = false);
+    bool Update(int nHeight, const uint256& hashBlock, const uint256& hashPrevBlock, const std::vector<CTxOut>& vout, bool fJustCheck = false, bool fDebug = false);
 
     /** Update / add multiple SCDB WT^(s) to SCDB */
     bool UpdateSCDBIndex(const std::vector<SidechainWTPrimeState>& vNewScores, int nHeight, bool fDebug = false);

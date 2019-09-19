@@ -1055,9 +1055,10 @@ void CTxMemPool::SelectBMMRequests()
     RemoveStaged(txToRemove, true, MemPoolRemovalReason::EXPIRY);
 }
 
-void CTxMemPool::UpdateCTIP(const std::map<uint8_t, SidechainCTIP>& mapCTIP)
+void CTxMemPool::UpdateCTIP(const std::map<uint8_t, SidechainCTIP>& mapCTIP, bool fJustCheck)
 {
-    mapLastSidechainDeposit = mapCTIP;
+    if (!fJustCheck)
+        mapLastSidechainDeposit = mapCTIP;
 }
 
 bool CTxMemPool::GetMemPoolCTIP(uint8_t nSidechain, SidechainCTIP& ctip) const

@@ -17,11 +17,8 @@ SidechainDB::SidechainDB()
 {
 }
 
-void SidechainDB::AddDeposits(const std::vector<CTransaction>& vtx, const uint256& hashBlock)
+void SidechainDB::AddDeposits(const std::vector<CTransaction>& vtx, const uint256& hashBlock, bool fJustCheck)
 {
-    // TODO the checks below are all in AcceptToMempool as well, and should be
-    // moved out of here to ConnectBlock()
-
     std::vector<SidechainDeposit> vDeposit;
     for (const CTransaction& tx : vtx) {
         // Create sidechain deposit objects from transaction outputs
@@ -76,7 +73,8 @@ void SidechainDB::AddDeposits(const std::vector<CTransaction>& vtx, const uint25
     }
 
     // Add deposits to cache
-    AddDeposits(vDeposit);
+    if (!fJustCheck)
+        AddDeposits(vDeposit);
 }
 
 void SidechainDB::AddDeposits(const std::vector<SidechainDeposit>& vDeposit)
@@ -720,7 +718,7 @@ std::string SidechainDB::ToString() const
     return str;
 }
 
-bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const uint256& hashPrevBlock, const std::vector<CTxOut>& vout, bool fDebug)
+bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const uint256& hashPrevBlock, const std::vector<CTxOut>& vout, bool fJustCheck,  bool fDebug)
 {
     if (hashBlock.IsNull()) {
         if (fDebug)
@@ -760,7 +758,8 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const uint256& h
 
     // If the WT^ verification period ended, clear old data
     if (nHeight > 0 && (nHeight % SIDECHAIN_VERIFICATION_PERIOD) == 0) {
-        ResetWTPrimeState();
+        if (!fJustCheck)
+            ResetWTPrimeState();
     }
 
     /*
@@ -800,7 +799,7 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const uint256& h
 
         vProposal.push_back(proposal);
     }
-    if (vProposal.size() == 1) {
+    if (!fJustCheck && vProposal.size() == 1) {
         SidechainActivationStatus status;
         status.nFail = 0;
         status.nAge = 0;
@@ -848,7 +847,8 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const uint256& h
 
         vActivationHash.push_back(hashSidechain);
     }
-    UpdateActivationStatus(vActivationHash);
+    if (!fJustCheck)
+        UpdateActivationStatus(vActivationHash);
 
     // Scan for new WT^(s) and start tracking them
     for (const CTxOut& out : vout) {
@@ -865,7 +865,7 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const uint256& h
                 continue;
             }
 
-            if (!AddWTPrime(nSidechain, hashWTPrime, nHeight, fDebug)) {
+            if (!fJustCheck && !AddWTPrime(nSidechain, hashWTPrime, nHeight, fDebug)) {
                 // TODO handle failure
                 if (fDebug) {
                     LogPrintf("SCDB %s: Failed to cache WT^: %s for sidechain number: %u at height: %u\n",
@@ -888,7 +888,7 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const uint256& h
     }
 
     // Only one MT hash commit is allowed per coinbase
-    if (vMTHashScript.size() == 1) {
+    if (!fJustCheck && vMTHashScript.size() == 1) {
         const CScript& scriptPubKey = vMTHashScript.front();
 
         // TODO IsSCDBHashMerkleRootCommit should return the MT hash
@@ -906,7 +906,8 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const uint256& h
     }
 
     // Update hashBLockLastSeen
-    hashBlockLastSeen = hashBlock;
+    if (!fJustCheck)
+        hashBlockLastSeen = hashBlock;
 
     return true;
 }

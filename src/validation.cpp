@@ -2247,6 +2247,22 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
     int64_t nTime4 = GetTimeMicros(); nTimeVerify += nTime4 - nTime2;
     LogPrint(BCLog::BENCH, "    - Verify %u txins: %.2fms (%.3fms/txin) [%.2fs (%.2fms/blk)]\n", nInputs - 1, MILLI * (nTime4 - nTime2), nInputs <= 1 ? 0 : MILLI * (nTime4 - nTime2) / (nInputs-1), nTimeVerify * MICRO, nTimeVerify * MILLI / nBlocksTotal);
 
+
+    if (drivechainsEnabled) {
+        // Update / synchronize SCDB
+        if (!scdb.Update(pindex->nHeight, block.GetHash(), block.GetPrevHash(), block.vtx[0]->vout, fJustCheck, true /* fDebug */)) {
+            LogPrintf("SCDB failed to update with block: %s\n", block.GetHash().ToString());
+            // TODO this should be enabled once SCDB undo works
+            //return false;
+        }
+    }
+
+    if (drivechainsEnabled && vDepositTx.size())
+        scdb.AddDeposits(vDepositTx, block.GetHash(), fJustCheck);
+
+    if (drivechainsEnabled)
+        mempool.UpdateCTIP(scdb.GetCTIP(), fJustCheck);
+
     if (fJustCheck)
         return true;
 
@@ -2265,20 +2281,6 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
     // add this block to the view's block chain
     view.SetBestBlock(pindex->GetBlockHash());
 
-    if (drivechainsEnabled) {
-        // Update / synchronize SCDB
-        if (!scdb.Update(pindex->nHeight, block.GetHash(), block.GetPrevHash(), block.vtx[0]->vout, true /* fDebug */)) {
-            LogPrintf("SCDB failed to update with block: %s\n", block.GetHash().ToString());
-            // TODO this should be enabled once SCDB undo works
-            //return false;
-        }
-    }
-
-    if (drivechainsEnabled && vDepositTx.size())
-        scdb.AddDeposits(vDepositTx, block.GetHash());
-
-    if (drivechainsEnabled)
-        mempool.UpdateCTIP(scdb.GetCTIP());
 
     int64_t nTime5 = GetTimeMicros(); nTimeIndex += nTime5 - nTime4;
     LogPrint(BCLog::BENCH, "    - Index writing: %.2fms [%.2fs (%.2fms/blk)]\n", MILLI * (nTime5 - nTime4), nTimeIndex * MICRO, nTimeIndex * MILLI / nBlocksTotal);

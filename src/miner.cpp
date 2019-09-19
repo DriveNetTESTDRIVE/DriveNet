@@ -201,7 +201,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
         vActiveSidechain = scdb.GetActiveSidechains();
 
     if (fDrivechainEnabled) {
-        // Add WT^(s) which have been validated
+        // If a WT^ has sufficient workscore, create the payout transaction
         for (const Sidechain& s : vActiveSidechain) {
             CMutableTransaction wtx;
             bool fCreated = CreateWTPrimePayout(s.nSidechain, wtx);
