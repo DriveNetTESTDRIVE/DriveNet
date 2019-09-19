@@ -322,22 +322,18 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
             }
         }
 
-        // Add the fee tx to the block
+        // TODO calculate the fee tx as part of the block's txn package so that
+        // we always make room for it.
+        //
+        // Add the fee tx to the block if we can
         if (CTransaction(feeTx).GetValueOut()) {
-            pblock->vtx.push_back(MakeTransactionRef(std::move(feeTx)));
-            pblocktemplate->vTxSigOpsCost.push_back(WITNESS_SCALE_FACTOR * GetLegacySigOpCount(*pblock->vtx.back()));
-            pblocktemplate->vTxFees.push_back(0);
-
-            // Test block validity after adding critical fee tx
-            CValidationState state;
-            if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
-                // TODO right now if the block is too big or invalid after this
-                // will result in giving up the BMM commitment fees...
-
-                // Remove fee tx if the block is too big or otherwise invalid
-                pblock->vtx.pop_back();
-                pblocktemplate->vTxSigOpsCost.pop_back();
-                pblocktemplate->vTxFees.pop_back();
+            // Check if block weight after adding transaction would be too large
+            if ((nBlockWeight + GetTransactionWeight(feeTx)) < MAX_BLOCK_WEIGHT) {
+                pblock->vtx.push_back(MakeTransactionRef(std::move(feeTx)));
+                pblocktemplate->vTxSigOpsCost.push_back(WITNESS_SCALE_FACTOR * GetLegacySigOpCount(*pblock->vtx.back()));
+                pblocktemplate->vTxFees.push_back(0);
+            } else {
+                LogPrintf("%s: Miner could not add BMM fee tx, block size > MAX_BLOCK_WEIGHT ", __func__);
             }
         }
     }
