@@ -489,8 +489,8 @@ bool BlockAssembler::CreateWTPrimePayout(uint8_t nSidechain, CMutableTransaction
         return false;
 
     // Copy outputs from B-WT^
-    std::vector<CTransaction> vWTPrime = scdb.GetWTPrimeCache();
-    for (const CTransaction& tx : vWTPrime) {
+    std::vector<CMutableTransaction> vWTPrime = scdb.GetWTPrimeCache();
+    for (const CMutableTransaction& tx : vWTPrime) {
         if (tx.GetHash() == hashBest) {
             for (const CTxOut& out : tx.vout)
                 mtx.vout.push_back(out);

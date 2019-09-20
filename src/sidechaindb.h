@@ -15,6 +15,7 @@ class CCriticalData;
 class COutPoint;
 class CScript;
 class CTransaction;
+class CMutableTransaction;
 class CTxOut;
 class uint256;
 
@@ -122,7 +123,7 @@ public:
     std::vector<SidechainWTPrimeState> GetVotes(VoteType vote) const;
 
     /** Return cached WT^ transaction(s) */
-    std::vector<CTransaction> GetWTPrimeCache() const;
+    std::vector<CMutableTransaction> GetWTPrimeCache() const;
 
     /** Is there anything being tracked by the SCDB? */
     bool HasState() const;
@@ -211,8 +212,10 @@ private:
      */
     std::vector<SidechainProposal> vSidechainProposal;
 
-    /** Cache of potential WT^ transactions */
-    std::vector<CTransaction> vWTPrimeCache;
+    /** Cache of potential WT^ transactions
+     * TODO consider refactoring to use CTransactionRef
+     */
+    std::vector<CMutableTransaction> vWTPrimeCache;
 
     /** Tracks verification status of WT^(s) */
     // x = nSidechain

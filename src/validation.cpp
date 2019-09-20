@@ -1564,7 +1564,7 @@ bool CheckInputs(const CTransaction& tx, CValidationState &state, const CCoinsVi
                 return true;
             }
 
-            bool fDrivechainsEnabled = IsDrivechainEnabled(chainActive.Tip(), Params().GetConsensus());
+            //bool fDrivechainsEnabled = IsDrivechainEnabled(chainActive.Tip(), Params().GetConsensus());
 
             for (unsigned int i = 0; i < tx.vin.size(); i++) {
                 const COutPoint &prevout = tx.vin[i].prevout;
@@ -5439,7 +5439,7 @@ bool LoadWTPrimeCache()
 
 void DumpWTPrimeCache()
 {
-    std::vector<CTransaction> vWTPrime = scdb.GetWTPrimeCache();
+    std::vector<CMutableTransaction> vWTPrime = scdb.GetWTPrimeCache();
 
     int count = vWTPrime.size();
 
@@ -5455,7 +5455,7 @@ void DumpWTPrimeCache()
         fileout << CLIENT_VERSION; // version that wrote the file
         fileout << count; // Number of WT^(s) in file
 
-        for (const CTransaction& tx : vWTPrime) {
+        for (const CMutableTransaction& tx : vWTPrime) {
             fileout << MakeTransactionRef(tx);
         }
     }

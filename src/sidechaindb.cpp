@@ -406,7 +406,7 @@ std::vector<SidechainWTPrimeState> SidechainDB::GetVotes(VoteType vote) const
     return vNew;
 }
 
-std::vector<CTransaction> SidechainDB::GetWTPrimeCache() const
+std::vector<CMutableTransaction> SidechainDB::GetWTPrimeCache() const
 {
     return vWTPrimeCache;
 }
@@ -454,7 +454,7 @@ bool SidechainDB::HaveDepositCached(const SidechainDeposit &deposit) const
 
 bool SidechainDB::HaveWTPrimeCached(const uint256& hashWTPrime) const
 {
-    for (const CTransaction& tx : vWTPrimeCache) {
+    for (const CMutableTransaction& tx : vWTPrimeCache) {
         if (tx.GetHash() == hashWTPrime)
             return true;
     }
@@ -655,6 +655,14 @@ bool SidechainDB::SpendWTPrime(uint8_t nSidechain, const uint256& hashBlock, con
 
     // Remove WT^ work score now that is has been paid out
     vWTPrimeStatus[nSidechain].clear();
+
+    // Find the cached transaction for the WT^ we spent and remove it
+    for (size_t i = 0; i < vWTPrimeCache.size(); i++) {
+        if (vWTPrimeCache[i].GetHash() == hashBlind) {
+            vWTPrimeCache[i] = vWTPrimeCache.back();
+            vWTPrimeCache.pop_back();
+        }
+    }
 
     LogPrintf("SCDB %s: Updated sidechain CTIP for nSidechain: %u. CTIP output: %s CTIP amount: %i hashBlock: %s.\n",
         __func__,
