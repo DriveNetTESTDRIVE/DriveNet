@@ -137,7 +137,7 @@ BitcoinGUI::BitcoinGUI(const PlatformStyle *_platformStyle, const NetworkStyle *
 #endif // ENABLE_WALLET
     windowTitle += " " + networkStyle->getTitleAddText();
 
-    windowTitle += "(Bitcoin Core 0.16.99 + Hashrate Escrows + Blind Merged Mining)";
+    windowTitle += "(Bitcoin Core 0.16.99 + BIPs 300 and 301)";
 
 #ifndef Q_OS_MAC
     QApplication::setWindowIcon(networkStyle->getTrayAndWindowIcon());
