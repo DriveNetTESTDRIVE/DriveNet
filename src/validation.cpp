@@ -1809,6 +1809,9 @@ DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockI
     // move best block pointer to prevout block
     view.SetBestBlock(pindex->pprev->GetBlockHash());
 
+    // Log that we have disconnected a block
+    LogPrintf("%s: Block disconnected:\n%s\n", __func__, block.ToString());
+
     return fClean ? DISCONNECT_OK : DISCONNECT_UNCLEAN;
 }
 
