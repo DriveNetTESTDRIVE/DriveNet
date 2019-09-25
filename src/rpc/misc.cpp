@@ -1554,6 +1554,34 @@ UniValue listwtprimes(const JSONRPCRequest& request)
     return ret;
 }
 
+UniValue getscdbhash(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size())
+        throw std::runtime_error(
+            "getscdbhash\n"
+            "Get SCDB hash.\n"
+            );
+
+    UniValue ret(UniValue::VOBJ);
+    ret.push_back(Pair("hashscdb", scdb.GetSCDBHash().ToString()));
+
+    return ret;
+}
+
+UniValue gettotalscdbhash(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size())
+        throw std::runtime_error(
+            "gettotalscdbhash\n"
+            "Get hash of every member of SCDB combined.\n"
+            );
+
+    UniValue ret(UniValue::VOBJ);
+    ret.push_back(Pair("hashscdbtotal", scdb.GetTotalSCDBHash().ToString()));
+
+    return ret;
+}
+
 UniValue echo(const JSONRPCRequest& request)
 {
     if (request.fHelp)
@@ -1614,6 +1642,8 @@ static const CRPCCommand commands[] =
     { "DriveChain",  "getaveragefee",                 &getaveragefee,                {"numblocks", "startheight"}},
     { "DriveChain",  "getworkscore",                  &getworkscore,                 {"nsidechain", "hashwtprime"}},
     { "DriveChain",  "listwtprimes",                  &listwtprimes,                 {"nsidechain"}},
+    { "DriveChain",  "getscdbhash",                   &getscdbhash,                  {}},
+    { "DriveChain",  "gettotalscdbhash",              &gettotalscdbhash,             {}},
 };
 
 void RegisterMiscRPCCommands(CRPCTable &t)
