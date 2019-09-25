@@ -285,6 +285,60 @@ uint256 SidechainDB::GetHashBlockLastSeen()
     return hashBlockLastSeen;
 }
 
+uint256 SidechainDB::GetTotalSCDBHash() const
+{
+    std::vector<uint256> vLeaf;
+
+    // Add mapCTIP
+    std::map<uint8_t, SidechainCTIP>::const_iterator it;
+    for (it = mapCTIP.begin(); it != mapCTIP.end(); it++) {
+        vLeaf.push_back(it->second.GetHash());
+    }
+
+    // Add hashBlockLastSeen
+    vLeaf.push_back(hashBlockLastSeen);
+
+    // Add vActiveSidechain
+    for (const Sidechain& s : vActiveSidechain) {
+        vLeaf.push_back(s.GetHash());
+    }
+
+    // Add vActivationStatus
+    for (const SidechainActivationStatus& s : vActivationStatus) {
+        vLeaf.push_back(s.GetHash());
+    }
+
+    // Add vDepositCache
+    for (const SidechainDeposit& d : vDepositCache) {
+        vLeaf.push_back(d.GetHash());
+    }
+
+    // Add vSidechainHashActivate
+    for (const uint256& u : vSidechainHashActivate) {
+        vLeaf.push_back(u);
+    }
+
+    // Add vSidechainProposal
+    for (const SidechainProposal& p : vSidechainProposal) {
+        vLeaf.push_back(p.GetHash());
+    }
+
+    // Add vWTPrimeCache
+    for (const CMutableTransaction& tx : vWTPrimeCache) {
+        vLeaf.push_back(tx.GetHash());
+    }
+
+    // Add vWTPrimeStatus
+    for (const Sidechain& s : vActiveSidechain) {
+        std::vector<SidechainWTPrimeState> vState = GetState(s.nSidechain);
+        for (const SidechainWTPrimeState& state : vState) {
+            vLeaf.push_back(state.GetHash());
+        }
+    }
+
+    return ComputeMerkleRoot(vLeaf);
+}
+
 uint256 SidechainDB::GetSCDBHash() const
 {
     if (vWTPrimeStatus.empty())

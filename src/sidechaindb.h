@@ -85,6 +85,13 @@ public:
     /** Return the hash of the last block SCDB processed */
     uint256 GetHashBlockLastSeen();
 
+    /** For testing purposes - return the hash of everything that SCDB is
+     * tracking instead of just WT^ state as GetSCDBHash() does.
+     * This includes members used for consensus as well as user data like
+     * which sidechain(s) they have set votes for and their own sidechain
+     * proposals. */
+    uint256 GetTotalSCDBHash() const;
+
     /** Return serialization hash of SCDB latest verification(s) */
     uint256 GetSCDBHash() const;
 
