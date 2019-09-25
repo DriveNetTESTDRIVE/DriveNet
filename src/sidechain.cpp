@@ -99,11 +99,6 @@ bool SidechainWTPrimeState::IsNull() const
     return (hashWTPrime.IsNull());
 }
 
-uint256 SidechainWTPrimeState::GetHash(void) const
-{
-    return SerializeHash(*this);
-}
-
 bool SidechainWTPrimeState::operator==(const SidechainWTPrimeState& a) const
 {
     return (a.nSidechain == nSidechain &&
@@ -153,9 +148,34 @@ bool SidechainProposal::DeserializeFromScript(const CScript& script)
     return true;
 }
 
+uint256 SidechainActivationStatus::GetHash() const
+{
+    return SerializeHash(*this);
+}
+
+uint256 SidechainDeposit::GetHash() const
+{
+    return SerializeHash(*this);
+}
+
+uint256 Sidechain::GetHash() const
+{
+    return SerializeHash(*this);
+}
+
 uint256 SidechainProposal::GetHash() const
 {
-    return SerializeHash(*(SidechainProposal *) this);
+    return SerializeHash(*this);
+}
+
+uint256 SidechainWTPrimeState::GetHash() const
+{
+    return SerializeHash(*this);
+}
+
+uint256 SidechainCTIP::GetHash() const
+{
+    return SerializeHash(*this);
 }
 
 std::vector<unsigned char> SidechainProposal::GetBytes() const

@@ -45,6 +45,14 @@ struct SidechainProposal {
     uint256 hashID1;
     uint160 hashID2;
 
+    bool DeserializeFromScript(const CScript& script);
+
+    std::vector<unsigned char> GetBytes() const;
+    CScript GetScript() const;
+    uint256 GetHash() const;
+    bool operator==(const SidechainProposal& proposal) const;
+    std::string ToString() const;
+
     ADD_SERIALIZE_METHODS
 
     template <typename Stream, typename Operation>
@@ -58,14 +66,6 @@ struct SidechainProposal {
         READWRITE(hashID1);
         READWRITE(hashID2);
     }
-
-    bool DeserializeFromScript(const CScript& script);
-
-    std::vector<unsigned char> GetBytes() const;
-    CScript GetScript() const;
-    uint256 GetHash() const;
-    bool operator==(const SidechainProposal& proposal) const;
-    std::string ToString() const;
 };
 
 struct SidechainActivationStatus
@@ -73,6 +73,8 @@ struct SidechainActivationStatus
     int nAge;
     int nFail;
     SidechainProposal proposal;
+
+    uint256 GetHash() const;
 
     ADD_SERIALIZE_METHODS
 
@@ -99,6 +101,7 @@ struct Sidechain {
     bool operator==(const Sidechain& a) const;
     bool operator==(const SidechainProposal& a) const;
     std::string ToString() const;
+    uint256 GetHash() const;
 
     ADD_SERIALIZE_METHODS
 
@@ -125,6 +128,7 @@ struct SidechainDeposit {
 
     bool operator==(const SidechainDeposit& a) const;
     std::string ToString() const;
+    uint256 GetHash() const;
 
     ADD_SERIALIZE_METHODS
 
@@ -161,7 +165,7 @@ struct SidechainWTPrimeState {
     uint256 hashWTPrime;
 
     bool IsNull() const;
-    uint256 GetHash(void) const;
+    uint256 GetHash() const;
     bool operator==(const SidechainWTPrimeState& a) const;
     std::string ToString() const;
 
@@ -180,6 +184,17 @@ struct SidechainWTPrimeState {
 struct SidechainCTIP {
     COutPoint out;
     CAmount amount;
+
+    uint256 GetHash() const;
+
+    // For hash calculation
+    ADD_SERIALIZE_METHODS
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action) {
+        READWRITE(out);
+        READWRITE(amount);
+    }
 };
 
 #endif // BITCOIN_SIDECHAIN_H
