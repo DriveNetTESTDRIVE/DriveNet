@@ -1675,9 +1675,15 @@ bool AppInitMain()
         ::feeEstimator.Read(est_filein);
     fFeeEstimatesInitialized = true;
 
-    if (drivechainsEnabled && !fReindex) {
-        LoadSidechainActivationStatusCache(); // Sidechain activation status
-        LoadDepositCache(); // Sidechain deposit cache
+    if (drivechainsEnabled) {
+        // If we're reindexing we don't want to read data that exists in blocks
+        if (!fReindex) {
+            LoadSidechainActivationStatusCache(); // Sidechain activation status
+            LoadDepositCache(); // Sidechain deposit cache
+        }
+
+        // We want to read the user's data even if reindexing - this data
+        // was created by the user and is not in any block
         LoadSidechainProposalCache(); // Sidechain proposals we have created
         LoadSidechainActivationHashCache(); // Sidechain hashes we want to ack
     }
