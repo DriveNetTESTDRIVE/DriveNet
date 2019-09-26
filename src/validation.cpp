@@ -1806,6 +1806,12 @@ DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockI
         }
     }
 
+    // Apply undo to SCDB
+    if (!scdb.Undo(pindex->nHeight, block.GetHash(), block.GetPrevHash(), block.vtx[0]->vout, true /* fDebug */)) {
+        error("DisconnectBlock(): Failed to undo SCDB data!");
+        return DISCONNECT_FAILED;
+    }
+
     // move best block pointer to prevout block
     view.SetBestBlock(pindex->pprev->GetBlockHash());
 

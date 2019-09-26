@@ -974,6 +974,22 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const uint256& h
     return true;
 }
 
+bool SidechainDB::Undo(int nHeight, const uint256& hashBlock, const uint256& hashPrevBlock, const std::vector<CTxOut>& vout, bool fDebug)
+{
+    // Undo sidechain activation
+
+    // Undo WT^ score changes
+
+    // Undo hashBlockLastSeen
+    hashBlockLastSeen = hashPrevBlock;
+
+    // If we disconnected a block at the end of a WT^ verification period, we
+    // have to replay all of the data that is erased at the end of each period.
+    // Remove new WT^(s) that were added in the disconnected block
+
+    return true;
+}
+
 // TODO refactor: remove this function
 bool SidechainDB::UpdateSCDBIndex(const std::vector<SidechainWTPrimeState>& vNewScores, int nHeight, bool fDebug)
 {
