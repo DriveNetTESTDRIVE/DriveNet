@@ -2264,8 +2264,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
         // Update / synchronize SCDB
         if (!scdb.Update(pindex->nHeight, block.GetHash(), block.GetPrevHash(), block.vtx[0]->vout, fJustCheck, true /* fDebug */)) {
             LogPrintf("SCDB failed to update with block: %s\n", block.GetHash().ToString());
-            // TODO this should be enabled once SCDB undo works
-            //return false;
+            return error("%s: SCDB update failed for block: %s", __func__, block.GetHash().ToString());
         }
     }
 
