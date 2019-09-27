@@ -1040,8 +1040,12 @@ bool SidechainDB::Undo(int nHeight, const uint256& hashBlock, const uint256& has
             }
         }
 
-        if (!fRemoved) {
+        // TODO If we are disconnecting a block that had a proposal we should
+        // probably actually return an error here if vActivationStatus does
+        // not contain the proposal.
+        if (!fRemoved && vActivationStatus.size()) {
             LogPrintf("%s: SCDB failed to remove sidechain proposal from block: %s.\n", __func__, hashBlock.ToString());
+            LogPrintf("%s: vActivationStatus size: %u", __func__, vActivationStatus.size());
             return false;
         }
     }
