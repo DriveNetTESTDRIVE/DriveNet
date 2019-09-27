@@ -1017,6 +1017,8 @@ bool SidechainDB::Undo(int nHeight, const uint256& hashBlock, const uint256& has
     // have to replay all of the data that is erased at the end of each period.
     // Remove new WT^(s) that were added in the disconnected block
 
+    LogPrintf("%s: SCDB undo for block: %s complete!\n", __func__, hashBlock.ToString());
+
     return true;
 }
 
