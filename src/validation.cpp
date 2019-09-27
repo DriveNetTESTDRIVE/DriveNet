@@ -1808,7 +1808,7 @@ DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockI
 
     // Apply undo to SCDB
     if (!scdb.Undo(pindex->nHeight, block.GetHash(), block.GetPrevHash(), block.vtx[0]->vout, true /* fDebug */)) {
-        error("DisconnectBlock(): Failed to undo SCDB data!");
+        error("%s: Failed to undo SCDB data for block: %s!", __func__, block.GetHash().ToString());
         return DISCONNECT_FAILED;
     }
 
@@ -2269,7 +2269,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
     if (drivechainsEnabled) {
         // Update / synchronize SCDB
         if (!scdb.Update(pindex->nHeight, block.GetHash(), block.GetPrevHash(), block.vtx[0]->vout, fJustCheck, true /* fDebug */)) {
-            LogPrintf("SCDB failed to update with block: %s\n", block.GetHash().ToString());
+            LogPrintf("%s: SCDB failed to update with block: %s\n", __func__, block.GetHash().ToString());
             return error("%s: SCDB update failed for block: %s", __func__, block.GetHash().ToString());
         }
     }
