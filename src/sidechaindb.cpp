@@ -287,6 +287,10 @@ uint256 SidechainDB::GetHashBlockLastSeen()
 
 uint256 SidechainDB::GetTotalSCDBHash() const
 {
+    // Note: This function is used for testing only right now, and is very noisy
+    // in the log. If this function is to be used for non-testing in the future
+    // the log messages should be commented out to be re-enabled for testing if
+    // desired.
     std::vector<uint256> vLeaf;
 
     // Add mapCTIP
@@ -295,38 +299,62 @@ uint256 SidechainDB::GetTotalSCDBHash() const
         vLeaf.push_back(it->second.GetHash());
     }
 
+    uint256 hash = ComputeMerkleRoot(vLeaf);
+    LogPrintf("%s: Hash with CTIP data: %s\n", __func__, hash.ToString());
+
     // Add hashBlockLastSeen
     vLeaf.push_back(hashBlockLastSeen);
+
+    hash = ComputeMerkleRoot(vLeaf);
+    LogPrintf("%s: Hash with hashBlockLastSeen data: %s\n", __func__, hash.ToString());
 
     // Add vActiveSidechain
     for (const Sidechain& s : vActiveSidechain) {
         vLeaf.push_back(s.GetHash());
     }
 
+    hash = ComputeMerkleRoot(vLeaf);
+    LogPrintf("%s: Hash with vActiveSidechain data: %s\n", __func__, hash.ToString());
+
     // Add vActivationStatus
     for (const SidechainActivationStatus& s : vActivationStatus) {
         vLeaf.push_back(s.GetHash());
     }
+
+    hash = ComputeMerkleRoot(vLeaf);
+    LogPrintf("%s: Hash with vActivationStatus data: %s\n", __func__, hash.ToString());
 
     // Add vDepositCache
     for (const SidechainDeposit& d : vDepositCache) {
         vLeaf.push_back(d.GetHash());
     }
 
+    hash = ComputeMerkleRoot(vLeaf);
+    LogPrintf("%s: Hash with vDepositCache data: %s\n", __func__, hash.ToString());
+
     // Add vSidechainHashActivate
     for (const uint256& u : vSidechainHashActivate) {
         vLeaf.push_back(u);
     }
+
+    hash = ComputeMerkleRoot(vLeaf);
+    LogPrintf("%s: Hash with vSidechainHashActivate data: %s\n", __func__, hash.ToString());
 
     // Add vSidechainProposal
     for (const SidechainProposal& p : vSidechainProposal) {
         vLeaf.push_back(p.GetHash());
     }
 
+    hash = ComputeMerkleRoot(vLeaf);
+    LogPrintf("%s: Hash with vSidechainProposal data: %s\n", __func__, hash.ToString());
+
     // Add vWTPrimeCache
     for (const CMutableTransaction& tx : vWTPrimeCache) {
         vLeaf.push_back(tx.GetHash());
     }
+
+    hash = ComputeMerkleRoot(vLeaf);
+    LogPrintf("%s: Hash with vWTPrimeCache data: %s\n", __func__, hash.ToString());
 
     // Add vWTPrimeStatus
     for (const Sidechain& s : vActiveSidechain) {
@@ -335,6 +363,9 @@ uint256 SidechainDB::GetTotalSCDBHash() const
             vLeaf.push_back(state.GetHash());
         }
     }
+
+    hash = ComputeMerkleRoot(vLeaf);
+    LogPrintf("%s: Hash with vWTPrimeStatus data (total hash): %s\n", __func__, hash.ToString());
 
     return ComputeMerkleRoot(vLeaf);
 }
