@@ -265,18 +265,20 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
             std::vector<SidechainActivationStatus> vActivation = scdb.GetSidechainActivationStatus();
             for (const SidechainProposal& p : vProposal) {
                 // Check if this proposal is already being tracked by SCDB
+                bool fFound = false;
                 for (const SidechainActivationStatus& s : vActivation) {
-                    if (s.proposal == p)
-                        continue;
-
-                    GenerateSidechainProposalCommitment(*pblock, p, chainparams.GetConsensus());
-                    hashProposal = p.GetHash();
-                    fCreated = true;
-                    LogPrintf("%s: Generated sidechain proposal commitment for:\n%s\n", __func__, p.ToString());
-                    break;
+                    if (s.proposal == p) {
+                        fFound = true;
+                        break;
+                    }
                 }
-                if (fCreated)
-                    break;
+                if (fFound)
+                    continue;
+
+                GenerateSidechainProposalCommitment(*pblock, p, chainparams.GetConsensus());
+                hashProposal = p.GetHash();
+                LogPrintf("%s: Generated sidechain proposal commitment for:\n%s\n", __func__, p.ToString());
+                break;
             }
         }
 
