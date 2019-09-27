@@ -254,18 +254,29 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
             GenerateWTPrimeHashCommitment(*pblock, vFreshWTPrime.back(), s.nSidechain, chainparams.GetConsensus());
         }
 
-        // TODO this should loop through sidechains with activation status,
-        // and activated sidechains to figure out which proposals we haven't
-        // proposed yet.
-        //
-        // Commit the oldest uncommitted sidechain proposal that we have created
+        // Scan through our sidechain proposals and commit the first one we find
+        // that hasn't already been commited and is tracked by SCDB.
         //
         // If we commit a proposal, save the hash to easily ACK it later
         uint256 hashProposal;
         std::vector<SidechainProposal> vProposal = scdb.GetSidechainProposals();
         if (!vProposal.empty()) {
-            GenerateSidechainProposalCommitment(*pblock, vProposal.front(), chainparams.GetConsensus());
-            hashProposal = vProposal.front().GetHash();
+            bool fCreated = false;
+            std::vector<SidechainActivationStatus> vActivation = scdb.GetSidechainActivationStatus();
+            for (const SidechainProposal& p : vProposal) {
+                // Check if this proposal is already being tracked by SCDB
+                for (const SidechainActivationStatus& s : vActivation) {
+                    if (s.proposal == p)
+                        continue;
+
+                    GenerateSidechainProposalCommitment(*pblock, p, chainparams.GetConsensus());
+                    hashProposal = p.GetHash();
+                    fCreated = true;
+                    break;
+                }
+                if (fCreated)
+                    break;
+            }
         }
 
         // TODO for now, if this is set activate any sidechain which has been
