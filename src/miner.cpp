@@ -272,6 +272,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
                     GenerateSidechainProposalCommitment(*pblock, p, chainparams.GetConsensus());
                     hashProposal = p.GetHash();
                     fCreated = true;
+                    LogPrintf("%s: Generated sidechain proposal commitment for:\n%s\n", __func__, p.ToString());
                     break;
                 }
                 if (fCreated)
