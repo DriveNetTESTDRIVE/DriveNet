@@ -1009,8 +1009,10 @@ bool SidechainDB::Undo(int nHeight, const uint256& hashBlock, const uint256& has
             }
         }
 
-        if (!fRemoved)
+        if (!fRemoved) {
+            LogPrintf("%s: SCDB failed to remove sidechain proposal from block: %s.\n", __func__, hashBlock.ToString());
             return false;
+        }
     }
 
     // If we disconnected a block at the end of a WT^ verification period, we
