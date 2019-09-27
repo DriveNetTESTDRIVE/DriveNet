@@ -192,9 +192,6 @@ private:
     /* Takes a list of sidechain hashes to upvote */
     void UpdateActivationStatus(const std::vector<uint256>& vHash);
 
-    /* Takes a list of sidechain hashes to undo upvotes */
-    void UndoActivationStatusUpdate(const std::vector<uint256>& vHash);
-
     /*
      * The CTIP of nSidechain up to the latest connected block (does not include
      * mempool txns).

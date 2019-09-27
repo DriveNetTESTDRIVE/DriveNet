@@ -976,12 +976,42 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const uint256& h
 
 bool SidechainDB::Undo(int nHeight, const uint256& hashBlock, const uint256& hashPrevBlock, const std::vector<CTxOut>& vout, bool fDebug)
 {
-    // Undo sidechain activation
+    // Undo sidechain activation & de-activate a sidechain if it was activated
+    // in the disconnected block. If a sidechain was de-activated then we will
+    // also need to add it back to vActivationStatus and restore it's score
 
     // Undo WT^ score changes
 
     // Undo hashBlockLastSeen
     hashBlockLastSeen = hashPrevBlock;
+
+    // Undo CTIP updates
+
+    // Remove sidechain proposals that were committed in the disconnected block
+    for (const CTxOut& out : vout) {
+        const CScript& scriptPubKey = out.scriptPubKey;
+
+        if (!scriptPubKey.IsSidechainProposalCommit())
+            continue;
+
+        SidechainProposal proposal;
+        if (!proposal.DeserializeFromScript(scriptPubKey))
+            continue;
+
+        bool fRemoved = false;
+
+        // Remove from SCDB
+        for (size_t i = 0; i < vActivationStatus.size(); i++) {
+            if (vActivationStatus[i].proposal == proposal) {
+                vActivationStatus[i] = vActivationStatus.back();
+                vActivationStatus.pop_back();
+                fRemoved = true;
+            }
+        }
+
+        if (!fRemoved)
+            return false;
+    }
 
     // If we disconnected a block at the end of a WT^ verification period, we
     // have to replay all of the data that is erased at the end of each period.
@@ -1270,14 +1300,6 @@ void SidechainDB::UpdateActivationStatus(const std::vector<uint256>& vHash)
                     __func__,
                     vActivationStatus[i].proposal.ToString());
         }
-    }
-}
-
-void SidechainDB::UndoActivationStatusUpdate(const std::vector<uint256>& vHash)
-{
-    // TODO
-    // TODO Refactor: improve by changing containers?
-    for (const uint256& u : vHash) {
     }
 }
 
