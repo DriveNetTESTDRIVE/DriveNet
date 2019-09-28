@@ -1012,6 +1012,18 @@ bool SidechainDB::Undo(int nHeight, const uint256& hashBlock, const uint256& has
         return false;
     }
 
+    // Undo deposits
+    // Loop through the transactions in the block being disconnected, and if
+    // they match a transaction in our deposit cache remove it.
+    for (const CTransactionRef& tx : vtx) {
+        for (size_t i = 0; i < vDepositCache.size(); i++) {
+            if (*tx == CTransaction(vDepositCache[i].tx)) {
+                vDepositCache[i] = vDepositCache.back();
+                vDepositCache.pop_back();
+            }
+        }
+    }
+
     // Undo sidechain activation & de-activate a sidechain if it was activated
     // in the disconnected block. If a sidechain was de-activated then we will
     // also need to add it back to vActivationStatus and restore it's score
