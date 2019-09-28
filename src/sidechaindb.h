@@ -6,6 +6,7 @@
 #define BITCOIN_SIDECHAINDB_H
 
 #include <map>
+#include <memory>
 #include <queue>
 #include <vector>
 
@@ -15,6 +16,7 @@ class CCriticalData;
 class COutPoint;
 class CScript;
 class CTransaction;
+typedef std::shared_ptr<const CTransaction> CTransactionRef;
 class CMutableTransaction;
 class CTxOut;
 class uint256;
@@ -170,7 +172,7 @@ public:
     bool Update(int nHeight, const uint256& hashBlock, const uint256& hashPrevBlock, const std::vector<CTxOut>& vout, bool fJustCheck = false, bool fDebug = false);
 
     /** Undo the changes to SCDB of a block - for block is disconnection */
-    bool Undo(int nHeight, const uint256& hashBlock, const uint256& hashPrevBlock, const std::vector<CTxOut>& vout, bool fDebug = false);
+    bool Undo(int nHeight, const uint256& hashBlock, const uint256& hashPrevBlock, const std::vector<CTransactionRef>& vtx, bool fDebug = false);
 
     /** Update / add multiple SCDB WT^(s) to SCDB */
     bool UpdateSCDBIndex(const std::vector<SidechainWTPrimeState>& vNewScores, int nHeight, bool fDebug = false);

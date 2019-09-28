@@ -1005,8 +1005,13 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const uint256& h
     return true;
 }
 
-bool SidechainDB::Undo(int nHeight, const uint256& hashBlock, const uint256& hashPrevBlock, const std::vector<CTxOut>& vout, bool fDebug)
+bool SidechainDB::Undo(int nHeight, const uint256& hashBlock, const uint256& hashPrevBlock, const std::vector<CTransactionRef>& vtx, bool fDebug)
 {
+    if (!vtx.size()) {
+        LogPrintf("%s: SCDB undo failed for block: %s - vtx is empty!\n", __func__, hashBlock.ToString());
+        return false;
+    }
+
     // Undo sidechain activation & de-activate a sidechain if it was activated
     // in the disconnected block. If a sidechain was de-activated then we will
     // also need to add it back to vActivationStatus and restore it's score
@@ -1019,7 +1024,7 @@ bool SidechainDB::Undo(int nHeight, const uint256& hashBlock, const uint256& has
     // Undo CTIP updates
 
     // Remove sidechain proposals that were committed in the disconnected block
-    for (const CTxOut& out : vout) {
+    for (const CTxOut& out : vtx[0]->vout) {
         const CScript& scriptPubKey = out.scriptPubKey;
 
         if (!scriptPubKey.IsSidechainProposalCommit())

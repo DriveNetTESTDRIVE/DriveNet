@@ -1807,7 +1807,7 @@ DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockI
     }
 
     // Apply undo to SCDB
-    if (!scdb.Undo(pindex->nHeight, block.GetHash(), block.GetPrevHash(), block.vtx[0]->vout, true /* fDebug */)) {
+    if (!scdb.Undo(pindex->nHeight, block.GetHash(), block.GetPrevHash(), block.vtx, true /* fDebug */)) {
         error("%s: Failed to undo SCDB data for block: %s!", __func__, block.GetHash().ToString());
         return DISCONNECT_FAILED;
     }
