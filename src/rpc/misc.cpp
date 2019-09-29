@@ -1468,7 +1468,7 @@ UniValue getworkscore(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() != 2)
         throw std::runtime_error(
-            "getworkscore \"num_blocks\")\n"
+            "getworkscore \"nsidechain\" \"hashwtprime\")\n"
             "Request the workscore of a WT^\n"
             "\nArguments:\n"
             "1. nsidechain     (numeric, required) Sidechain number to look up WT^ of\n"
@@ -1514,6 +1514,49 @@ UniValue getworkscore(const JSONRPCRequest& request)
     UniValue result(UniValue::VOBJ);
     result.push_back(Pair("workscore", nWorkScore));
     return result;
+}
+
+UniValue listwtprimestatus(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() != 1)
+        throw std::runtime_error(
+            "listwtprimestatus \"nsidechain\")\n"
+            "Request the workscore of a WT^\n"
+            "\nArguments:\n"
+            "1. nsidechain     (numeric, required) Sidechain number to look up WT^(s) of\n"
+            "\nResult:\n"
+            "{\n"
+            "  \"hashwtprime\" : (string) hash of WT^\n"
+            "  \"nblocksleft\" : x, (numeric) verification blocks remaining\n"
+            "  \"workscore\" : x, (numeric) workscore of WT^\n"
+            "}\n"
+            "\n"
+            "\nExample:\n"
+            + HelpExampleCli("getworkscore", "0 hashWTPrime")
+            );
+
+    // nSidechain
+    int nSidechain = request.params[0].get_int();
+
+    if (!IsSidechainNumberValid(nSidechain))
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid Sidechain number");
+
+    std::vector<SidechainWTPrimeState> vState = scdb.GetState(nSidechain);
+    if (vState.empty())
+        throw JSONRPCError(RPC_TYPE_ERROR, "No WT^(s) in SCDB for sidechain");
+
+    UniValue ret(UniValue::VARR);
+    for (const SidechainWTPrimeState& s : vState) {
+        UniValue obj(UniValue::VOBJ);
+
+        obj.push_back(Pair("hashwtprime", s.hashWTPrime.ToString()));
+        obj.push_back(Pair("nblocksleft", s.nBlocksLeft));
+        obj.push_back(Pair("nworkscore", s.nWorkScore));
+
+        ret.push_back(obj);
+    }
+
+    return ret;
 }
 
 UniValue listcachedwtprimetransactions(const JSONRPCRequest& request)
@@ -1642,6 +1685,7 @@ static const CRPCCommand commands[] =
     { "DriveChain",  "getaveragefee",                 &getaveragefee,                {"numblocks", "startheight"}},
     { "DriveChain",  "getworkscore",                  &getworkscore,                 {"nsidechain", "hashwtprime"}},
     { "DriveChain",  "listcachedwtprimetransactions", &listcachedwtprimetransactions,{"nsidechain"}},
+    { "DriveChain",  "listwtprimestatus",             &listwtprimestatus,            {"nsidechain"}},
     { "DriveChain",  "getscdbhash",                   &getscdbhash,                  {}},
     { "DriveChain",  "gettotalscdbhash",              &gettotalscdbhash,             {}},
 };
