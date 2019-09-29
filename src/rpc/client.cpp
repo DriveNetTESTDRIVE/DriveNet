@@ -142,8 +142,6 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "listsidechaindeposits", 1, "count" },
     { "countsidechaindeposits", 0, "nsidechain" },
     { "receivewtprime", 0, "nsidechain" },
-    { "receivewtprimeupdate", 0, "height" },
-    { "receivewtprimeupdate", 1, "update" },
     { "createsidechaindeposit", 0, "nsidechain" },
     { "createsidechaindeposit", 2, "amount" },
     { "getaveragefee", 0, "blockcount" },
