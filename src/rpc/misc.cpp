@@ -1516,12 +1516,12 @@ UniValue getworkscore(const JSONRPCRequest& request)
     return result;
 }
 
-UniValue listwtprimes(const JSONRPCRequest& request)
+UniValue listcachedwtprimetransactions(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() != 1)
         throw std::runtime_error(
-            "listwtprimes\n"
-            "List WT^(s) for nSidechain\n"
+            "listcachedwtprimetransactions\n"
+            "List my cached WT^(s) for nSidechain\n"
             "\nArguments:\n"
             "1. nsidechain     (numeric, required) Sidechain number to list WT^(s) of\n"
             "\nResult: (array)\n"
@@ -1530,7 +1530,7 @@ UniValue listwtprimes(const JSONRPCRequest& request)
             "}\n"
             "\n"
             "\nExample:\n"
-            + HelpExampleCli("listwtprimes", "0")
+            + HelpExampleCli("listcachedwtprimetransactions", "0")
             );
 
     // nSidechain
@@ -1641,7 +1641,7 @@ static const CRPCCommand commands[] =
     { "DriveChain",  "vote",                          &vote,                         {}},
     { "DriveChain",  "getaveragefee",                 &getaveragefee,                {"numblocks", "startheight"}},
     { "DriveChain",  "getworkscore",                  &getworkscore,                 {"nsidechain", "hashwtprime"}},
-    { "DriveChain",  "listwtprimes",                  &listwtprimes,                 {"nsidechain"}},
+    { "DriveChain",  "listcachedwtprimetransactions", &listcachedwtprimetransactions,{"nsidechain"}},
     { "DriveChain",  "getscdbhash",                   &getscdbhash,                  {}},
     { "DriveChain",  "gettotalscdbhash",              &gettotalscdbhash,             {}},
 };

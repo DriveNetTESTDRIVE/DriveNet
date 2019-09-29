@@ -1041,18 +1041,15 @@ bool SidechainDB::Undo(int nHeight, const uint256& hashBlock, const uint256& has
         }
     }
 
+    // Undo CTIP updates
+    mapCTIP = mapCTIPPrevious;
+    mapCTIPPrevious.clear();
+
     // Undo sidechain activation & de-activate a sidechain if it was activated
     // in the disconnected block. If a sidechain was de-activated then we will
     // also need to add it back to vActivationStatus and restore it's score
 
     // Undo WT^ score changes
-
-    // Undo hashBlockLastSeen
-    hashBlockLastSeen = hashPrevBlock;
-
-    // Undo CTIP updates
-    mapCTIP = mapCTIPPrevious;
-    mapCTIPPrevious.clear();
 
     // Remove sidechain proposals that were committed in the disconnected block
     for (const CTxOut& out : vtx[0]->vout) {
@@ -1085,6 +1082,9 @@ bool SidechainDB::Undo(int nHeight, const uint256& hashBlock, const uint256& has
             return false;
         }
     }
+
+    // Undo hashBlockLastSeen
+    hashBlockLastSeen = hashPrevBlock;
 
     // If we disconnected a block at the end of a WT^ verification period, we
     // have to replay all of the data that is erased at the end of each period.
