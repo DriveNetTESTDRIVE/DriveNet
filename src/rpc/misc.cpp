@@ -1511,9 +1511,7 @@ UniValue getworkscore(const JSONRPCRequest& request)
     if (nWorkScore == -1)
         throw JSONRPCError(RPC_TYPE_ERROR, "No WT^ workscore in SCDB");
 
-    UniValue result(UniValue::VOBJ);
-    result.push_back(Pair("workscore", nWorkScore));
-    return result;
+    return nWorkScore;
 }
 
 UniValue listwtprimestatus(const JSONRPCRequest& request)
