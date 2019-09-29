@@ -74,10 +74,10 @@ void SidechainDB::AddDeposits(const std::vector<CTransaction>& vtx, const uint25
 
     // Add deposits to cache
     if (!fJustCheck)
-        AddDeposits(vDeposit);
+        AddDeposits(vDeposit, hashBlock);
 }
 
-void SidechainDB::AddDeposits(const std::vector<SidechainDeposit>& vDeposit)
+void SidechainDB::AddDeposits(const std::vector<SidechainDeposit>& vDeposit, const uint256& hashBlock)
 {
     for (const SidechainDeposit& d : vDeposit) {
         if (!IsSidechainNumberValid(d.nSidechain))
@@ -92,8 +92,28 @@ void SidechainDB::AddDeposits(const std::vector<SidechainDeposit>& vDeposit)
         ctip.out = out;
         ctip.amount = amount;
 
+        // Backup previous CTIP and update SCDB's current CTIP info
+        mapCTIPPrevious = mapCTIP;
         mapCTIP[d.nSidechain] = ctip;
         vDepositCache.push_back(d);
+
+        // If hash block is null - that means we loaded deposits from disk
+        if (!hashBlock.IsNull()) {
+            LogPrintf("SCDB %s: Updated sidechain CTIP for nSidechain: %u. \
+                    CTIP output: %s CTIP amount: %i hashBlock: %s.\n",
+                __func__,
+                d.nSidechain,
+                out.ToString(),
+                amount,
+                hashBlock.ToString());
+        } else {
+            LogPrintf("SCDB %s: Updated sidechain CTIP for nSidechain: %u. \
+                    CTIP output: %s CTIP amount: %i. (Loaded from disk).\n",
+                __func__,
+                d.nSidechain,
+                out.ToString(),
+                amount);
+        }
     }
 }
 
@@ -248,6 +268,11 @@ std::map<uint8_t, SidechainCTIP> SidechainDB::GetCTIP() const
     return mapCTIP;
 }
 
+std::map<uint8_t, SidechainCTIP> SidechainDB::GetPreviousCTIP() const
+{
+    return mapCTIPPrevious;
+}
+
 std::vector<SidechainDeposit> SidechainDB::GetDeposits(uint8_t nSidechain) const
 {
     std::vector<SidechainDeposit> vDeposit;
@@ -301,6 +326,14 @@ uint256 SidechainDB::GetTotalSCDBHash() const
 
     uint256 hash = ComputeMerkleRoot(vLeaf);
     LogPrintf("%s: Hash with CTIP data: %s\n", __func__, hash.ToString());
+
+    // Add mapPreviousCTIP
+    for (it = mapCTIPPrevious.begin(); it != mapCTIPPrevious.end(); it++) {
+        vLeaf.push_back(it->second.GetHash());
+    }
+
+    hash = ComputeMerkleRoot(vLeaf);
+    LogPrintf("%s: Hash with previous CTIP data: %s\n", __func__, hash.ToString());
 
     // Add hashBlockLastSeen
     vLeaf.push_back(hashBlockLastSeen);
@@ -597,6 +630,7 @@ void SidechainDB::Reset()
 {
     // Clear out CTIP data
     mapCTIP.clear();
+    mapCTIPPrevious.clear();
 
     // Reset hashBlockLastSeen
     hashBlockLastSeen.SetNull();
@@ -718,16 +752,6 @@ bool SidechainDB::SpendWTPrime(uint8_t nSidechain, const uint256& hashBlock, con
     if (fJustCheck)
         return true;
 
-    // Update CTIP
-    COutPoint out(tx.GetHash(), n);
-    CAmount amount = tx.vout[n].nValue;
-
-    SidechainCTIP ctip;
-    ctip.out = out;
-    ctip.amount = amount;
-
-    mapCTIP[nSidechain] = ctip;
-
     // Create a sidechain deposit object for the return amount
     SidechainDeposit deposit;
     deposit.nSidechain = nSidechain;
@@ -736,7 +760,7 @@ bool SidechainDB::SpendWTPrime(uint8_t nSidechain, const uint256& hashBlock, con
     deposit.n = n;
     deposit.hashBlock = hashBlock;
 
-    AddDeposits(std::vector<SidechainDeposit>{deposit});
+    AddDeposits(std::vector<SidechainDeposit>{deposit}, hashBlock);
 
     // Remove WT^ work score now that is has been paid out
     vWTPrimeStatus[nSidechain].clear();
@@ -748,13 +772,6 @@ bool SidechainDB::SpendWTPrime(uint8_t nSidechain, const uint256& hashBlock, con
             vWTPrimeCache.pop_back();
         }
     }
-
-    LogPrintf("SCDB %s: Updated sidechain CTIP for nSidechain: %u. CTIP output: %s CTIP amount: %i hashBlock: %s.\n",
-        __func__,
-        nSidechain,
-        out.ToString(),
-        amount,
-        hashBlock.ToString());
 
     return true;
 }
@@ -1034,6 +1051,8 @@ bool SidechainDB::Undo(int nHeight, const uint256& hashBlock, const uint256& has
     hashBlockLastSeen = hashPrevBlock;
 
     // Undo CTIP updates
+    mapCTIP = mapCTIPPrevious;
+    mapCTIPPrevious.clear();
 
     // Remove sidechain proposals that were committed in the disconnected block
     for (const CTxOut& out : vtx[0]->vout) {

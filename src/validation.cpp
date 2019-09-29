@@ -1812,6 +1812,9 @@ DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockI
         return DISCONNECT_FAILED;
     }
 
+    // Update mempool CTIP to previous
+    mempool.UpdateCTIP(scdb.GetCTIP());
+
     // move best block pointer to prevout block
     view.SetBestBlock(pindex->pprev->GetBlockHash());
 
@@ -5365,7 +5368,7 @@ bool LoadDepositCache()
     // Add to SCDB
     // TODO nSidechain
     if (!vDeposit.empty()) {
-        scdb.AddDeposits(vDeposit);
+        scdb.AddDeposits(vDeposit, uint256());
         mempool.UpdateCTIP(scdb.GetCTIP());
     }
 

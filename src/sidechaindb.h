@@ -39,7 +39,7 @@ public:
     void AddDeposits(const std::vector<CTransaction>& vtx, const uint256& hashBlock, bool fJustCheck = false);
 
     /** Add deposit(s) to cache - from disk cache */
-    void AddDeposits(const std::vector<SidechainDeposit>& vDeposit);
+    void AddDeposits(const std::vector<SidechainDeposit>& vDeposit, const uint256& hashBlock);
 
     /** Add a new WT^ to SCDB */
     bool AddWTPrime(uint8_t nSidechain, const uint256& hashWTPrime, int nHeight, bool fDebug = false);
@@ -77,6 +77,9 @@ public:
 
     /** Return the CTIP (critical transaction index pair) for all sidechains */
     std::map<uint8_t, SidechainCTIP> GetCTIP() const;
+
+    /** Return the previous CTIP for all sidechains */
+    std::map<uint8_t, SidechainCTIP> GetPreviousCTIP() const;
 
     /** Return vector of cached deposits for nSidechain. */
     std::vector<SidechainDeposit> GetDeposits(uint8_t nSidechain) const;
@@ -191,7 +194,7 @@ private:
      */
     bool ApplyDefaultUpdate();
 
-    /* Takes a list of sidechain hashes to upvote */
+    /** Takes a list of sidechain hashes to upvote */
     void UpdateActivationStatus(const std::vector<uint256>& vHash);
 
     /*
@@ -199,6 +202,9 @@ private:
      * mempool txns).
      */
     std::map<uint8_t, SidechainCTIP> mapCTIP;
+
+    /** The CTIP of nSidechain from the previously connected block */
+    std::map<uint8_t, SidechainCTIP> mapCTIPPrevious;
 
     /** The most recent block that SCDB has processed */
     uint256 hashBlockLastSeen;

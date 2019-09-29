@@ -1414,10 +1414,10 @@ bool AppInitMain()
     bool drivechainsEnabled = IsDrivechainEnabled(chainActive.Tip(), chainparams.GetConsensus());
 
     // TODO remove
-    if (drivechainsEnabled) {
+    if (!fReindex && drivechainsEnabled) {
         LoadActiveSidechainCache();
         LoadDepositCache();
-        LoadWTPrimeCache();
+        //LoadWTPrimeCache();
     }
 
     // ********************************************************* Step 8: load block chain
