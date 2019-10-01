@@ -5924,9 +5924,10 @@ bool ResyncSCDB()
     const int nHeight = chainActive.Height();
     int nTail = nHeight;
     for (;;) {
-        if (nTail < 0)
+        if (nTail < 0) {
             LogPrintf("%s: Failed to initialize SCDB, invalid last period height\n", __func__);
             return false;
+        }
         if (nTail == 0 || nTail % SIDECHAIN_VERIFICATION_PERIOD == 0)
             break;
         nTail--;
