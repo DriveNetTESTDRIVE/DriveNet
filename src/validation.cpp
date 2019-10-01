@@ -5917,7 +5917,7 @@ void DumpSCDBCache()
 
 bool ResyncSCDB()
 {
-    uiInterface.InitMessage(_("Synchronizing sidechain database & coinbase cache..."));
+    uiInterface.InitMessage(_("Resyncing sidechain database..."));
 
     // TODO use GetLastSidechainVerificationPeriod() from validation
     // Find out how far back (in blocks) we need to synchronize SCDB
