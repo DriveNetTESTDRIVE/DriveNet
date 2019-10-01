@@ -5958,6 +5958,7 @@ bool ResyncSCDB()
             return false;
         }
     }
+    LogPrintf("%s: SCDB resync at height %u complete.\n", __func__, nHeight);
     return true;
 }
 
