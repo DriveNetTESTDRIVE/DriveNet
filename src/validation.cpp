@@ -3154,7 +3154,6 @@ bool CChainState::ReceivedBlockTransactions(const CBlock &block, CValidationStat
 
         if (nCoinbaseCached >= COINBASE_CACHE_TARGET + COINBASE_CACHE_PRUNE_INTERVAL)
             PruneCoinbaseCache();
-
     }
 
     pindexNew->RaiseValidity(BLOCK_VALID_TRANSACTIONS);
@@ -5914,6 +5913,52 @@ void DumpSCDBCache()
     DumpActiveSidechainCache();
     DumpSidechainProposalCache();
     DumpSidechainActivationHashCache();
+}
+
+bool ResyncSCDB()
+{
+    uiInterface.InitMessage(_("Synchronizing sidechain database & coinbase cache..."));
+
+    // TODO use GetLastSidechainVerificationPeriod() from validation
+    // Find out how far back (in blocks) we need to synchronize SCDB
+    const int nHeight = chainActive.Height();
+    int nTail = nHeight;
+    for (;;) {
+        if (nTail < 0)
+            LogPrintf("%s: Failed to initialize SCDB, invalid last period height\n", __func__);
+            return false;
+        if (nTail == 0 || nTail % SIDECHAIN_VERIFICATION_PERIOD == 0)
+            break;
+        nTail--;
+    }
+
+    // Update SCDB
+    for (int i = nTail; i <= nHeight; i++) {
+        // Skip genesis block
+        if (i == 0)
+            continue;
+
+        CBlockIndex* pindex = chainActive[i];
+        // Check that block index exists
+        if (!pindex) {
+            LogPrintf("%s: Failed to initialize SCDB, cannot read null block index. Exiting.\n", __func__);
+            return false;
+        }
+
+        // Check that coinbase is cached
+        if (!pindex->fCoinbase || !pindex->coinbase) {
+            LogPrintf("%s: Failed to initalize SCDB, Corrupt coinbase cache.\n", __func__);
+            return false;
+        }
+
+        // Update SCDB
+        std::string strError = "";
+        if (!scdb.Update(i, pindex->GetBlockHash(), pindex->GetPrevBlockHash(), pindex->coinbase->vout, false /* fJustCheck */, true /* fDebug */)) {
+            LogPrintf("%s: Error: Failed to initialize SCDB - invalid update in block:\n%s\n", __func__, pindex->ToString());
+            return false;
+        }
+    }
+    return true;
 }
 
 class CMainCleanup

@@ -1417,7 +1417,6 @@ bool AppInitMain()
     if (!fReindex && drivechainsEnabled) {
         LoadActiveSidechainCache();
         LoadDepositCache();
-        //LoadWTPrimeCache();
     }
 
     // ********************************************************* Step 8: load block chain
@@ -1616,43 +1615,11 @@ bool AppInitMain()
     // Synchronize SCDB
     if (drivechainsEnabled && !fReindex && chainActive.Tip() && (chainActive.Tip()->GetBlockHash() != scdb.GetHashBlockLastSeen()))
     {
+        // TODO suggest reindex if fails
         uiInterface.InitMessage(_("Synchronizing sidechain database & coinbase cache..."));
-
-        // TODO use GetLastSidechainVerificationPeriod() from validation
-        // Find out how far back (in blocks) we need to synchronize SCDB
-        const int nHeight = chainActive.Height();
-        int nTail = nHeight;
-        for (;;) {
-            if (nTail < 0)
-                return InitError("Failed to initialize SCDB, invalid last period height\n");
-            if (nTail == 0 || nTail % SIDECHAIN_VERIFICATION_PERIOD == 0)
-                break;
-            nTail--;
-        }
-
-        // Update SCDB
-        for (int i = nTail; i <= nHeight; i++) {
-            // Skip genesis block
-            if (i == 0)
-                continue;
-
-            CBlockIndex* pindex = chainActive[i];
-            // Check that block index exists
-            if (!pindex) {
-                LogPrintf("Failed to initialize SCDB, cannot read null block index. Exiting.\n");
-                return false;
-            }
-
-            // Check that coinbase is cached
-            if (!pindex->fCoinbase || !pindex->coinbase)
-                return InitError("Failed to initalize SCDB, Corrupt coinbase cache.\n");
-
-            // Update SCDB
-            std::string strError = "";
-            if (!scdb.Update(i, pindex->GetBlockHash(), pindex->GetPrevBlockHash(), pindex->coinbase->vout, false /* fJustCheck */, true /* fDebug */)) {
-                LogPrintf("%s: Error: Failed to initialize SCDB - invalid update in block:\n%s\n", __func__, pindex->ToString());
-                return InitError("Failed to initialize SCDB, invalid update in block. See log for details.\n");
-            }
+        if (!ResyncSCDB()) {
+            LogPrintf("%s: Error: Failed to initialize SCDB\n", __func__);
+            return InitError("Failed to initialize SCDB. See log for details.\n");
         }
     }
 

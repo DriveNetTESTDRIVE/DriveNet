@@ -583,4 +583,8 @@ bool ParseSCDBUpdateScript(const CScript& script, const std::vector<std::vector<
 /** Flush SCDB cache data to disk */
 void DumpSCDBCache();
 
+/** Resync SCDB WT^ status & verify hashBlockLastSeen. Used during init and
+ * when a block is disconnected. */
+bool ResyncSCDB();
+
 #endif // BITCOIN_VALIDATION_H
