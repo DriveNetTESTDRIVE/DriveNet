@@ -172,7 +172,7 @@ public:
     std::string ToString() const;
 
     /** Apply the changes in a block to SCDB */
-    bool Update(int nHeight, const uint256& hashBlock, const uint256& hashPrevBlock, const std::vector<CTxOut>& vout, bool fJustCheck = false, bool fDebug = false);
+    bool Update(int nHeight, const uint256& hashBlock, const uint256& hashPrevBlock, const std::vector<CTxOut>& vout, bool fJustCheck = false, bool fDebug = false, bool fResync = false);
 
     /** Undo the changes to SCDB of a block - for block is disconnection */
     bool Undo(int nHeight, const uint256& hashBlock, const uint256& hashPrevBlock, const std::vector<CTransactionRef>& vtx, bool fDebug = false);

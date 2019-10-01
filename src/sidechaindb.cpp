@@ -828,7 +828,7 @@ std::string SidechainDB::ToString() const
     return str;
 }
 
-bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const uint256& hashPrevBlock, const std::vector<CTxOut>& vout, bool fJustCheck,  bool fDebug)
+bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const uint256& hashPrevBlock, const std::vector<CTxOut>& vout, bool fJustCheck, bool fDebug, bool fResync)
 {
     if (hashBlock.IsNull()) {
         if (fDebug)
@@ -886,30 +886,32 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const uint256& h
 
     // Scan for sidechain proposal commitments
     std::vector<SidechainProposal> vProposal;
-    for (const CTxOut& out : vout) {
-        const CScript& scriptPubKey = out.scriptPubKey;
+    if (!fResync) {
+        for (const CTxOut& out : vout) {
+            const CScript& scriptPubKey = out.scriptPubKey;
 
-        if (!scriptPubKey.IsSidechainProposalCommit())
-            continue;
+            if (!scriptPubKey.IsSidechainProposalCommit())
+                continue;
 
-        SidechainProposal proposal;
-        if (!proposal.DeserializeFromScript(scriptPubKey))
-            continue;
+            SidechainProposal proposal;
+            if (!proposal.DeserializeFromScript(scriptPubKey))
+                continue;
 
-        // Check for duplicate
-        bool fDuplicate = false;
-        for (const SidechainActivationStatus& s : vActivationStatus) {
-            if (s.proposal == proposal) {
-                fDuplicate = true;
-                break;
+            // Check for duplicate
+            bool fDuplicate = false;
+            for (const SidechainActivationStatus& s : vActivationStatus) {
+                if (s.proposal == proposal) {
+                    fDuplicate = true;
+                    break;
+                }
             }
-        }
-        if (fDuplicate)
-            continue;
+            if (fDuplicate)
+                continue;
 
-        vProposal.push_back(proposal);
+            vProposal.push_back(proposal);
+        }
     }
-    if (!fJustCheck && vProposal.size() == 1) {
+    if (!fJustCheck && !fResync && vProposal.size() == 1) {
         SidechainActivationStatus status;
         status.nFail = 0;
         status.nAge = 0;
@@ -947,17 +949,19 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const uint256& h
 
     // Scan for sidechain activation commitments
     std::vector<uint256> vActivationHash;
-    for (const CTxOut& out : vout) {
-        const CScript& scriptPubKey = out.scriptPubKey;
-        uint256 hashSidechain;
-        if (!scriptPubKey.IsSidechainActivationCommit(hashSidechain))
-            continue;
-        if (hashSidechain.IsNull())
-            continue;
+    if (!fResync) {
+        for (const CTxOut& out : vout) {
+            const CScript& scriptPubKey = out.scriptPubKey;
+            uint256 hashSidechain;
+            if (!scriptPubKey.IsSidechainActivationCommit(hashSidechain))
+                continue;
+            if (hashSidechain.IsNull())
+                continue;
 
-        vActivationHash.push_back(hashSidechain);
+            vActivationHash.push_back(hashSidechain);
+        }
     }
-    if (!fJustCheck)
+    if (!fJustCheck && !fResync)
         UpdateActivationStatus(vActivationHash);
 
     // Scan for new WT^(s) and start tracking them
@@ -976,7 +980,6 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const uint256& h
             }
 
             if (!fJustCheck && !AddWTPrime(nSidechain, hashWTPrime, nHeight, fDebug)) {
-                // TODO handle failure
                 if (fDebug) {
                     LogPrintf("SCDB %s: Failed to cache WT^: %s for sidechain number: %u at height: %u\n",
                             __func__,

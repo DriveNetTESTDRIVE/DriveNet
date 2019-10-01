@@ -5919,15 +5919,13 @@ bool ResyncSCDB()
 {
     uiInterface.InitMessage(_("Resyncing sidechain database..."));
 
-    // TODO use GetLastSidechainVerificationPeriod() from validation
-    // Find out how far back (in blocks) we need to synchronize SCDB
     const int nHeight = chainActive.Height();
     const int nTail = nHeight - GetLastSidechainVerificationPeriod(nHeight);
     if (nTail < 0) {
         LogPrintf("%s: Failed to initialize SCDB, invalid last period height\n", __func__);
         return false;
     }
-    LogPrintf("%s: Resyinc SCDB from height: %u to %u.\n", __func__, nTail, nHeight);
+    LogPrintf("%s: Resync SCDB from height: %u to %u.\n", __func__, nTail, nHeight);
 
     // Update SCDB
     for (int i = nTail; i <= nHeight; i++) {
