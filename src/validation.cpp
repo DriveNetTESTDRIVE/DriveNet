@@ -5920,7 +5920,7 @@ bool ResyncSCDB()
     uiInterface.InitMessage(_("Resyncing sidechain database..."));
 
     const int nHeight = chainActive.Height();
-    const int nTail = nHeight - GetLastSidechainVerificationPeriod(nHeight);
+    const int nTail = GetLastSidechainVerificationPeriod(nHeight);
     if (nTail < 0) {
         LogPrintf("%s: Failed to initialize SCDB, invalid last period height\n", __func__);
         return false;
