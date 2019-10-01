@@ -5948,7 +5948,7 @@ bool ResyncSCDB()
 
         // Update SCDB
         std::string strError = "";
-        if (!scdb.Update(i, pindex->GetBlockHash(), pindex->GetPrevBlockHash(), pindex->coinbase->vout, false /* fJustCheck */, true /* fDebug */)) {
+        if (!scdb.Update(i, pindex->GetBlockHash(), pindex->GetPrevBlockHash(), pindex->coinbase->vout, false /* fJustCheck */, true /* fDebug */, true /* fResync */)) {
             LogPrintf("%s: Error: Failed to initialize SCDB - invalid update in block:\n%s\n", __func__, pindex->ToString());
             return false;
         }
