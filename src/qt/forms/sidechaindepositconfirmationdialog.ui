@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>437</width>
-    <height>140</height>
+    <width>444</width>
+    <height>164</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -69,6 +69,13 @@
        </widget>
       </item>
      </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="label">
+     <property name="text">
+      <string>Note: the sidechain may also take a fee from your deposit</string>
+     </property>
     </widget>
    </item>
    <item>

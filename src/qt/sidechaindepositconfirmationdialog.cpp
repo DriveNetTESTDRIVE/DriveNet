@@ -2,32 +2,6 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-/*
- * includes we might want here
-
-
-#include <qt/sidechainminerdialog.h>
-#include <qt/forms/ui_sidechainminerdialog.h>
-
-#include <QMessageBox>
-#include <QScrollBar>
-
-#include <qt/drivenetunits.h>
-#include <qt/guiconstants.h>
-#include <qt/guiutil.h>
-#include <qt/optionsmodel.h>
-#include <qt/sidechainactivationtablemodel.h>
-#include <qt/walletmodel.h>
-
-#include <core_io.h>
-#include <key.h>
-#include <wallet/wallet.h>
-#include <random.h>
-#include <sidechain.h>
-#include <sidechaindb.h>
-#include <validation.h>
-*/
-
 #include <qt/sidechaindepositconfirmationdialog.h>
 #include <qt/forms/ui_sidechaindepositconfirmationdialog.h>
 
