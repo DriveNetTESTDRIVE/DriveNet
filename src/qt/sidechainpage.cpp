@@ -1,4 +1,4 @@
-// Copyright (c) 2016 The Bitcoin Core developers
+﻿// Copyright (c) 2016 The Bitcoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -9,6 +9,7 @@
 #include <qt/guiconstants.h>
 #include <qt/guiutil.h>
 #include <qt/optionsmodel.h>
+#include <qt/sidechaindepositconfirmationdialog.h>
 #include <qt/sidechainescrowtablemodel.h>
 #include <qt/sidechainwithdrawaltablemodel.h>
 #include <qt/sidechainminerdialog.h>
@@ -52,6 +53,9 @@ SidechainPage::SidechainPage(QWidget *parent) :
     // Setup the tables
     SetupTables();
 
+    // Initialize deposit confirmation dialog
+    depositConfirmationDialog = new SidechainDepositConfirmationDialog(this);
+
     // Initialize miner popup window. We want users to be able to keep this
     // window open while using the rest of the software.
     minerDialog = new SidechainMinerDialog(this);
@@ -85,10 +89,11 @@ void SidechainPage::setBalance(const CAmount& balance, const CAmount& unconfirme
                                const CAmount& immatureBalance, const CAmount& watchOnlyBalance,
                                const CAmount& watchUnconfBalance, const CAmount& watchImmatureBalance)
 {
-    int unit = walletModel->getOptionsModel()->getDisplayUnit();
-    const CAmount& pending = immatureBalance + unconfirmedBalance;
-    //ui->available->setText(BitcoinUnits::formatWithUnit(unit, balance, false, BitcoinUnits::separatorAlways));
-    //ui->pending->setText(BitcoinUnits::formatWithUnit(unit, pending, false, BitcoinUnits::separatorAlways));
+    // TODO use all of these values
+    // int unit = walletModel->getOptionsModel()->getDisplayUnit();
+    // const CAmount& pending = immatureBalance + unconfirmedBalance;
+    // ui->available->setText(BitcoinUnits::formatWithUnit(unit, balance, false, BitcoinUnits::separatorAlways));
+    // ui->pending->setText(BitcoinUnits::formatWithUnit(unit, pending, false, BitcoinUnits::separatorAlways));
 }
 
 void SidechainPage::SetupSidechainList()
@@ -193,23 +198,6 @@ void SidechainPage::on_pushButtonDeposit_clicked()
         return;
     }
 
-#ifdef ENABLE_WALLET
-    if (vpwallets.empty()) {
-        messageBox.setWindowTitle("Wallet Error!");
-        messageBox.setText("No active wallets to create the deposit.");
-        messageBox.exec();
-        return;
-    }
-
-    if (vpwallets[0]->IsLocked()) {
-        // Locked wallet message box
-        messageBox.setWindowTitle("Wallet locked!");
-        messageBox.setText("Wallet must be unlocked to create sidechain deposit.");
-        messageBox.exec();
-        return;
-    }
-#endif
-
     if (!validateDepositAmount()) {
         // Invalid deposit amount message box
         messageBox.setWindowTitle("Invalid deposit amount!");
@@ -217,6 +205,16 @@ void SidechainPage::on_pushButtonDeposit_clicked()
         error += "Your deposit must be > 0.00001 BTC to cover the sidechain ";
         error += "deposit fee. If the output amount is dust after paying the ";
         error += "fee, you will not receive anything on the sidechain.\n";
+        messageBox.setText(error);
+        messageBox.exec();
+        return;
+    }
+
+    if (!validateFeeAmount()) {
+        // Invalid fee amount message box
+        messageBox.setWindowTitle("Invalid fee amount!");
+        QString error = "Check the fee you have entered and try again.\n\n";
+        error += "Your fee must be greater than 0 & not dust!\n";
         messageBox.setText(error);
         messageBox.exec();
         return;
@@ -233,9 +231,40 @@ void SidechainPage::on_pushButtonDeposit_clicked()
         return;
     }
 
-#ifdef ENABLE_WALLET
-    // Attempt to create the deposit
+    // Get fee and deposit amount
     const CAmount& nValue = ui->payAmount->value();
+    const CAmount& nFee = ui->feeAmount->value();
+
+    // Format strings for confirmation dialog
+    QString strSidechain = QString::fromStdString(scdb.GetSidechainName(nSidechain));
+    QString strValue = BitcoinUnits::formatWithUnit(BitcoinUnit::BTC, nValue, false, BitcoinUnits::separatorAlways);
+    QString strFee = BitcoinUnits::formatWithUnit(BitcoinUnit::BTC, nFee, false, BitcoinUnits::separatorAlways);
+
+    // Once we've made it to this point and validated what we can, show the
+    // deposit confirmation dialog and check the result.
+    // Note that GetConfirmed() will automatically reset the dialog
+    depositConfirmationDialog->SetInfo(strSidechain, strValue, strFee);
+    depositConfirmationDialog->exec();
+    if (!depositConfirmationDialog->GetConfirmed())
+        return;
+
+#ifdef ENABLE_WALLET
+    if (vpwallets.empty()) {
+        messageBox.setWindowTitle("Wallet Error!");
+        messageBox.setText("No active wallets to create the deposit.");
+        messageBox.exec();
+        return;
+    }
+
+    if (vpwallets[0]->IsLocked()) {
+        // Locked wallet message box
+        messageBox.setWindowTitle("Wallet locked!");
+        messageBox.setText("Wallet must be unlocked to create sidechain deposit.");
+        messageBox.exec();
+        return;
+    }
+
+    // Attempt to create the deposit
     CTransactionRef tx;
     std::string strFail = "";
     if (!vpwallets.empty()) {
@@ -261,7 +290,7 @@ void SidechainPage::on_pushButtonDeposit_clicked()
 
     // Successful deposit message box
     messageBox.setWindowTitle("Deposit transaction created!");
-    QString result = "Deposited to " + QString::fromStdString(scdb.GetSidechainName(nSidechain));
+    QString result = "Deposited to " + strSidechain;
     result += "\n";
     result += "txid: " + QString::fromStdString(tx->GetHash().ToString());
     result += "\n";
@@ -329,6 +358,28 @@ bool SidechainPage::validateDepositAmount()
     // Reject deposits which would net the user no payout on the sidechain
     if (GUIUtil::isDust(ui->payTo->text(), ui->payAmount->value() - SIDECHAIN_DEPOSIT_FEE)) {
         ui->payAmount->setValid(false);
+        return false;
+    }
+
+    return true;
+}
+
+bool SidechainPage::validateFeeAmount()
+{
+    if (!ui->feeAmount->validate()) {
+        ui->feeAmount->setValid(false);
+        return false;
+    }
+
+    // Sending a zero amount is invalid
+    if (ui->feeAmount->value(0) <= 0) {
+        ui->feeAmount->setValid(false);
+        return false;
+    }
+
+    // Reject dust outputs:
+    if (GUIUtil::isDust(ui->payTo->text(), ui->feeAmount->value())) {
+        ui->feeAmount->setValid(false);
         return false;
     }
 

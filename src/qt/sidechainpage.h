@@ -17,6 +17,7 @@
 class CBlock;
 class WalletModel;
 
+class SidechainDepositConfirmationDialog;
 class SidechainEscrowTableModel;
 class SidechainWithdrawalTableModel;
 class SidechainMinerDialog;
@@ -74,6 +75,7 @@ private:
 
     QTimer *pollTimer;
 
+    SidechainDepositConfirmationDialog *depositConfirmationDialog = nullptr;
     SidechainEscrowTableModel *escrowModel = nullptr;
     SidechainWithdrawalTableModel *withdrawalModel = nullptr;
     SidechainMinerDialog *minerDialog = nullptr;
@@ -82,6 +84,7 @@ private:
     void SetupTables();
 
     bool validateDepositAmount();
+    bool validateFeeAmount();
 
     // The sidechains that are currently cached for the list widget
     std::vector<Sidechain> vSidechain;
