@@ -19,6 +19,8 @@ SidechainDB::SidechainDB()
 
 void SidechainDB::AddDeposits(const std::vector<CTransaction>& vtx, const uint256& hashBlock, bool fJustCheck)
 {
+    // Note that we aren't splitting the deposits by nSidechain yet, that will
+    // be done after verifying all of the deposits
     std::vector<SidechainDeposit> vDeposit;
     for (const CTransaction& tx : vtx) {
         // Create sidechain deposit objects from transaction outputs
@@ -72,49 +74,38 @@ void SidechainDB::AddDeposits(const std::vector<CTransaction>& vtx, const uint25
         }
     }
 
-    // Add deposits to cache
+    // Add deposits to cache, note that this AddDeposit call will split deposits
+    // by nSidechain and sort them
     if (!fJustCheck)
         AddDeposits(vDeposit, hashBlock);
 }
 
 void SidechainDB::AddDeposits(const std::vector<SidechainDeposit>& vDeposit, const uint256& hashBlock)
 {
+    // Split the deposits by nSidechain - and double check them
+    std::vector<std::vector<SidechainDeposit>> vDepositSplit;
+    vDepositSplit.resize(vDepositCache.size());
     for (const SidechainDeposit& d : vDeposit) {
         if (!IsSidechainNumberValid(d.nSidechain))
             continue;
         if (HaveDepositCached(d))
             continue;
+        // Put deposit into vector based on nSidechain
+        vDepositSplit[d.nSidechain].push_back(d);
+    }
 
-        COutPoint out(d.tx.GetHash(), d.n);
-        CAmount amount = d.tx.vout[d.n].nValue;
-
-        SidechainCTIP ctip;
-        ctip.out = out;
-        ctip.amount = amount;
-
-        // Backup previous CTIP and update SCDB's current CTIP info
-        mapCTIPPrevious = mapCTIP;
-        mapCTIP[d.nSidechain] = ctip;
-        vDepositCache.push_back(d);
-
-        // If hash block is null - that means we loaded deposits from disk
-        if (!hashBlock.IsNull()) {
-            LogPrintf("SCDB %s: Updated sidechain CTIP for nSidechain: %u. \
-                    CTIP output: %s CTIP amount: %i hashBlock: %s.\n",
-                __func__,
-                d.nSidechain,
-                out.ToString(),
-                amount,
-                hashBlock.ToString());
-        } else {
-            LogPrintf("SCDB %s: Updated sidechain CTIP for nSidechain: %u. \
-                    CTIP output: %s CTIP amount: %i. (Loaded from disk).\n",
-                __func__,
-                d.nSidechain,
-                out.ToString(),
-                amount);
+    // Add the deposits to SCDB
+    for (size_t x = 0; x < vDepositSplit.size(); x++) {
+        for (size_t y = 0; y < vDepositSplit[x].size(); y++) {
+            vDepositCache[x].push_back(vDepositSplit[x][y]);
         }
     }
+
+    // Sort the deposits by CTIP UTXO spend order
+    SortDeposits();
+
+    // Finally, update the CTIP for each nSidechain and log it
+    UpdateCTIP(hashBlock);
 }
 
 bool SidechainDB::AddWTPrime(uint8_t nSidechain, const uint256& hashWTPrime, int nHeight, bool fDebug)
@@ -160,8 +151,11 @@ void SidechainDB::CacheActiveSidechains(const std::vector<Sidechain>& vActiveSid
 {
     vActiveSidechain = vActiveSidechainIn;
 
-    // Also resize vWTPrimeStatus to keep track of WT^(s)
+    // Resize vWTPrimeStatus to keep track of WT^(s)
     vWTPrimeStatus.resize(vActiveSidechain.size());
+
+    // Resize vDepositCache to keep track of deposit(s)
+    vDepositCache.resize(vActiveSidechain.size());
 }
 
 void SidechainDB::CacheSidechainActivationStatus(const std::vector<SidechainActivationStatus>& vActivationStatusIn)
@@ -268,19 +262,13 @@ std::map<uint8_t, SidechainCTIP> SidechainDB::GetCTIP() const
     return mapCTIP;
 }
 
-std::map<uint8_t, SidechainCTIP> SidechainDB::GetPreviousCTIP() const
-{
-    return mapCTIPPrevious;
-}
-
 std::vector<SidechainDeposit> SidechainDB::GetDeposits(uint8_t nSidechain) const
 {
     std::vector<SidechainDeposit> vDeposit;
-    for (const SidechainDeposit& d : vDepositCache) {
-        if (d.nSidechain == nSidechain)
-            vDeposit.push_back(d);
-    }
-    return vDeposit;
+    if (!IsSidechainNumberValid(nSidechain))
+        return vDeposit;
+
+    return vDepositCache[nSidechain];
 }
 
 std::vector<SidechainDeposit> SidechainDB::GetDeposits(const std::string& sidechainPriv) const
@@ -300,7 +288,7 @@ std::vector<SidechainDeposit> SidechainDB::GetDeposits(const std::string& sidech
     }
 
     if (!fFound)
-        return std::vector<SidechainDeposit> {};
+        return std::vector<SidechainDeposit>{};
 
     return GetDeposits(nSidechain);
 }
@@ -327,14 +315,6 @@ uint256 SidechainDB::GetTotalSCDBHash() const
     uint256 hash = ComputeMerkleRoot(vLeaf);
     LogPrintf("%s: Hash with CTIP data: %s\n", __func__, hash.ToString());
 
-    // Add mapPreviousCTIP
-    for (it = mapCTIPPrevious.begin(); it != mapCTIPPrevious.end(); it++) {
-        vLeaf.push_back(it->second.GetHash());
-    }
-
-    hash = ComputeMerkleRoot(vLeaf);
-    LogPrintf("%s: Hash with previous CTIP data: %s\n", __func__, hash.ToString());
-
     // Add hashBlockLastSeen
     vLeaf.push_back(hashBlockLastSeen);
 
@@ -358,8 +338,10 @@ uint256 SidechainDB::GetTotalSCDBHash() const
     LogPrintf("%s: Hash with vActivationStatus data: %s\n", __func__, hash.ToString());
 
     // Add vDepositCache
-    for (const SidechainDeposit& d : vDepositCache) {
-        vLeaf.push_back(d.GetHash());
+    for (const std::vector<SidechainDeposit>& v : vDepositCache) {
+        for (const SidechainDeposit& d : v) {
+            vLeaf.push_back(d.GetHash());
+        }
     }
 
     hash = ComputeMerkleRoot(vLeaf);
@@ -563,7 +545,10 @@ bool SidechainDB::HasSidechainScript(const std::vector<CScript>& vScript, uint8_
 
 bool SidechainDB::HaveDepositCached(const SidechainDeposit &deposit) const
 {
-    for (const SidechainDeposit& d : vDepositCache) {
+    if (!IsSidechainNumberValid(deposit.nSidechain))
+        return false;
+
+    for (const SidechainDeposit& d : vDepositCache[deposit.nSidechain]) {
         if (d == deposit)
             return true;
     }
@@ -600,6 +585,9 @@ bool SidechainDB::IsSidechainNumberValid(uint8_t nSidechain) const
     if (nSidechain >= vWTPrimeStatus.size())
         return false;
 
+    if (nSidechain >= vDepositCache.size())
+        return false;
+
     for (const Sidechain& s : vActiveSidechain) {
         if (s.nSidechain == nSidechain)
             return true;
@@ -630,7 +618,6 @@ void SidechainDB::Reset()
 {
     // Clear out CTIP data
     mapCTIP.clear();
-    mapCTIPPrevious.clear();
 
     // Reset hashBlockLastSeen
     hashBlockLastSeen.SetNull();
@@ -856,7 +843,9 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const uint256& h
         return false;
     }
 
-    if (!hashBlockLastSeen.IsNull() && hashPrevBlock != hashBlockLastSeen) {
+    // Note that when fResync is set, hashBlockLastSeen will be verified by
+    // ResyncSCDB() before and after re-syncing.
+    if (!fResync && !hashBlockLastSeen.IsNull() && hashPrevBlock != hashBlockLastSeen) {
         if (fDebug)
             LogPrintf("SCDB %s: Failed: previous block hash: %s does not match hashBlockLastSeen: %s at height: %u\n",
                     __func__,
@@ -1027,6 +1016,9 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const uint256& h
 
 bool SidechainDB::Undo(int nHeight, const uint256& hashBlock, const uint256& hashPrevBlock, const std::vector<CTransactionRef>& vtx, bool fDebug)
 {
+    // Note that WT^ and WT^ workscore are handled by ResyncSCDB in validation
+    // and not here
+
     if (!vtx.size()) {
         LogPrintf("%s: SCDB undo failed for block: %s - vtx is empty!\n", __func__, hashBlock.ToString());
         return false;
@@ -1035,24 +1027,29 @@ bool SidechainDB::Undo(int nHeight, const uint256& hashBlock, const uint256& has
     // Undo deposits
     // Loop through the transactions in the block being disconnected, and if
     // they match a transaction in our deposit cache remove it.
+    bool fDepositRemoved = false;
     for (const CTransactionRef& tx : vtx) {
-        for (size_t i = 0; i < vDepositCache.size(); i++) {
-            if (*tx == CTransaction(vDepositCache[i].tx)) {
-                vDepositCache[i] = vDepositCache.back();
-                vDepositCache.pop_back();
+        for (size_t x = 0; x < vDepositCache.size(); x++) {
+            for (size_t y = 0; y < vDepositCache[x].size(); y++) {
+                if (*tx == CTransaction(vDepositCache[x][y].tx)) {
+                    vDepositCache[x][y] = vDepositCache[x].back();
+                    vDepositCache[x].pop_back();
+                    fDepositRemoved = true;
+                }
             }
         }
     }
 
-    // Undo CTIP updates
-    mapCTIP = mapCTIPPrevious;
-    mapCTIPPrevious.clear();
+    // If any deposits were removed re-sort deposits and update CTIP
+    if (fDepositRemoved) {
+        SortDeposits();
+        UpdateCTIP(hashBlock);
+    }
 
     // Undo sidechain activation & de-activate a sidechain if it was activated
     // in the disconnected block. If a sidechain was de-activated then we will
     // also need to add it back to vActivationStatus and restore it's score
-
-    // Undo WT^ score changes
+    // TODO
 
     // Remove sidechain proposals that were committed in the disconnected block
     for (const CTxOut& out : vtx[0]->vout) {
@@ -1088,10 +1085,6 @@ bool SidechainDB::Undo(int nHeight, const uint256& hashBlock, const uint256& has
 
     // Undo hashBlockLastSeen
     hashBlockLastSeen = hashPrevBlock;
-
-    // If we disconnected a block at the end of a WT^ verification period, we
-    // have to replay all of the data that is erased at the end of each period.
-    // Remove new WT^(s) that were added in the disconnected block
 
     LogPrintf("%s: SCDB undo for block: %s complete!\n", __func__, hashBlock.ToString());
 
@@ -1366,6 +1359,9 @@ void SidechainDB::UpdateActivationStatus(const std::vector<uint256>& vHash)
             // Add blank vector to track this sidechain's WT^(s)
             vWTPrimeStatus.push_back(std::vector<SidechainWTPrimeState>{});
 
+            // Add a blank vector to track this sidechain's deposit(s)
+            vDepositCache.push_back(std::vector<SidechainDeposit>{});
+
             // Remove proposal from our cache if it has activated
             for (size_t j = 0; j < vSidechainProposal.size(); j++) {
                 if (proposal == vSidechainProposal[j]) {
@@ -1377,6 +1373,81 @@ void SidechainDB::UpdateActivationStatus(const std::vector<uint256>& vHash)
             LogPrintf("SCDB %s: Sidechain activated:\n%s\n",
                     __func__,
                     vActivationStatus[i].proposal.ToString());
+        }
+    }
+}
+
+/** Custom sort helper for SortDeposits */
+bool CompareCTIP(const SidechainDeposit& lhs, const SidechainDeposit& rhs)
+{
+    for (const CTxIn& in : rhs.tx.vin) {
+        if (in.prevout.hash == lhs.tx.GetHash()
+                && lhs.tx.vout.size() > in.prevout.n
+                && lhs.n == in.prevout.n) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool SidechainDB::SortDeposits()
+{
+    // Make a copy of the deposit cache that we will sort
+    std::vector<std::vector<SidechainDeposit>> vDepositSorted = vDepositCache;
+
+    // Sort the deposits into CTIP UTXO spend order
+    for (size_t x = 0; x < vDepositSorted.size(); x++) {
+        std::sort(vDepositSorted[x].begin(), vDepositSorted[x].end(), CompareCTIP);
+    }
+
+    // TODO check the result
+    // - Make sure that all deposits were sorted
+    // - ...
+
+    // Update deposit cache with sorted list
+    vDepositCache = vDepositSorted;
+
+    return true;
+}
+
+void SidechainDB::UpdateCTIP(const uint256& hashBlock)
+{
+    for (size_t x = 0; x < vDepositCache.size(); x++) {
+        if (vDepositCache[x].size()) {
+            const SidechainDeposit& d = vDepositCache[x].back();
+
+            const COutPoint out(d.tx.GetHash(), d.n);
+            const CAmount amount = d.tx.vout[d.n].nValue;
+
+            SidechainCTIP ctip;
+            ctip.out = out;
+            ctip.amount = amount;
+
+            mapCTIP[d.nSidechain] = ctip;
+
+            // Log the update
+            // If hash block is null - that means we loaded deposits from disk
+            if (!hashBlock.IsNull()) {
+                LogPrintf("SCDB %s: Updated sidechain CTIP for nSidechain: %u. \
+                        CTIP output: %s CTIP amount: %i hashBlock: %s.\n",
+                    __func__,
+                    d.nSidechain,
+                    out.ToString(),
+                    amount,
+                    hashBlock.ToString());
+            } else {
+                LogPrintf("SCDB %s: Updated sidechain CTIP for nSidechain: %u. \
+                        CTIP output: %s CTIP amount: %i. (Loaded from disk).\n",
+                    __func__,
+                    d.nSidechain,
+                    out.ToString(),
+                    amount);
+            }
+        } else {
+            // If there are no deposits now, remove CTIP for nSidechain
+            std::map<uint8_t, SidechainCTIP>::const_iterator it;
+            it = mapCTIP.find(x);
+            mapCTIP.erase(it);
         }
     }
 }

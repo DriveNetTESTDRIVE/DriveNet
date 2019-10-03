@@ -78,9 +78,6 @@ public:
     /** Return the CTIP (critical transaction index pair) for all sidechains */
     std::map<uint8_t, SidechainCTIP> GetCTIP() const;
 
-    /** Return the previous CTIP for all sidechains */
-    std::map<uint8_t, SidechainCTIP> GetPreviousCTIP() const;
-
     /** Return vector of cached deposits for nSidechain. */
     std::vector<SidechainDeposit> GetDeposits(uint8_t nSidechain) const;
 
@@ -153,6 +150,7 @@ public:
     /** Check if SCDB is tracking the work score of a WT^ */
     bool HaveWTPrimeWorkScore(const uint256& hashWTPrime, uint8_t nSidechain) const;
 
+    /** Check if a sidechain with nSidechain exists in the DB */
     bool IsSidechainNumberValid(uint8_t nSidechain) const;
 
     /** Remove sidechain-to-be-activated hash from cache, because the user
@@ -182,16 +180,14 @@ public:
 
     /** Read the SCDB hash in a new block and try to synchronize our SCDB by
      * testing possible work score updates until the SCDB hash of our SCDB
-     * matches the one from the new block. Return false if no match found.
-     */
+     * matches the one from the new block. Return false if no match found. */
     bool UpdateSCDBMatchMT(int nHeight, const uint256& hashMerkleRoot, const std::vector<SidechainWTPrimeState>& vScores);
     bool UpdateSCDBMatchMT(int nHeight, const uint256& hashMerkleRoot);
 
 private:
     /**
      * Submit default vote for all sidechain WT^(s). Used when a new block does
-     * not contain a valid update.
-     */
+     * not contain a valid update. */
     bool ApplyDefaultUpdate();
 
     /** Takes a list of sidechain hashes to upvote */
@@ -199,12 +195,8 @@ private:
 
     /*
      * The CTIP of nSidechain up to the latest connected block (does not include
-     * mempool txns).
-     */
+     * mempool txns). */
     std::map<uint8_t, SidechainCTIP> mapCTIP;
-
-    /** The CTIP of nSidechain from the previously connected block */
-    std::map<uint8_t, SidechainCTIP> mapCTIPPrevious;
 
     /** The most recent block that SCDB has processed */
     uint256 hashBlockLastSeen;
@@ -215,27 +207,34 @@ private:
     /** Activation status of proposed sidechains */
     std::vector<SidechainActivationStatus> vActivationStatus;
 
-    /** Cache of deposits created during this verification period */
-    std::vector<SidechainDeposit> vDepositCache;
+    /** Cache of deposits for each sidechain. TODO optimize with caching
+     * so that we don't have to keep all of these in memory.
+     * x = nSidechain
+     * y = list of deposits for nSidechain */
+    std::vector<std::vector<SidechainDeposit>> vDepositCache;
 
     /** Cache of sidechain hashes, for sidechains which this node has been
      * configured to activate by the user */
     std::vector<uint256> vSidechainHashActivate;
 
     /** Cache of proposals created by this node, which should be included in the
-     * next block that this node mines. *
-     */
+     * next block that this node mines. */
     std::vector<SidechainProposal> vSidechainProposal;
 
     /** Cache of potential WT^ transactions
-     * TODO consider refactoring to use CTransactionRef
-     */
+     * TODO consider refactoring to use CTransactionRef */
     std::vector<CMutableTransaction> vWTPrimeCache;
 
-    /** Tracks verification status of WT^(s) */
-    // x = nSidechain
-    // y = state of WT^(s) for nSidechain
+    /** Tracks verification status of WT^(s)
+     * x = nSidechain
+     * y = state of WT^(s) for nSidechain */
     std::vector<std::vector<SidechainWTPrimeState>> vWTPrimeStatus;
+
+    /** Sort deposits by CTIP UTXO spending order */
+    bool SortDeposits();
+
+    /** Update CTIP to match the deposit cache - called after sorting / undo */
+    void UpdateCTIP(const uint256& hashBlock);
 };
 
 /** Return height at which the current WT^ verification period began */

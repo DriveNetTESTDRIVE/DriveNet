@@ -261,7 +261,6 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
         uint256 hashProposal;
         std::vector<SidechainProposal> vProposal = scdb.GetSidechainProposals();
         if (!vProposal.empty()) {
-            bool fCreated = false;
             std::vector<SidechainActivationStatus> vActivation = scdb.GetSidechainActivationStatus();
             for (const SidechainProposal& p : vProposal) {
                 // Check if this proposal is already being tracked by SCDB

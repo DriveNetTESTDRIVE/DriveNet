@@ -738,8 +738,10 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
                     if (in.prevout == out)
                         nCTIPSpent++;
                 }
-                if (nCTIPSpent != 1)
+                if (nCTIPSpent != 1) {
+                    LogPrintf("%s: Reject sidechain deposit - invalid CTIP spend!\n", __func__);
                     return state.DoS(0, false, REJECT_INVALID, "sidechain-deposit-invalid-ctip-unspent");
+                }
             }
 
             // Track new sidechain CTIP in mempool
@@ -1812,7 +1814,12 @@ DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockI
         return DISCONNECT_FAILED;
     }
 
-    // Update mempool CTIP to previous
+    if (!ResyncSCDB(pindex, true /* fDisconnect */)) {
+        error("%s: Failed to re-sync SCDB for disconnected block: %s!", __func__, block.GetHash().ToString());
+        return DISCONNECT_FAILED;
+    }
+
+    // Update mempool CTIP
     mempool.UpdateCTIP(scdb.GetCTIP());
 
     // move best block pointer to prevout block
@@ -5365,7 +5372,6 @@ bool LoadDepositCache()
     }
 
     // Add to SCDB
-    // TODO nSidechain
     if (!vDeposit.empty()) {
         scdb.AddDeposits(vDeposit, uint256());
         mempool.UpdateCTIP(scdb.GetCTIP());
@@ -5376,8 +5382,6 @@ bool LoadDepositCache()
 
 void DumpDepositCache()
 {
-    // TODO seperate dump & read by nSidechain. Split deposit cache into
-    // individual vectors for each sidechain for performance reasons.
     std::vector<SidechainDeposit> vDeposit;
     std::vector<Sidechain> vSidechain = scdb.GetActiveSidechains();
     for (const Sidechain& s : vSidechain) {
@@ -5915,17 +5919,41 @@ void DumpSCDBCache()
     DumpSidechainActivationHashCache();
 }
 
-bool ResyncSCDB()
+bool ResyncSCDB(const CBlockIndex* pindex, bool fDisconnect)
 {
     uiInterface.InitMessage(_("Resyncing sidechain database..."));
 
-    const int nHeight = chainActive.Height();
+    int nHeight = -1;
+    // Note that chainActive has a custom [] operator override
+    if (chainActive[pindex->nHeight] != pindex) {
+        LogPrintf("%s: Failed to resync SCDB, invalid pindex\n", __func__);
+        return false;
+    }
+    nHeight = fDisconnect ? pindex->nHeight - 1 : pindex->nHeight;
+
+    LogPrintf("%s chainActive nheight: %s\n", __func__, chainActive[nHeight]->GetBlockHash().ToString());
+
     const int nTail = GetLastSidechainVerificationPeriod(nHeight);
     if (nTail < 0) {
-        LogPrintf("%s: Failed to initialize SCDB, invalid last period height\n", __func__);
+        LogPrintf("%s: Failed to resync SCDB, invalid last period height\n", __func__);
+        return false;
+    }
+    if (nHeight < 0) {
+        LogPrintf("%s: Failed to resync SCDB, invalid end height\n", __func__);
         return false;
     }
     LogPrintf("%s: Resync SCDB from height: %u to %u.\n", __func__, nTail, nHeight);
+
+    // Verify the last block we will pass in is the same as
+    // scdb.hashBlockLastSeen before re-syncing
+    const uint256 hashBlock = chainActive[nHeight]->GetBlockHash();
+    const uint256 hashBlockLastSeen = scdb.GetHashBlockLastSeen();
+    if (!hashBlockLastSeen.IsNull() && hashBlock != hashBlockLastSeen) {
+        LogPrintf("%s: Cannot re-sync SCDB, inconsistent pindex & SCDB hashBlockLastSeen!\n", __func__);
+        LogPrintf("%s: pindex: %s\n", __func__, hashBlock.ToString());
+        LogPrintf("%s: SCDB hashBlockLastSeen: %s\n", __func__, hashBlockLastSeen.ToString());
+        return false;
+    }
 
     // Update SCDB
     for (int i = nTail; i <= nHeight; i++) {
@@ -5936,23 +5964,33 @@ bool ResyncSCDB()
         CBlockIndex* pindex = chainActive[i];
         // Check that block index exists
         if (!pindex) {
-            LogPrintf("%s: Failed to initialize SCDB, cannot read null block index. Exiting.\n", __func__);
+            LogPrintf("%s: Failed to resync SCDB, cannot read null block index. Exiting.\n", __func__);
             return false;
         }
 
         // Check that coinbase is cached
         if (!pindex->fCoinbase || !pindex->coinbase) {
-            LogPrintf("%s: Failed to initalize SCDB, Corrupt coinbase cache.\n", __func__);
+            LogPrintf("%s: Failed to resync SCDB, Corrupt coinbase cache.\n", __func__);
             return false;
         }
 
         // Update SCDB
         std::string strError = "";
         if (!scdb.Update(i, pindex->GetBlockHash(), pindex->GetPrevBlockHash(), pindex->coinbase->vout, false /* fJustCheck */, true /* fDebug */, true /* fResync */)) {
-            LogPrintf("%s: Error: Failed to initialize SCDB - invalid update in block:\n%s\n", __func__, pindex->ToString());
+            LogPrintf("%s: Error: Failed to resync SCDB - invalid update in block:\n%s\n", __func__, pindex->ToString());
             return false;
         }
     }
+
+    // Verify the last block we passed in is the same as scdb.hashBlockLastSeen
+    // after re-syncing
+    if (chainActive[nHeight]->GetBlockHash() != scdb.GetHashBlockLastSeen()) {
+        LogPrintf("%s: Failed to re-sync SCDB, inconsistent chain tip & SCDB hashBlockLastSeen!\n", __func__);
+        LogPrintf("%s: Chain tip: %s\n", __func__, chainActive[nHeight]->GetBlockHash().ToString());
+        LogPrintf("%s: SCDB hashBlockLastSeen: %s\n", __func__, scdb.GetHashBlockLastSeen().ToString());
+        return false;
+    }
+
     LogPrintf("%s: SCDB resync at height %u complete.\n", __func__, nHeight);
     return true;
 }

@@ -585,6 +585,6 @@ void DumpSCDBCache();
 
 /** Resync SCDB WT^ status & verify hashBlockLastSeen. Used during init and
  * when a block is disconnected. */
-bool ResyncSCDB();
+bool ResyncSCDB(const CBlockIndex* pindex, bool fDisconnect = false);
 
 #endif // BITCOIN_VALIDATION_H

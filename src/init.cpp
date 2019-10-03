@@ -1608,6 +1608,8 @@ bool AppInitMain()
 
     if (drivechainsEnabled) {
         scdb.Reset();
+        // Note that LoadActiveSidechainCache will resize deposit and WT^ cache
+        // vectors of SCDB so it must be done before loading deposits or WT^(s)
         LoadActiveSidechainCache();
         LoadWTPrimeCache();
     }
@@ -1617,7 +1619,7 @@ bool AppInitMain()
     {
         // TODO suggest reindex if fails
         uiInterface.InitMessage(_("Synchronizing sidechain database & coinbase cache..."));
-        if (!ResyncSCDB()) {
+        if (!ResyncSCDB(chainActive.Tip())) {
             LogPrintf("%s: Error: Failed to initialize SCDB\n", __func__);
             return InitError("Failed to initialize SCDB. See log for details.\n");
         }
