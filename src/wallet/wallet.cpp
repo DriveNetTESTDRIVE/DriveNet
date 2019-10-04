@@ -3164,12 +3164,10 @@ bool CWallet::CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, 
 
     // Add deposit output
     mtx.vout.push_back(CTxOut(nAmount, sidechainScript));
-    size_t nDepositIndex = mtx.vout.size() - 1;
 
     // Handle existing sidechain utxo. We will look at our local mempool, and
     // create a deposit based on the latest CTIP for the sidechain.
     // Note: It will be rejected if other nodes have seen a newer CTIP.
-    // TODO if rejected by other nodes, abandon automatically
     SidechainCTIP ctip;
     CAmount returnAmount = CAmount(0);
     if (::mempool.GetMemPoolCTIP(nSidechain, ctip)) {
@@ -3277,8 +3275,8 @@ bool CWallet::CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, 
     wtxNew.SetTx(MakeTransactionRef(std::move(mtx)));
 
     CValidationState state;
-    if (!CommitTransaction(wtxNew, reserveKey, g_connman.get(), state)) {
-        strFail = "Failed to commit sidechain deposit: " + state.GetRejectReason() + "\n";
+    if (!CommitTransaction(wtxNew, reserveKey, g_connman.get(), state, true /* fRemoveIfFail */)) {
+        strFail = "Failed to commit sidechain deposit! Reject reason: " + FormatStateMessage(state) + "\n";
         return false;
     }
     tx = wtxNew.tx;
@@ -3289,7 +3287,7 @@ bool CWallet::CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, 
 /**
  * Call after CreateTransaction unless you want to abort
  */
-bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, CConnman* connman, CValidationState& state)
+bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, CConnman* connman, CValidationState& state, bool fRemoveIfFail)
 {
     {
         LOCK2(cs_main, cs_wallet);
@@ -3330,7 +3328,12 @@ bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, CCon
             // Broadcast
             if (!wtx.AcceptToMemoryPool(maxTxFee, state)) {
                 LogPrintf("%s: Transaction cannot be broadcast immediately, %s\n", __func__, state.GetRejectReason());
-                // TODO: if we expect the failure to be long term or permanent, instead delete wtx from the wallet and return failure.
+                if (fRemoveIfFail) {
+                    if (!AbandonTransaction(wtx.GetHash())) {
+                        LogPrintf("%s: Failed to abandon transaction!\n", __func__);
+                    }
+                    return false;
+                }
             } else {
                 wtx.RelayWalletTransaction(connman);
             }
@@ -4439,7 +4442,7 @@ bool CWalletTx::AcceptToMemoryPool(const CAmount& nAbsurdFee, CValidationState& 
 {
     // Quick check to avoid re-setting fInMempool to false
     if (mempool.exists(tx->GetHash())) {
-        return false;
+        return state.DoS(0, false, REJECT_INVALID, "txn-already-in-mempool");
     }
 
     // We must set fInMempool here - while it will be re-set to true by the
@@ -4447,9 +4450,15 @@ bool CWalletTx::AcceptToMemoryPool(const CAmount& nAbsurdFee, CValidationState& 
     // user could call sendmoney in a loop and hit spurious out of funds errors
     // because we think that the transaction they just generated's change is
     // unavailable as we're not yet aware its in mempool.
-    bool ret = ::AcceptToMemoryPool(mempool, state, tx, nullptr /* pfMissingInputs */,
+    bool pfMissingInputs = false;
+    bool ret = ::AcceptToMemoryPool(mempool, state, tx, &pfMissingInputs,
                                 nullptr /* plTxnReplaced */, false /* bypass_limits */, nAbsurdFee);
+
     fInMempool = ret;
+    if (pfMissingInputs == true) {
+        return state.DoS(0, false, REJECT_INVALID, "tx-missing-inputs");
+    }
+
     return ret;
 }
 
