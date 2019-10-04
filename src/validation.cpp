@@ -661,6 +661,9 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
     }
 
     // Sidechain deposit / withdraw checks
+    bool fCTIPUpdated = false;
+    std::map<uint8_t, SidechainCTIP> mapCTIPCopy;
+    mapCTIPCopy = mempool.mapLastSidechainDeposit;
     if (drivechainsEnabled)
     {
         // TODO be more selective about which transactions have
@@ -744,11 +747,13 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
                 }
             }
 
-            // Track new sidechain CTIP in mempool
+            // Track new sidechain CTIP - but don't actually update the mempool
+            // until all other checks have passed.
             SidechainCTIP ctip;
             ctip.out = outpoint;
             ctip.amount = amtReturning;
-            mempool.mapLastSidechainDeposit[nSidechain] = ctip;
+            mapCTIPCopy[nSidechain] = ctip;
+            fCTIPUpdated = true;
 
         } else if (amtSidechainUTXO > 0) {
             return state.DoS(100, false, REJECT_INVALID, "sidechain-deposit-invalid-ctip-withdraw");
@@ -1150,6 +1155,8 @@ static bool AcceptToMemoryPoolWorker(const CChainParams& chainparams, CTxMemPool
                 return state.DoS(0, false, REJECT_INSUFFICIENTFEE, "mempool full");
         }
     }
+    if (fCTIPUpdated)
+        mempool.mapLastSidechainDeposit = mapCTIPCopy;
 
     GetMainSignals().TransactionAddedToMempool(ptx);
 
