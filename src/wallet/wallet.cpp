@@ -3095,7 +3095,7 @@ bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletT
     return true;
 }
 
-bool CWallet::CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, const CScript& scriptPubKeyIn, const uint8_t nSidechain, const CAmount& nAmount, const CKeyID& keyID)
+bool CWallet::CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, const CScript& scriptPubKeyIn, const uint8_t nSidechain, const CAmount& nAmount, const CAmount& nFee, const CKeyID& keyID)
 {
     strFail = "Unknown error!";
 
@@ -3129,13 +3129,13 @@ bool CWallet::CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, 
     AvailableCoins(vCoins);
     std::set<CInputCoin> setCoins;
     CAmount nAmountRet = CAmount(0);
-    if (!SelectCoins(vCoins, nAmount, setCoins, nAmountRet)) {
-        strFail = "Could not collect enough coins to cover deposit!\n";
+    if (!SelectCoins(vCoins, nAmount + nFee, setCoins, nAmountRet)) {
+        strFail = "Could not collect enough coins to cover deposit + fee!\n";
         return false;
     }
 
     // Handle change if there is any
-    const CAmount nChange = nAmountRet - nAmount;
+    const CAmount nChange = nAmountRet - (nAmount + nFee);
     CReserveKey reserveKey(vpwallets[0]);
     if (nChange > 0) {
         CScript scriptChange;
@@ -3184,7 +3184,7 @@ bool CWallet::CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, 
     std::set<CInputCoin> setCoinsTemp = setCoins;
     // TODO also dummy sign the sidechain UTXO input
     if (!DummySignTx(mtx, setCoins)) {
-        strFail = "Dummy signing transaction for fee calculation failed";
+        strFail = "Dummy signing transaction for required fee calculation failed!";
         return false;
     }
 
@@ -3195,11 +3195,6 @@ bool CWallet::CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, 
     CCoinControl coinControl;
     FeeCalculation feeCalc;
     CAmount nFeeNeeded = GetMinimumFee(nBytes, coinControl, ::mempool, ::feeEstimator, &feeCalc);
-    // TODO Improve this to pay minimal fee instead of over-estimating by making
-    // dummy transaction signature creator sign the sidechain utxo input.
-    //
-    // Double nFeeNeeded to cover sidechain utxo signature size
-    nFeeNeeded *= 2;
 
     // Check that the fee is valid for relay
     if (nFeeNeeded < ::minRelayTxFee.GetFee(nBytes)) {
@@ -3207,8 +3202,11 @@ bool CWallet::CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, 
         return false;
     }
 
-    // Subtract fee from deposit amount
-    mtx.vout[nDepositIndex].nValue -= nFeeNeeded;
+    // Check the user set fee
+    if (nFee < nFeeNeeded) {
+        strFail = "The fee you have set is too small!";
+        return false;
+    }
 
     // Remove dummy signatures
     for (auto& vin : mtx.vin) {

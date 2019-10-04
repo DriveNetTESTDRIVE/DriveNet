@@ -3438,7 +3438,7 @@ UniValue createsidechaindeposit(const JSONRPCRequest& request)
         return NullUniValue;
     }
 
-    if (request.fHelp || request.params.size() != 3)
+    if (request.fHelp || request.params.size() != 4)
         throw std::runtime_error(
             "createsidechaindeposit \"nsidechain\" \"address\" \"amount\"\n"
             "\nCreate a sidechain deposit of an amount to a given address.\n"
@@ -3447,11 +3447,12 @@ UniValue createsidechaindeposit(const JSONRPCRequest& request)
             "1. \"nsidechain\"         (numeric, required) The sidechain to send to.\n"
             "2. \"address\"            (string, required) The bitcoin address to send to.\n"
             "3. \"amount\"             (numeric or string, required) The amount in " + CURRENCY_UNIT + " to send. eg 0.1\n"
+            "4. \"fee\"                (numeric or string, required) The fee in " + CURRENCY_UNIT + "\n"
             "\nResult:\n"
             "\"txid\"                  (string) The transaction id.\n"
             "\nExamples:\n"
-            + HelpExampleCli("createsidechaindeposit", "0 \"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 0.1")
-            + HelpExampleRpc("createsidechaindeposit", "0, \"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", 0.1")
+            + HelpExampleCli("createsidechaindeposit", "0 \"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\" 0.1, 0.01")
+            + HelpExampleRpc("createsidechaindeposit", "0, \"1M72Sfpbz1BPpXFHz9m3CdqATR44Jvaydd\", 0.1, 0.01")
         );
 
     // nSidechain
@@ -3478,6 +3479,11 @@ UniValue createsidechaindeposit(const JSONRPCRequest& request)
     if (nAmount <= 0)
         throw JSONRPCError(RPC_MISC_ERROR, "Invalid amount for send");
 
+    // Fee
+    CAmount nFee = AmountFromValue(request.params[3]);
+    if (nFee <= 0)
+        throw JSONRPCError(RPC_MISC_ERROR, "Invalid fee amount");
+
     // Get sidechain script
     CScript scriptPubKey;
     if (!scdb.GetSidechainScript(nSidechain, scriptPubKey))
@@ -3487,7 +3493,7 @@ UniValue createsidechaindeposit(const JSONRPCRequest& request)
 
     CTransactionRef tx;
     std::string strFail = "";
-    if (!pwallet->CreateSidechainDeposit(tx, strFail, scriptPubKey, nSidechain, nAmount, keyID))
+    if (!pwallet->CreateSidechainDeposit(tx, strFail, scriptPubKey, nSidechain, nAmount, nFee, keyID))
     {
         throw JSONRPCError(RPC_MISC_ERROR, strFail);
     }
@@ -3649,7 +3655,7 @@ static const CRPCCommand commands[] =
 
     { "generating",         "generate",                 &generate,                 {"nblocks","maxtries"} },
 
-    {"DriveChain",          "createsidechaindeposit",   &createsidechaindeposit,   {"nSidechain", "address", "amount"} },
+    {"DriveChain",          "createsidechaindeposit",   &createsidechaindeposit,   {"nSidechain", "address", "amount", "fee"} },
 };
 
 void RegisterWalletRPCCommands(CRPCTable &t)

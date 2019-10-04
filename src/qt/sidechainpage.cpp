@@ -277,7 +277,7 @@ void SidechainPage::on_pushButtonDeposit_clicked()
             messageBox.exec();
             return;
         }
-        if (!vpwallets[0]->CreateSidechainDeposit(tx, strFail, scriptPubKey, nSidechain, nValue, keyID)) {
+        if (!vpwallets[0]->CreateSidechainDeposit(tx, strFail, scriptPubKey, nSidechain, nValue, nFee, keyID)) {
             // Create transaction error message box
             messageBox.setWindowTitle("Creating deposit transaction failed!");
             QString createError = "Error creating transaction!\n\n";
