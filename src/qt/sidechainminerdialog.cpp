@@ -21,12 +21,19 @@
 #include <random.h>
 #include <sidechain.h>
 #include <sidechaindb.h>
+#include <util.h>
 #include <validation.h>
 
 static const unsigned int INDEX_VOTE_SIDECHAIN = 0;
 static const unsigned int INDEX_PROPOSE_SIDECHAIN = 1;
 static const unsigned int INDEX_VOTE_WTPRIME = 2;
 static const unsigned int INDEX_BMM_SETTINGS = 3;
+
+enum DefaultWTPrimeVote {
+    WTPRIME_UPVOTE = 0,
+    WTPRIME_ABSTAIN = 1,
+    WTPRIME_DOWNVOTE = 2,
+};
 
 SidechainMinerDialog::SidechainMinerDialog(QWidget *parent) :
     QDialog(parent),
@@ -53,6 +60,16 @@ SidechainMinerDialog::SidechainMinerDialog(QWidget *parent) :
 
     // Select entire row
     ui->tableViewActivation->setSelectionBehavior(QAbstractItemView::SelectRows);
+
+    // If the user has WT^ vote parameters set, update the default vote combobox
+    std::string strDefault = gArgs.GetArg("-defaultwtprimevote", "");
+    if (strDefault == "upvote") {
+        ui->comboBoxDefaultWTPrimeVote->setCurrentIndex(WTPRIME_UPVOTE);
+    }
+    else
+    if (strDefault == "downvote") {
+        ui->comboBoxDefaultWTPrimeVote->setCurrentIndex(WTPRIME_DOWNVOTE);
+    }
 }
 
 SidechainMinerDialog::~SidechainMinerDialog()
@@ -239,6 +256,42 @@ void SidechainMinerDialog::on_pushButtonReject_clicked()
     }
 }
 
+void SidechainMinerDialog::on_pushButtonUpvoteWTPrime_clicked()
+{
+    // TODO
+    //QModelIndexList selected = ui->tableViewWTPrimes->selectionModel()->selectedIndexes();
+
+    //for (int i = 0; i < selected.size(); i++) {
+    //    uint256 hash;
+    //    if (wtPrimeVoteModel->GetHashAtRow(selected[i].row(), hash))
+    //        // TODO Store the vote somewhere
+    //}
+}
+
+void SidechainMinerDialog::on_pushButtonDownvoteWTPrime_clicked()
+{
+    // TODO
+    //QModelIndexList selected = ui->tableViewWTPrimes->selectionModel()->selectedIndexes();
+
+    //for (int i = 0; i < selected.size(); i++) {
+    //    uint256 hash;
+    //    if (wtPrimeVoteModel->GetHashAtRow(selected[i].row(), hash))
+    //        // TODO Store the vote somewhere
+    //}
+}
+
+void SidechainMinerDialog::on_pushButtonAbstainWTPrime_clicked()
+{
+    // TODO
+    //QModelIndexList selected = ui->tableViewWTPrimes->selectionModel()->selectedIndexes();
+
+    //for (int i = 0; i < selected.size(); i++) {
+    //    uint256 hash;
+    //    if (wtPrimeVoteModel->GetHashAtRow(selected[i].row(), hash))
+    //        // TODO Store the vote somewhere
+    //}
+}
+
 void SidechainMinerDialog::on_pushButtonClose_clicked()
 {
     this->close();
@@ -253,6 +306,19 @@ void SidechainMinerDialog::on_toolButtonACKSidechains_clicked()
            "(negative-acknowledgement) sidechains.\n\n"
            "Set ACK to activate a proposed sidechain, and NACK to reject a "
            "proposed sidechain.\n\n"
+           "Once set, the chosen signal will be included in blocks mined by "
+           "this node."),
+        QMessageBox::Ok);
+}
+
+void SidechainMinerDialog::on_toolButtonACKWTPrime_clicked()
+{
+    // TODO move text into static const
+    QMessageBox::information(this, tr("DriveNet - information"),
+        tr("WT^ voting:\n\n"
+           "Use this page to ACK (acknowledgement) or NACK "
+           "(negative-acknowledgement) or abstain (ignore) WT^(s).\n\n"
+           "Set ACK to commit work to the WT^, and NACK to downvote it.\n\n"
            "Once set, the chosen signal will be included in blocks mined by "
            "this node."),
         QMessageBox::Ok);
@@ -322,4 +388,19 @@ void SidechainMinerDialog::on_pushButtonRandomKeyHash_clicked()
 {
     uint256 hash = GetRandHash();
     ui->lineEditHash->setText(QString::fromStdString(hash.ToString()));
+}
+
+void SidechainMinerDialog::on_comboBoxDefaultWTPrimeVote_currentIndexChanged(const int i)
+{
+    if (i == WTPRIME_UPVOTE) {
+        gArgs.ForceSetArg("-defaultwtprimevote", "upvote");
+    }
+    else
+    if (i == WTPRIME_ABSTAIN) {
+        gArgs.ForceSetArg("-defaultwtprimevote", "abstain");
+    }
+    else
+    if (i == WTPRIME_DOWNVOTE) {
+        gArgs.ForceSetArg("-defaultwtprimevote", "downvote");
+    }
 }

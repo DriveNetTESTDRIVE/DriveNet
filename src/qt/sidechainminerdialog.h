@@ -43,9 +43,17 @@ public Q_SLOTS:
 
     void on_pushButtonReject_clicked();
 
+    void on_pushButtonUpvoteWTPrime_clicked();
+
+    void on_pushButtonDownvoteWTPrime_clicked();
+
+    void on_pushButtonAbstainWTPrime_clicked();
+
     void on_pushButtonClose_clicked();
 
     void on_toolButtonACKSidechains_clicked();
+
+    void on_toolButtonACKWTPrime_clicked();
 
     void on_toolButtonKeyHash_clicked();
 
@@ -56,6 +64,8 @@ public Q_SLOTS:
     void on_toolButtonSoftwareHashes_clicked();
 
     void on_pushButtonRandomKeyHash_clicked();
+
+    void on_comboBoxDefaultWTPrimeVote_currentIndexChanged(const int i);
 
 private:
     Ui::SidechainMinerDialog *ui;

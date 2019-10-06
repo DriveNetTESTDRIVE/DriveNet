@@ -62,6 +62,19 @@
        </widget>
       </item>
       <item>
+       <widget class="QPushButton" name="pushButtonVoteWTPrime">
+        <property name="text">
+         <string>WT^ Voting</string>
+        </property>
+        <property name="checkable">
+         <bool>true</bool>
+        </property>
+        <property name="autoExclusive">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
        <spacer name="verticalSpacer">
         <property name="orientation">
          <enum>Qt::Vertical</enum>
@@ -91,7 +104,7 @@
         <property name="currentIndex">
          <number>1</number>
         </property>
-        <widget class="QWidget" name="page">
+        <widget class="QWidget" name="pageAckSidechains">
          <layout class="QVBoxLayout" name="verticalLayout_3">
           <item>
            <widget class="QFrame" name="frame_6">
@@ -198,7 +211,7 @@
           </item>
          </layout>
         </widget>
-        <widget class="QWidget" name="page_2">
+        <widget class="QWidget" name="pageProposeSidechain">
          <layout class="QVBoxLayout" name="verticalLayout_4">
           <item>
            <widget class="QFrame" name="frame_13">
@@ -492,10 +505,192 @@
           </item>
          </layout>
         </widget>
-        <widget class="QWidget" name="page_3">
+        <widget class="QWidget" name="pageAckWTPrime">
          <layout class="QVBoxLayout" name="verticalLayout_5">
           <item>
-           <widget class="QListView" name="listView"/>
+           <widget class="QTableView" name="tableViewWTPrimes">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="label_7">
+            <property name="text">
+             <string>Default vote for new WT^(s). Note: changing this setting will override command line parameters</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="comboBoxDefaultWTPrimeVote">
+            <property name="currentIndex">
+             <number>1</number>
+            </property>
+            <property name="maxVisibleItems">
+             <number>3</number>
+            </property>
+            <item>
+             <property name="text">
+              <string>Upvote</string>
+             </property>
+             <property name="icon">
+              <iconset resource="../drivenet.qrc">
+               <normaloff>:/icons/transaction_confirmed</normaloff>:/icons/transaction_confirmed</iconset>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Abstain</string>
+             </property>
+             <property name="icon">
+              <iconset resource="../drivenet.qrc">
+               <normaloff>:/icons/replay_not_replayed</normaloff>:/icons/replay_not_replayed</iconset>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Downvote</string>
+             </property>
+             <property name="icon">
+              <iconset resource="../drivenet.qrc">
+               <normaloff>:/icons/transaction_conflicted</normaloff>:/icons/transaction_conflicted</iconset>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item>
+           <widget class="Line" name="line">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="label">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="text">
+             <string>Highlight a single WT^ and select vote</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QFrame" name="frame_14">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="frameShape">
+             <enum>QFrame::HLine</enum>
+            </property>
+            <property name="frameShadow">
+             <enum>QFrame::Sunken</enum>
+            </property>
+            <layout class="QHBoxLayout" name="horizontalLayout_8">
+             <item>
+              <widget class="QPushButton" name="pushButtonACKWTPrime">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="text">
+                <string>Upvote</string>
+               </property>
+               <property name="icon">
+                <iconset resource="../drivenet.qrc">
+                 <normaloff>:/icons/transaction_confirmed</normaloff>:/icons/transaction_confirmed</iconset>
+               </property>
+               <property name="iconSize">
+                <size>
+                 <width>16</width>
+                 <height>16</height>
+                </size>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="pushButtonAbstainWTPrime">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="text">
+                <string>Abstain</string>
+               </property>
+               <property name="icon">
+                <iconset resource="../drivenet.qrc">
+                 <normaloff>:/icons/replay_not_replayed</normaloff>:/icons/replay_not_replayed</iconset>
+               </property>
+               <property name="iconSize">
+                <size>
+                 <width>32</width>
+                 <height>16</height>
+                </size>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="pushButtonDownvoteWTPrime">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="text">
+                <string>Downvote</string>
+               </property>
+               <property name="icon">
+                <iconset resource="../drivenet.qrc">
+                 <normaloff>:/icons/transaction_conflicted</normaloff>:/icons/transaction_conflicted</iconset>
+               </property>
+               <property name="iconSize">
+                <size>
+                 <width>16</width>
+                 <height>16</height>
+                </size>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="horizontalSpacer_2">
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item>
+              <widget class="QToolButton" name="toolButtonUpvoteWTPrime">
+               <property name="text">
+                <string>...</string>
+               </property>
+               <property name="icon">
+                <iconset resource="../drivenet.qrc">
+                 <normaloff>:/icons/transaction_0</normaloff>:/icons/transaction_0</iconset>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
           </item>
          </layout>
         </widget>
