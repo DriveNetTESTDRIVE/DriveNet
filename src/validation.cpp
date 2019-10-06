@@ -5930,6 +5930,10 @@ bool ResyncSCDB(const CBlockIndex* pindex, bool fDisconnect)
 {
     uiInterface.InitMessage(_("Resyncing sidechain database..."));
 
+    // We don't sync the genesis block
+    if (pindex->GetBlockHash() == Params().GetConsensus().hashGenesisBlock)
+        return true;
+
     int nHeight = -1;
     // Note that chainActive has a custom [] operator override
     if (chainActive[pindex->nHeight] != pindex) {
