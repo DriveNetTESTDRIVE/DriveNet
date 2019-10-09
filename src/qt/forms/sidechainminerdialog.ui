@@ -517,7 +517,7 @@
           <item>
            <widget class="QLabel" name="label_7">
             <property name="text">
-             <string>Default vote for new WT^(s). Note: changing this setting will override command line parameters</string>
+             <string>Default vote for new WT^(s). Changing this setting will override command line parameters</string>
             </property>
             <property name="wordWrap">
              <bool>true</bool>

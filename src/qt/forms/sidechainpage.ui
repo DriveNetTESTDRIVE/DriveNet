@@ -104,7 +104,7 @@
               <item>
                <widget class="QLabel" name="label_2">
                 <property name="text">
-                 <string>Note:  The Sidechain address should be an address that you own on the Sidechain you are depositing to.</string>
+                 <string>The Sidechain address should be an address that you own on the Sidechain you are depositing to.</string>
                 </property>
                 <property name="textFormat">
                  <enum>Qt::AutoText</enum>
