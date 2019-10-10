@@ -149,7 +149,7 @@ struct LoadedCoin
     inline void SerializationOp(Stream &s, Operation ser_action) {
         READWRITE(coin);
         READWRITE(out);
-        READWRITE(fSpent); // TODO this doesn't need to be serialized
+        READWRITE(fSpent);
     }
 };
 

@@ -185,9 +185,7 @@ bool CCoinsViewDB::WriteLoadedCoinIndex(const std::vector<LoadedCoin>& vLoadedCo
 
 bool CCoinsViewDB::WriteToLoadedCoinIndex(const LoadedCoin& coin)
 {
-    std::vector<LoadedCoin> vLoadedCoin;
-    vLoadedCoin.push_back(coin);
-    return WriteLoadedCoinIndex(vLoadedCoin);
+    return WriteLoadedCoinIndex(std::vector<LoadedCoin>{ coin });
 }
 
 bool CCoinsViewDB::GetLoadedCoin(const uint256& hashOutPoint, LoadedCoin& coinOut) const
