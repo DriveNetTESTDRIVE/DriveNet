@@ -504,7 +504,7 @@ public:
     const setEntries & GetMemPoolParents(txiter entry) const;
     const setEntries & GetMemPoolChildren(txiter entry) const;
 
-    void RemoveExpiredCriticalRequests();
+    void RemoveExpiredCriticalRequests(std::vector<uint256>& vHashRemoved);
 
     void SelectBMMRequests();
 

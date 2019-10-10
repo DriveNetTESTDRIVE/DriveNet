@@ -164,13 +164,22 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
 
     bool fDrivechainEnabled = IsDrivechainEnabled(pindexPrev, chainparams.GetConsensus());
 
+#ifdef ENABLE_WALLET
     if (fDrivechainEnabled) {
-        // Removed expired BMM requests that we don't want to consider
-        mempool.RemoveExpiredCriticalRequests();
+        // Remove expired BMM requests from our memory pool
+        std::vector<uint256> vHashRemoved;
+        mempool.RemoveExpiredCriticalRequests(vHashRemoved);
+
+        // Abandon expired BMM requests from the wallet
+        if (!vpwallets.empty()) {
+            for (const uint256& u : vHashRemoved)
+                vpwallets[0]->AbandonTransaction(u);
+        }
 
         // Select which BMM requests (if any) to include
         mempool.SelectBMMRequests();
     }
+#endif
 
     int nPackagesSelected = 0;
     int nDescendantsUpdated = 0;
@@ -846,6 +855,8 @@ void static BitcoinMiner(const CChainParams& chainparams)
 
     if (vpwallets.empty())
         return; // TODO error message
+
+    LOCK(vpwallets[0]->cs_wallet);
 
     std::shared_ptr<CReserveScript> coinbaseScript;
     vpwallets[0]->GetScriptForMining(coinbaseScript);

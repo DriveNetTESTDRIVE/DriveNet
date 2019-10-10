@@ -1001,7 +1001,7 @@ const CTxMemPool::setEntries & CTxMemPool::GetMemPoolChildren(txiter entry) cons
     return it->second.children;
 }
 
-void CTxMemPool::RemoveExpiredCriticalRequests()
+void CTxMemPool::RemoveExpiredCriticalRequests(std::vector<uint256>& vHashRemoved)
 {
     LOCK(cs);
     setEntries txToRemove;
@@ -1010,6 +1010,7 @@ void CTxMemPool::RemoveExpiredCriticalRequests()
         if (!it->GetTx().criticalData.IsNull()) {
             if (chainActive.Height() + 1 != (int64_t)it->GetTx().nLockTime + 1) {
                 txToRemove.insert(it);
+                vHashRemoved.push_back(it->GetTx().GetHash());
             }
         }
     }
