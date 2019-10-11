@@ -856,8 +856,6 @@ void static BitcoinMiner(const CChainParams& chainparams)
     if (vpwallets.empty())
         return; // TODO error message
 
-    LOCK(vpwallets[0]->cs_wallet);
-
     std::shared_ptr<CReserveScript> coinbaseScript;
     vpwallets[0]->GetScriptForMining(coinbaseScript);
 
