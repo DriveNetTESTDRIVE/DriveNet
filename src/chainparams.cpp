@@ -98,7 +98,7 @@ public:
         consensus.nMinimumChainWork = uint256S("0x0000000000000000000000000000000000000000000000000000000002aaaab1");
 
         // By default assume that the signatures in ancestors of this block are valid.
-        consensus.defaultAssumeValid = uint256S("0xebe3ba9718fa789cb5ea123d84e21fdc6a4541aa1bca5e45325e66f40d8f429c");
+        consensus.defaultAssumeValid = uint256S("0xee8f1f4722a31c976a2273fba53afa7d108ddaf2f32169889fd870bcf9bd12b8");
 
         /**
          * The message start string is designed to be unlikely to occur in normal data.
@@ -112,11 +112,11 @@ public:
         nDefaultPort = 8551;
         nPruneAfterHeight = 100000;
 
-        genesis = CreateGenesisBlock(1570396616, 18000959, 0x1d5fffff, 1, 50 * COIN);
+        genesis = CreateGenesisBlock(1570756592, 132419213, 0x1d5fffff, 1, 50 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
 
-        // PoW: 0000003b73d9fe8db5c9bd513bb8db8fd544dd59bf69a20c97ad0b1ebce8ab6d
-        assert(consensus.hashGenesisBlock == uint256S("0xebe3ba9718fa789cb5ea123d84e21fdc6a4541aa1bca5e45325e66f40d8f429c"));
+        // PoW: 00000032f44d924af8e93811d1088312ee13665d2e467b91dd06e8d37f80a1e0
+        assert(consensus.hashGenesisBlock == uint256S("0xee8f1f4722a31c976a2273fba53afa7d108ddaf2f32169889fd870bcf9bd12b8"));
         assert(genesis.hashMerkleRoot == uint256S("0x4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"));
 
         // Note that of those which support the service bits prefix, most only support a subset of
@@ -147,7 +147,7 @@ public:
 
         checkpointData = {
             {
-                { 0, uint256S("0xebe3ba9718fa789cb5ea123d84e21fdc6a4541aa1bca5e45325e66f40d8f429c")},
+                { 0, uint256S("0xee8f1f4722a31c976a2273fba53afa7d108ddaf2f32169889fd870bcf9bd12b8")},
             }
         };
 
