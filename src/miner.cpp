@@ -172,8 +172,10 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
 
         // Abandon expired BMM requests from the wallet
         if (!vpwallets.empty()) {
-            for (const uint256& u : vHashRemoved)
-                vpwallets[0]->AbandonTransaction(u);
+            for (const uint256& u : vHashRemoved) {
+                if (vpwallets[0]->mapWallet.count(u))
+                    vpwallets[0]->AbandonTransaction(u);
+            }
         }
 
         // Select which BMM requests (if any) to include

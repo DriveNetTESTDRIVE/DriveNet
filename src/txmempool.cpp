@@ -1015,7 +1015,8 @@ void CTxMemPool::RemoveExpiredCriticalRequests(std::vector<uint256>& vHashRemove
         }
     }
 
-    RemoveStaged(txToRemove, true, MemPoolRemovalReason::EXPIRY);
+    // UNKNOWN also means manually removed
+    RemoveStaged(txToRemove, false, MemPoolRemovalReason::UNKNOWN);
 }
 
 void CTxMemPool::SelectBMMRequests()
@@ -1028,6 +1029,8 @@ void CTxMemPool::SelectBMMRequests()
     LOCK(cs);
     setEntries txToRemove;
 
+    // We only want 1 BMM request per sidechain, so we have a vector that tracks
+    // whether we've already found one for a given sidechain
     std::vector<bool> vSidechain;
     vSidechain.resize(scdb.GetActiveSidechainCount());
 
@@ -1037,23 +1040,34 @@ void CTxMemPool::SelectBMMRequests()
             uint16_t nPrevBlockRef;
             std::string strPrevBlock = "";
             if (it->GetTx().criticalData.IsBMMRequest(nSidechain, nPrevBlockRef, strPrevBlock)) {
-                if (!scdb.IsSidechainNumberValid(nSidechain))
+                if (!scdb.IsSidechainNumberValid(nSidechain)) {
+                    // A BMM request for an invalid sidechain shouldn't be
+                    // accepted, but a sidechain can be deactivated so if we
+                    // have BMM requests for a sidechain that doesn't exist
+                    // we should clear them out
+                    txToRemove.insert(it);
                     continue;
+                }
 
                 if (nSidechain > vSidechain.size()) {
                     txToRemove.insert(it);
                     continue;
                 }
-                else
-                if (vSidechain[nSidechain] == false)
+
+                if (vSidechain[nSidechain] == false) {
+                    // Track that we have found a BMM request for this sidechain
                     vSidechain[nSidechain] = true;
-                else
+                } else {
+                    // We already have a BMM request selected for this sidechain
+                    // so remove any extras
                     txToRemove.insert(it);
+                }
             }
         }
     }
 
-    RemoveStaged(txToRemove, true, MemPoolRemovalReason::EXPIRY);
+    // UNKNOWN also means manually removed
+    RemoveStaged(txToRemove, false, MemPoolRemovalReason::UNKNOWN);
 }
 
 void CTxMemPool::UpdateCTIP(const std::map<uint8_t, SidechainCTIP>& mapCTIP, bool fJustCheck)

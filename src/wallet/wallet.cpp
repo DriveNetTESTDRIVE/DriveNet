@@ -3126,7 +3126,7 @@ bool CWallet::CreateSidechainDeposit(CTransactionRef& tx, std::string& strFail, 
 
     // Select coins to cover sidechain deposit
     std::vector<COutput> vCoins;
-    AvailableCoins(vCoins);
+    AvailableCoins(vCoins, true /* fOnlySafe */);
     std::set<CInputCoin> setCoins;
     CAmount nAmountRet = CAmount(0);
     if (!SelectCoins(vCoins, nAmount + nFee, setCoins, nAmountRet)) {
@@ -3328,8 +3328,9 @@ bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, CCon
             // Broadcast
             if (!wtx.AcceptToMemoryPool(maxTxFee, state)) {
                 LogPrintf("%s: Transaction cannot be broadcast immediately, %s\n", __func__, state.GetRejectReason());
-                if (fRemoveIfFail) {
-                    if (!AbandonTransaction(wtx.GetHash())) {
+                const uint256 hashTx = wtx.GetHash();
+                if (fRemoveIfFail && mapWallet.count(hashTx)) {
+                    if (!AbandonTransaction(hashTx)) {
                         LogPrintf("%s: Failed to abandon transaction!\n", __func__);
                     }
                     return false;
