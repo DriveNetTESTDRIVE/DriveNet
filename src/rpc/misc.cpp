@@ -678,123 +678,6 @@ UniValue createcriticaldatatx(const JSONRPCRequest& request)
     return ret;
 }
 
-UniValue createbmmcriticaldatatx(const JSONRPCRequest& request)
-{
-    // TODO handle optional height better
-    if (request.fHelp || request.params.size() != 6)
-        throw std::runtime_error(
-            "createbmmcriticaldatatx\n"
-            "Create a BMM request critical data transaction\n"
-            "\nArguments:\n"
-            "1. \"amount\"         (numeric or string, required) The amount in " + CURRENCY_UNIT + " to be spent.\n"
-            "2. \"height\"         (numeric, required) The block height this transaction must be included in.\n"
-            "Note: If 0 is passed in for height, current block height will be used"
-            "3. \"criticalhash\"   (string, required) h* you want added to a coinbase\n"
-            "4. \"nsidechain\"     (numeric, required) Sidechain requesting BMM\n"
-            "5. \"nprevblockref\"  (numeric, required) prevBlockRef\n"
-            "6. \"prevbytes\"      (string, required) a portion of the previous block hash\n"
-            "\nExamples:\n"
-            + HelpExampleCli("createbmmcriticaldatatx", "\"amount\", \"height\", \"criticalhash\", \"nsidechain\", \"nprevblockref\", \"prevbytes\"")
-            + HelpExampleRpc("createbmmcriticaldatatx", "\"amount\", \"height\", \"criticalhash\", \"nsidechain\", \"nprevblockref\", \"prevbytes\"")
-            );
-
-    // Amount
-    CAmount nAmount = AmountFromValue(request.params[0]);
-    if (nAmount <= 0)
-        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
-
-    // Height
-    int nHeight = request.params[1].get_int();
-    if (nHeight == 0) {
-        LOCK(cs_main);
-        nHeight = chainActive.Height();
-    }
-
-    // Critical hash
-    uint256 hashCritical = uint256S(request.params[2].get_str());
-    if (hashCritical.IsNull())
-        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid h*");
-
-    // nSidechain
-    int nSidechain = request.params[3].get_int();
-
-    if (!IsSidechainNumberValid(nSidechain))
-        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid Sidechain number");
-
-    // nDAG
-    int nDAG = request.params[4].get_int();
-
-    // prevBlockHash bytes
-    std::string strPrevBlock = request.params[5].get_str();
-    if (strPrevBlock.size() != 4)
-        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid prevBlockHash bytes size");
-
-    std::string strTip = chainActive.Tip()->GetBlockHash().ToString();
-    strTip = strTip.substr(strTip.size() - 4, strTip.size() - 1);
-
-    // Check the 4 prev block hash bytes
-    if (strTip != strPrevBlock)
-        throw (JSONRPCError(RPC_TYPE_ERROR, "Invalid prevBlockHash bytes incorrect"));
-
-    // Create critical data
-    CScript bytes;
-    bytes.resize(3);
-    bytes[0] = 0x00;
-    bytes[1] = 0xbf;
-    bytes[2] = 0x00;
-
-    bytes << CScriptNum(nSidechain);
-    bytes << CScriptNum(nDAG);
-    bytes << ToByteVector(HexStr(strPrevBlock));
-
-    CCriticalData criticalData;
-    criticalData.bytes = std::vector<unsigned char>(bytes.begin(), bytes.end());
-    criticalData.hashCritical = hashCritical;
-
-#ifdef ENABLE_WALLET
-    // Create and send the transaction
-    std::string strError;
-    if (vpwallets.empty()){
-        strError = "Error: no wallets are available";
-        throw JSONRPCError(RPC_WALLET_ERROR, strError);
-    }
-
-    // Create transaction with critical data
-    std::vector<CRecipient> vecSend;
-    CRecipient recipient = {CScript() << OP_TRUE, nAmount, true};
-    vecSend.push_back(recipient);
-
-    LOCK2(cs_main, vpwallets[0]->cs_wallet);
-
-    CWalletTx wtx;
-    CReserveKey reservekey(vpwallets[0]);
-    CAmount nFeeRequired;
-    int nChangePosRet = -1;
-    //TODO: set this as a real thing
-    CCoinControl cc;
-    cc.signalRbf = false;
-    if (!vpwallets[0]->CreateTransaction(vecSend, wtx, reservekey, nFeeRequired, nChangePosRet, strError, cc, true, 3, nHeight, criticalData)) {
-        if (nAmount + nFeeRequired > vpwallets[0]->GetBalance())
-            strError = strprintf("Error: This transaction requires a transaction fee of at least %s", FormatMoney(nFeeRequired));
-        throw JSONRPCError(RPC_WALLET_ERROR, strError);
-    }
-    CValidationState state;
-    if (!vpwallets[0]->CommitTransaction(wtx, reservekey, g_connman.get(), state)) {
-        strError = strprintf("Error: The transaction was rejected! Reason given: %s", state.GetRejectReason());
-        throw JSONRPCError(RPC_WALLET_ERROR, strError);
-    }
-#endif
-
-    UniValue ret(UniValue::VOBJ);
-#ifdef ENABLE_WALLET
-    UniValue obj(UniValue::VOBJ);
-    obj.push_back(Pair("txid", wtx.GetHash().ToString()));
-    ret.push_back(Pair("txid", obj));
-#endif
-
-    return ret;
-}
-
 UniValue listsidechainctip(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() < 1)
@@ -1668,7 +1551,6 @@ static const CRPCCommand commands[] =
     // TODO improve & shorten names
     /* DriveChain rpc commands (mainly used by sidechains) */
     { "DriveChain",  "createcriticaldatatx",          &createcriticaldatatx,         {"amount", "height", "criticalhash"}},
-    { "DriveChain",  "createbmmcriticaldatatx",       &createbmmcriticaldatatx,      {"amount", "height", "criticalhash", "nsidechain", "ndag"}},
     { "DriveChain",  "listsidechainctip",             &listsidechainctip,            {"nsidechain"}},
     { "DriveChain",  "listsidechaindeposits",         &listsidechaindeposits,        {"nsidechain", "count"}},
     { "DriveChain",  "countsidechaindeposits",        &countsidechaindeposits,       {"nsidechain"}},

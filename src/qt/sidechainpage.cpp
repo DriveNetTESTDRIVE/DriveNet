@@ -264,28 +264,28 @@ void SidechainPage::on_pushButtonDeposit_clicked()
         return;
     }
 
+    // Block until the wallet has been updated with the latest chain tip
+    vpwallets[0]->BlockUntilSyncedToCurrentChain();
+
     // Attempt to create the deposit
     CTransactionRef tx;
     std::string strFail = "";
-    if (!vpwallets.empty()) {
-
-        CScript scriptPubKey;
-        if (!scdb.GetSidechainScript(nSidechain, scriptPubKey)) {
-            // Invalid sidechain message box
-            messageBox.setWindowTitle("Invalid Sidechain!");
-            messageBox.setText("The sidechain you're trying to deposit to does not appear to be active!");
-            messageBox.exec();
-            return;
-        }
-        if (!vpwallets[0]->CreateSidechainDeposit(tx, strFail, scriptPubKey, nSidechain, nValue, nFee, keyID)) {
-            // Create transaction error message box
-            messageBox.setWindowTitle("Creating deposit transaction failed!");
-            QString createError = "Error creating transaction!\n\n";
-            createError += QString::fromStdString(strFail);
-            messageBox.setText(createError);
-            messageBox.exec();
-            return;
-        }
+    CScript scriptPubKey;
+    if (!scdb.GetSidechainScript(nSidechain, scriptPubKey)) {
+        // Invalid sidechain message box
+        messageBox.setWindowTitle("Invalid Sidechain!");
+        messageBox.setText("The sidechain you're trying to deposit to does not appear to be active!");
+        messageBox.exec();
+        return;
+    }
+    if (!vpwallets[0]->CreateSidechainDeposit(tx, strFail, scriptPubKey, nSidechain, nValue, nFee, keyID)) {
+        // Create transaction error message box
+        messageBox.setWindowTitle("Creating deposit transaction failed!");
+        QString createError = "Error creating transaction!\n\n";
+        createError += QString::fromStdString(strFail);
+        messageBox.setText(createError);
+        messageBox.exec();
+        return;
     }
 
     // Successful deposit message box
