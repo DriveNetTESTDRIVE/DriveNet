@@ -772,6 +772,7 @@ UniValue createbmmcriticaldatatx(const JSONRPCRequest& request)
     int nChangePosRet = -1;
     //TODO: set this as a real thing
     CCoinControl cc;
+    cc.signalRbf = false;
     if (!vpwallets[0]->CreateTransaction(vecSend, wtx, reservekey, nFeeRequired, nChangePosRet, strError, cc, true, 3, nHeight, criticalData)) {
         if (nAmount + nFeeRequired > vpwallets[0]->GetBalance())
             strError = strprintf("Error: This transaction requires a transaction fee of at least %s", FormatMoney(nFeeRequired));
