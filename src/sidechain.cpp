@@ -68,7 +68,9 @@ bool SidechainDeposit::operator==(const SidechainDeposit& a) const
 {
     return (a.nSidechain == nSidechain &&
             a.keyID == keyID &&
-            a.tx == tx);
+            a.tx == tx &&
+            a.n == n &&
+            a.hashBlock == hashBlock);
 }
 
 bool SidechainProposal::operator==(const SidechainProposal& proposal) const

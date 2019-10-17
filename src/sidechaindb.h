@@ -230,8 +230,8 @@ private:
      * y = state of WT^(s) for nSidechain */
     std::vector<std::vector<SidechainWTPrimeState>> vWTPrimeStatus;
 
-    /** Sort deposits by CTIP UTXO spending order */
-    bool SortDeposits();
+    /** Calls SortDeposits for all of SCDB's deposit cache */
+    bool SortSCDBDeposits();
 
     /** Update CTIP to match the deposit cache - called after sorting / undo */
     void UpdateCTIP(const uint256& hashBlock);
@@ -243,5 +243,7 @@ int GetLastSidechainVerificationPeriod(int nHeight);
 /** Return the number of blocks that have been mined in this period so far */
 int GetNumBlocksSinceLastSidechainVerificationPeriod(int nHeight);
 
-#endif // BITCOIN_SIDECHAINDB_H
+/** Sort deposits by CTIP UTXO spending order */
+bool SortDeposits(const std::vector<SidechainDeposit>& vDeposit, std::vector<SidechainDeposit>& vDepositSorted);
 
+#endif // BITCOIN_SIDECHAINDB_H

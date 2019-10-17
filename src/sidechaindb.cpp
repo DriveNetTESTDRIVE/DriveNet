@@ -15,6 +15,7 @@
 
 SidechainDB::SidechainDB()
 {
+    Reset();
 }
 
 void SidechainDB::AddDeposits(const std::vector<CTransaction>& vtx, const uint256& hashBlock, bool fJustCheck)
@@ -102,7 +103,8 @@ void SidechainDB::AddDeposits(const std::vector<SidechainDeposit>& vDeposit, con
     }
 
     // Sort the deposits by CTIP UTXO spend order
-    SortDeposits();
+    // TODO check return value
+    SortSCDBDeposits();
 
     // Finally, update the CTIP for each nSidechain and log it
     UpdateCTIP(hashBlock);
@@ -1042,7 +1044,8 @@ bool SidechainDB::Undo(int nHeight, const uint256& hashBlock, const uint256& has
 
     // If any deposits were removed re-sort deposits and update CTIP
     if (fDepositRemoved) {
-        SortDeposits();
+        // TODO check return value
+        SortSCDBDeposits();
         UpdateCTIP(hashBlock);
     }
 
@@ -1377,27 +1380,18 @@ void SidechainDB::UpdateActivationStatus(const std::vector<uint256>& vHash)
     }
 }
 
-/** Custom sort helper for SortDeposits */
-bool CompareCTIP(const SidechainDeposit& lhs, const SidechainDeposit& rhs)
+bool SidechainDB::SortSCDBDeposits()
 {
-    for (const CTxIn& in : rhs.tx.vin) {
-        if (in.prevout.hash == lhs.tx.GetHash()
-                && lhs.tx.vout.size() > in.prevout.n
-                && lhs.n == in.prevout.n) {
-            return true;
+    std::vector<std::vector<SidechainDeposit>> vDepositSorted;
+
+    // Loop through deposits and sort the vector for each sidechain
+    for (const std::vector<SidechainDeposit>& v : vDepositCache) {
+        std::vector<SidechainDeposit> vDeposit;
+        if (!SortDeposits(v, vDeposit)) {
+            LogPrintf("%s: Error: Failed to sort deposits!\n", __func__);
+            return false;
         }
-    }
-    return false;
-}
-
-bool SidechainDB::SortDeposits()
-{
-    // Make a copy of the deposit cache that we will sort
-    std::vector<std::vector<SidechainDeposit>> vDepositSorted = vDepositCache;
-
-    // Sort the deposits into CTIP UTXO spend order
-    for (size_t x = 0; x < vDepositSorted.size(); x++) {
-        std::sort(vDepositSorted[x].begin(), vDepositSorted[x].end(), CompareCTIP);
+        vDepositSorted.push_back(vDeposit);
     }
 
     // TODO check the result
@@ -1469,3 +1463,102 @@ int GetNumBlocksSinceLastSidechainVerificationPeriod(int nHeight)
     int nPeriodStart = GetLastSidechainVerificationPeriod(nHeight);
     return nHeight - nPeriodStart;
 }
+
+bool SortDeposits(const std::vector<SidechainDeposit>& vDeposit, std::vector<SidechainDeposit>& vDepositSorted)
+{
+    if (vDeposit.empty())
+        return true;
+
+    if (vDeposit.size() == 1) {
+        vDepositSorted = vDeposit;
+        return true;
+    }
+
+    // Find the first deposit in the list by looking for the deposit which
+    // spends a CTIP not in the list. There can only be one. We are also going
+    // to check that there is only one missing CTIP input here.
+    int nMissingCTIP = 0;
+    for (size_t x = 0; x < vDeposit.size(); x++) {
+        const SidechainDeposit dx = vDeposit[x];
+
+        // Look for the input of this deposit
+        bool fFound = false;
+        for (size_t y = 0; y < vDeposit.size(); y++) {
+            const SidechainDeposit dy = vDeposit[y];
+
+            // The CTIP output of the deposit that might be the input
+            const COutPoint prevout(dy.tx.GetHash(), dy.n);
+
+            // Look for the CTIP output
+            for (const CTxIn& in : dx.tx.vin) {
+                if (in.prevout == prevout) {
+                    fFound = true;
+                    break;
+                }
+            }
+            if (fFound)
+                break;
+        }
+
+        // If we didn't find the CTIP input, this should be the first and only
+        // deposit without one.
+        if (!fFound) {
+            nMissingCTIP++;
+            if (nMissingCTIP > 1) {
+                LogPrintf("%s: Error: Multiple missing CTIP!\n", __func__);
+                return false;
+            }
+            // Add the first deposit to the result
+            vDepositSorted.push_back(dx);
+            // We found the first deposit but do not stop the loop here
+            // because we are also checking to make sure there aren't any
+            // other deposits missing a CTIP input from the list.
+        }
+    }
+
+    if (vDepositSorted.empty()) {
+        LogPrintf("%s: Error: Could not find first deposit in list!\n", __func__);
+        return false;
+    }
+
+    // Now that we know which deposit is first in the list we can add the rest
+    // in CTIP spend order.
+
+    // Track the CTIP output of the latest deposit we have sorted
+    COutPoint prevout(vDepositSorted.back().tx.GetHash(), vDepositSorted.back().n);
+
+    // Look for the deposit that spends the last sorted CTIP output and sort it.
+    // If we cannot find a deposit spending the CTIP, that should mean we
+    // reached the end of sorting.
+    std::vector<SidechainDeposit>::const_iterator it = vDeposit.begin();
+    while (it != vDeposit.end()) {
+        bool fFound = false;
+        for (const CTxIn& in : it->tx.vin) {
+            if (in.prevout == prevout) {
+                // Add the sorted deposit to the list
+                vDepositSorted.push_back(*it);
+
+                // Update the CTIP output we are looking for
+                const SidechainDeposit deposit = vDepositSorted.back();
+                prevout = COutPoint(deposit.tx.GetHash(), deposit.n);
+
+                // Start from begin() again
+                fFound = true;
+                it = vDeposit.begin();
+
+                break;
+            }
+        }
+        if (!fFound)
+            it++;
+    }
+
+    if (vDeposit.size() != vDepositSorted.size()) {
+        LogPrintf("%s: Error: Invalid result size! In: %u Out: %u\n", __func__,
+                vDeposit.size(), vDepositSorted.size());
+        return false;
+    }
+
+    return true;
+}
+
