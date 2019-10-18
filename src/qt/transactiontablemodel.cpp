@@ -351,7 +351,7 @@ QString TransactionTableModel::formatTxStatus(const TransactionRecord *wtx) cons
         status = tr("Unconfirmed");
         break;
     case TransactionStatus::Abandoned:
-        status = tr("Abandoned");
+        status = tr("Abandoned - If this was a sidechain deposit, try waiting a few moments before sending the deposit again.");
         break;
     case TransactionStatus::Confirming:
         status = tr("Confirming (%1 of %2 recommended confirmations)").arg(wtx->status.depth).arg(TransactionRecord::RecommendedNumConfirmations);
