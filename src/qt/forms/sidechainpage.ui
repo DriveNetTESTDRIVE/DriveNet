@@ -274,6 +274,13 @@
                    </item>
                   </layout>
                  </item>
+                 <item>
+                  <widget class="QLabel" name="label_4">
+                   <property name="text">
+                    <string>The sidechain may also deduct a fee from your deposit.</string>
+                   </property>
+                  </widget>
+                 </item>
                 </layout>
                </widget>
               </item>

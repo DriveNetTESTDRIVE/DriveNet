@@ -74,7 +74,7 @@
    <item>
     <widget class="QLabel" name="label">
      <property name="text">
-      <string>The sidechain may also take a fee from your deposit.</string>
+      <string>The sidechain may also deduct a fee from your deposit.</string>
      </property>
     </widget>
    </item>
