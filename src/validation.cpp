@@ -2304,7 +2304,7 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
             uint256 hashBWT;
             tx.GetBWTHash(hashBWT);
             if (!scdb.SpendWTPrime(nSidechain, block.GetHash(), tx, fJustCheck, true /* fDebug */)) {
-                return error("ConnectBlock(): Final spend WT^ failed (blind WT^ hash : txid): %s : %s", hashBWT.ToString(), tx.GetHash().ToString());
+                return error("ConnectBlock(): Final spend WT^ failed (blind WT^ hash : txid): %s : %s.\n nSidechain: %u\n", hashBWT.ToString(), tx.GetHash().ToString(), nSidechain);
             }
         }
     }

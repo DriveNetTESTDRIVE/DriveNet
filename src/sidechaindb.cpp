@@ -749,6 +749,7 @@ bool SidechainDB::SpendWTPrime(uint8_t nSidechain, const uint256& hashBlock, con
     deposit.n = n;
     deposit.hashBlock = hashBlock;
 
+    // This will also update the SCDB CTIP
     AddDeposits(std::vector<SidechainDeposit>{deposit}, hashBlock);
 
     // Remove WT^ work score now that is has been paid out
@@ -761,6 +762,8 @@ bool SidechainDB::SpendWTPrime(uint8_t nSidechain, const uint256& hashBlock, con
             vWTPrimeCache.pop_back();
         }
     }
+
+    LogPrintf("%s WT^ spent: %s for sidechain number: %u.\n", __func__, hashBlind.ToString(), nSidechain);
 
     return true;
 }
@@ -859,8 +862,10 @@ bool SidechainDB::Update(int nHeight, const uint256& hashBlock, const uint256& h
 
     // If the WT^ verification period ended, clear old data
     if (nHeight > 0 && (nHeight % SIDECHAIN_VERIFICATION_PERIOD) == 0) {
-        if (!fJustCheck)
+        if (!fJustCheck) {
+            LogPrintf("%s: Reset WT^ state at height: %u.\n", __func__, nHeight);
             ResetWTPrimeState();
+        }
     }
 
     /*
@@ -1422,16 +1427,14 @@ void SidechainDB::UpdateCTIP(const uint256& hashBlock)
             // Log the update
             // If hash block is null - that means we loaded deposits from disk
             if (!hashBlock.IsNull()) {
-                LogPrintf("SCDB %s: Updated sidechain CTIP for nSidechain: %u. \
-                        CTIP output: %s CTIP amount: %i hashBlock: %s.\n",
+                LogPrintf("SCDB %s: Updated sidechain CTIP for nSidechain: %u. CTIP output: %s CTIP amount: %i hashBlock: %s.\n",
                     __func__,
                     d.nSidechain,
                     out.ToString(),
                     amount,
                     hashBlock.ToString());
             } else {
-                LogPrintf("SCDB %s: Updated sidechain CTIP for nSidechain: %u. \
-                        CTIP output: %s CTIP amount: %i. (Loaded from disk).\n",
+                LogPrintf("SCDB %s: Updated sidechain CTIP for nSidechain: %u. CTIP output: %s CTIP amount: %i. (Loaded from disk).\n",
                     __func__,
                     d.nSidechain,
                     out.ToString(),
