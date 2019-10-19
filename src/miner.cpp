@@ -312,8 +312,13 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
         }
     }
 
-    // If a WT^ has sufficient workscore, create the payout transaction
-    if (fDrivechainEnabled) {
+    // TODO It would be possible to spend a WT^ in the last block of the
+    // verification period but WT^ state is cleared in connectblock before
+    // the workscore would be checked.
+    //
+    // If a WT^ has sufficient workscore and this block isn't the last in the
+    // verification period, create the payout transaction.
+    if (fDrivechainEnabled && nHeight % SIDECHAIN_VERIFICATION_PERIOD != 0) {
         for (const Sidechain& s : vActiveSidechain) {
             CMutableTransaction wtx;
             bool fCreated = CreateWTPrimePayout(s.nSidechain, wtx);
