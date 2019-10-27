@@ -264,7 +264,7 @@ BOOST_AUTO_TEST_CASE(sidechain_sort_10_deposits)
     BOOST_CHECK(vDepositSorted == vD);
 }
 
-BOOST_AUTO_TEST_CASE(sidechain_ctip_comparator_25_deposits)
+BOOST_AUTO_TEST_CASE(sidechain_sort_25_deposits_1)
 {
     // This test is testing 25 deposits some of which spend different outputs
     // of the same transaction
@@ -296,6 +296,83 @@ BOOST_AUTO_TEST_CASE(sidechain_ctip_comparator_25_deposits)
     BOOST_CHECK(vRandom != vD);
     BOOST_CHECK(SortDeposits(vRandom, vDepositSorted));
     BOOST_CHECK(vDepositSorted == vD);
+}
+
+BOOST_AUTO_TEST_CASE(sidechain_sort_25_deposits_2)
+{
+    // Another test sorting 25 deposits
+
+    // Get 25 deposits in valid CTIP spend order
+    std::vector<SidechainDeposit> vD = Get25TestDeposits();
+
+    // Test sorting the deposits when they are already in valid order
+    std::vector<SidechainDeposit> vDepositSorted;
+    BOOST_CHECK(SortDeposits(vD, vDepositSorted));
+    BOOST_CHECK(vD == vDepositSorted);
+
+    vDepositSorted.clear();
+
+    // Test sorting from reverse order
+    std::vector<SidechainDeposit> vReverse = vD;
+    std::reverse(vReverse.begin(), vReverse.end());
+    BOOST_CHECK(SortDeposits(vReverse, vDepositSorted));
+    BOOST_CHECK(vD == vDepositSorted);
+
+    vDepositSorted.clear();
+
+    // Test sorting random order
+    std::vector<SidechainDeposit> vRandom {vD[24], vD[0], vD[21], vD[11], vD[4],
+        vD[1], vD[15], vD[12], vD[9], vD[8], vD[13], vD[2], vD[7], vD[10],
+        vD[14], vD[6], vD[19], vD[23], vD[20], vD[3], vD[18], vD[16],
+        vD[22], vD[17], vD[5]};
+
+    BOOST_CHECK(vRandom != vD);
+    BOOST_CHECK(SortDeposits(vRandom, vDepositSorted));
+    BOOST_CHECK(vDepositSorted == vD);
+}
+
+BOOST_AUTO_TEST_CASE(sidechain_sort_25_deposits_invalid)
+{
+    // Check that sorting fails when invalid (duplicate and missing)
+    // deposits try to be sorted
+
+    // Get 25 deposits in valid CTIP spend order
+    std::vector<SidechainDeposit> vD = Get25TestDeposits();
+
+    // Test sorting the deposits when they are already in valid order
+    std::vector<SidechainDeposit> vDepositSorted;
+    BOOST_CHECK(SortDeposits(vD, vDepositSorted));
+    BOOST_CHECK(vD == vDepositSorted);
+
+    vDepositSorted.clear();
+
+    // Test sorting from reverse order
+    std::vector<SidechainDeposit> vReverse = vD;
+    std::reverse(vReverse.begin(), vReverse.end());
+    BOOST_CHECK(SortDeposits(vReverse, vDepositSorted));
+    BOOST_CHECK(vD == vDepositSorted);
+
+    vDepositSorted.clear();
+
+    // Test failure when there are duplicate deposits
+    std::vector<SidechainDeposit> vDuplicate {vD[0], vD[0], vD[2], vD[3], vD[4],
+        vD[5], vD[6], vD[7], vD[8], vD[9], vD[10], vD[11], vD[11], vD[11],
+        vD[14], vD[15], vD[16], vD[17], vD[18], vD[19], vD[20], vD[21],
+        vD[22], vD[22], vD[22]};
+
+    BOOST_CHECK(!SortDeposits(vDuplicate, vDepositSorted));
+    BOOST_CHECK(vDepositSorted != vD);
+
+    vDepositSorted.clear();
+
+    // Test failure when there are missing deposits
+    std::vector<SidechainDeposit> vMissing {vD[0], vD[1], /* vD[2], */ vD[3],
+        vD[4], vD[5], vD[6], vD[7], vD[8], vD[9], vD[10], vD[11], vD[12],
+        vD[13], vD[14], vD[15], vD[16], vD[17], vD[18], vD[19], vD[20], vD[21],
+        vD[22], vD[23] /* vD[24] */ };
+
+    BOOST_CHECK(!SortDeposits(vMissing, vDepositSorted));
+    BOOST_CHECK(vDepositSorted != vD);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
