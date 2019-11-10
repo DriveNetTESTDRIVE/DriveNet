@@ -3393,7 +3393,7 @@ void GenerateCriticalHashCommitments(CBlock& block, const Consensus::Params& con
     /*
      * M8 (v1)
      * Critical data / Drivechain BMM commitment request.
-     * BIP: (INSERT HERE ONCE ASSIGNED) // TODO
+     * BIP: https://github.com/bitcoin/bips/blob/master/bip-0301.mediawiki#bmm-accept
      */
     if (block.vtx.size() < 2)
         return;
@@ -3438,7 +3438,7 @@ void GenerateLNCriticalHashCommitment(CBlock& block, const Consensus::Params& co
     /*
      * M8 (v2)
      * Example Lightning version of Drivechain BMM commitment request.
-     * BIP: (INSERT HERE ONCE ASSIGNED) // TODO
+     * BIP: https://github.com/bitcoin/bips/blob/master/bip-0301.mediawiki#Lightning_BMM_Request
      */
 
     // Check for activation of Drivechains
